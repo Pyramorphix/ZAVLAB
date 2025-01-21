@@ -36,23 +36,23 @@
     "marker_shape":[".", ",", "o", "v", "^", "<", ">", "1", "2", "3", "4",
     "8", "s", "p", "P", "*", "h", "H", "+", "x", "X", "D", 
     "d", "|", "_", ""],
-    "axes_font_size": [[8, 8]],
+    "axes_font_size": [-1, [8, 8]],
     "subplots_titles_font_size": [10],
     "subplots_titles_text":[],
-    "legends_font_size": [8],
+    "legends_font_size": [[-1, 8]],
     "marker_size": [3],
     "line_width": [0.5],
     "line_alpha": [1],
-    "axes_round_accuracy": [["%0.2f", "%0.2f"]],
+    "axes_round_accuracy": [[-1, ["%0.2f", "%0.2f"]]],
     "subplots_settings": [
         {
-        "nrows": 1, 
-        "ncols": 1,
+        "rows_cols": [1, 1],
         "subplots_distribution": [1]
         }
     ],
     "graph_types": ["2D"],
-    "axes_scaling":[["multiplication", [0.9, 1.1, 0.9, 1.1]]],
+    "axes_scaling":[["stretch", [0.9, 1.1, 0.9, 1.1]]],
+    "axes_number_of_small_ticks": [[5, 5]],
     "labels": [""],
     "axes_titles": [["X", "Y"]],
     "subplots_legend_position": ["best"]
