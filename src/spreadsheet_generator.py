@@ -155,7 +155,8 @@ class XLSXGenerator(Spreadsheet):
 
 
 
-        # Writing rows:
+        # Writing rows
+        # -------------------------------------------------------------------------------------------------------
         for row_number in range(2, MAX_ROW_COUNT + 2):
         
             data_row = []
@@ -200,6 +201,7 @@ class XLSXGenerator(Spreadsheet):
                                          f"Got: '{field['type']}'")
         
             sheet.append(data_row)
+        # -------------------------------------------------------------------------------------------------------
 
 
         # Saving the spreadsheet
