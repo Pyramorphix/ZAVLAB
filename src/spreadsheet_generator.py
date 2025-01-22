@@ -123,16 +123,19 @@ class XLSXGenerator(Spreadsheet):
 
             match field['type']:
 
+<<<<<<< HEAD
                 case "gathered":
 
                     # For user input fields we make two columns: value and error
                     header_row.append(f"{field['label']}, {field['unit']}")
+
                     header_row.append(f"{field['label']} err, {field['unit']}")
 
                     # Keeping the track of the column number
                     column += 2
         
 
+<<<<<<< HEAD
                 case "calculated":
 
                     # For calculated fields we make only one column
