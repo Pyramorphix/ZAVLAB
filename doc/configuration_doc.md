@@ -126,5 +126,6 @@ Marker shape description:
 
     ``'_'``         hline marker
 
+title font size for size of subplot titles that are letters (a, b, c, ...)
 
-title font size нужен для размера заданных буковок (a, b, c, ...)
+axes_font_size - [-1, [8, 8]], where -1 defines as parameter of font size for all axes
