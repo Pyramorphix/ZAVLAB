@@ -6,24 +6,57 @@ MAX_ROW_COUNT = 100
 
 
 """
-Here we make the basement for out spreadsheet. It's basically a list consisting of fields.
-
-Each field is either for user input (type='gathered') or for calculated values (type='calculated').
-Every field has the label and measure unit.
-
-User input fields additionally have the 'error' element for entering the experimental error.
-It can be either a certain value (e.g. '0.005') or a formula depending on measured value (e.g. '2% + 0.04')
-
-Calculated values have the 'formula' element for the calculation formula.
-It should be typed in using excel-readable format with field labels (e.g. 'm*v^2/2')
+Here we make the basement for out spreadsheet
 """
 # =====================================================================================================================
 
 class Spreadsheet:
+    """
+    The basement for creating a spreadsheet. Basically a list consisting of fields.
+
+    Each field is either for user input (type='gathered') or for calculated values (type='calculated').
+    Every field has the label and measure unit.
+
+    User input fields additionally have the 'error' element for entering the experimental error.
+    It can be either a certain value (e.g. '0.005') or a formula depending on measured value (e.g. '2% + 0.04')
+
+    Calculated values have the 'formula' element for the calculation formula.
+    It should be typed in using excel-readable format with field labels (e.g. 'm*v^2/2')
+
+    Attributes
+    ----------
+    fields: list[dict]
+        Each field is a dictionary with the following items:
+        id: int
+            Automatically generated unique ID of a field
+        label: str
+            Header of a field
+        unit: str
+            Measure unit of a value, in the actual spreadsheet goes into label,
+            Also used in formulas
+        type: str
+            'gathered' or 'calculated', see above
+        error: str | None
+            Expression for calculating experimental error of a measured (gathered) value.
+            Can be written as excel formula of 'val' (which is the measured value),
+            also '%' can be used. 'x%' converts to 'x * 0.01 * val'
+        formula: str | None
+            Formula for computing a calculated value. Should be written as excel formula
+            of other values' labels. e.g. "(m * v^2)/2" if there are fields with labels 'm' and 'v'
+
+    Methods
+    -------
+    add_field(label, unit, field_type, error=None, formula=None) -> None
+        Add a field to *fields* list
+
+    generate(output_file) -> None
+        Returns NotImplementedError if you try to call .generate() method
+        from Spreadsheet class (it should be called from one of the generator subclasses)
+    """
 
     # Making an empty list and initializing file type (e.g. 'xlsx' or 'ods') for further file assembling
     # ----------------------------------------
-    def __init__(self, filetype: str) -> None:
+    def __init__(self, filetype: str):
 
         self.filetype: str = filetype
         self.fields: list = []
@@ -31,7 +64,7 @@ class Spreadsheet:
 
 
 
-    # Method to add specified field to the list
+    # Add specified field to the list
     # --------------------------------------------------------------------------------------------
     def add_field(self, label: str, unit: str, field_type: str, error=None, formula=None) -> None:
 
@@ -39,8 +72,8 @@ class Spreadsheet:
 
         # Check if field type is correct
         if field_type not in {'gathered', 'calculated'}:
-            raise ValueError(f"Field {id_}: invalid field type.\n" +
-                             f"Expected: 'gathered' or 'calculated'\n" +
+            raise ValueError(f"Field {id_}: invalid field type.\n"
+                             f"Expected: 'gathered' or 'calculated'\n"
                              f"Got: '{field_type}'")
 
         field = {
@@ -77,8 +110,10 @@ class Spreadsheet:
     # --------------------------------------------------------------------------------------------
     def generate(self, output_file) -> None:
 
-        raise NotImplementedError("This method should be implemented by a generator subclasses " +
-        "(e.g. XLSXGenerator) and not the Spreadsheet class itself")
+        del output_file  # Unused, cause we're here to just raise an error
+
+        raise NotImplementedError("This method should be implemented by a generator subclasses "
+                                  "(e.g. XLSXGenerator) and not the Spreadsheet class itself")
     # --------------------------------------------------------------------------------------------
 
 # =====================================================================================================================
@@ -95,6 +130,24 @@ therefore we need to make an individual generator for each type.
 # =====================================================================================================================
 
 class XLSXGenerator(Spreadsheet):
+    """
+    Generator which assembles .xlsx file from Spreadsheet fields list
+
+    Attributes
+    ----------
+    Same as for Spreadsheet
+
+    Methods
+    -------
+    generate(output_file: str) -> None
+        Assemble .xlsx file in *output_file*.
+        *output_file* should have the following formatting:
+        '.../Path/to/file/filename'
+
+    See Also
+    --------
+    Spreadsheet: the basement for creating a spreadsheet.
+    """
 
     def generate(self, output_file) -> None:
 
@@ -123,7 +176,6 @@ class XLSXGenerator(Spreadsheet):
 
             match field['type']:
 
-<<<<<<< HEAD
                 case "gathered":
 
                     # For user input fields we make two columns: value and error
@@ -135,7 +187,6 @@ class XLSXGenerator(Spreadsheet):
                     column += 2
         
 
-<<<<<<< HEAD
                 case "calculated":
 
                     # For calculated fields we make only one column
@@ -148,11 +199,11 @@ class XLSXGenerator(Spreadsheet):
                 # If field type is somtehing other, we return an error
                 case _:
 
-                    raise ValueError(f"Field {field['id']}: invalid field type.\n" +
-                                     f"Expected: 'gathered' or 'calculated'\n" +
+                    raise ValueError(f"Field {field['id']}: invalid field type.\n"
+                                     f"Expected: 'gathered' or 'calculated'\n"
                                      f"Got: '{field['type']}'")
         
-        sheet.append(header_row)
+        sheet.append(header_row) 
         # ----------------------------------------------------------------------------------------------------------
 
 
@@ -198,8 +249,8 @@ class XLSXGenerator(Spreadsheet):
                     # If field type is somtehing other, we return an error
                     case _:
 
-                        raise ValueError(f"Field {field['id']}: invalid field type.\n" +
-                                         f"Expected: 'gathered' or 'calculated'\n" +
+                        raise ValueError(f"Field {field['id']}: invalid field type.\n"
+                                         f"Expected: 'gathered' or 'calculated'\n"
                                          f"Got: '{field['type']}'")
         
             sheet.append(data_row)
@@ -208,7 +259,7 @@ class XLSXGenerator(Spreadsheet):
 
         # Saving the spreadsheet
         # ------------------------
-        workbook.save(output_file)
+        workbook.save(output_file + ".xlsx")
         # ------------------------
 
 
@@ -267,5 +318,5 @@ print(spreadsheet)
 path = Path().parent.absolute() / "output"
 
 
-spreadsheet.generate(f"{path}/spreadsheet.{filetype}")
+spreadsheet.generate(f"{path}/spreadsheet")
 # ---------------------------------------------------------------------
