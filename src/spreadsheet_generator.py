@@ -3,6 +3,7 @@ from openpyxl.utils import get_column_letter
 from pathlib import Path
 
 MAX_ROW_COUNT = 100
+MAX_EXPONENT_ABS = 10
 
 
 """
@@ -227,6 +228,9 @@ class XLSXGenerator(Spreadsheet):
                         # e.g. 5% + 0.001  ->  0.05 * val + 0.001
                         err_formula = format_error(field['error'])
 
+                        # Replace 'first' with coordinates of the first cell in a field
+                        err_formula = err_formula.replace('first', column_labels[field['label']] + '2')
+
                         # Replace 'val' with cell coordinates of gathered data
                         err_formula = err_formula.replace('val', column_labels[field['label']] + str(row_number))
 
@@ -264,17 +268,33 @@ class XLSXGenerator(Spreadsheet):
 
 
 
-# Error formula formatting. The output is excel-style formula of 'val'
-# ---------------------------------------
+# Error formula formatting. The output is excel-style formula of 'val' and 'first'
+# --------------------------------------------------------------------------------------------
 def format_error(expr: str) -> str:
 
     # Formatting percentages
-    expr = expr.replace('%', '*0.01*val')
+    if "%" in expr:
+        expr = expr.replace("%", "*0.01*val")
 
-    # TODO: Add lsd formatting
+    # Formatting LSD (last significant digit)
+    if "lsd" in expr:
+    
+        # Arina, please forgive me for what I'm about to do...
+        # (TODO: KILL THAT WITH FIRE)
+        terrible_nested_statement = ""
+
+        for k in range(-MAX_EXPONENT_ABS, MAX_EXPONENT_ABS + 1):
+            terrible_nested_statement += f"IF(ROUND(first, {k}) = first, -{k}, "
+
+        terrible_nested_statement += f"{0}{')' * (MAX_EXPONENT_ABS * 2)}"
+
+        # Okay, so basically this thing is 20 (or MAX_EXPONENT_ABS * 2) nested 'IF' statements
+        # each of which checks if the last significant digit has order k.
+        # Now let's just raise 10 to the power of k and forget about it.
+        expr = expr.replace("lsd", f"IF(val = 0, 0, 10^({terrible_nested_statement}))")
 
     return expr
-# ---------------------------------------
+# --------------------------------------------------------------------------------------------
 
 # =====================================================================================================================
 
@@ -282,7 +302,7 @@ def format_error(expr: str) -> str:
 
 
 
-# Function to choose the appropriate generator based on chosen filetype
+# Function to select the appropriate generator based on chosen filetype
 # (Currently supported: .xlsx)
 # ----------------------------------------------------------------------------
 def get_spreadsheet_generator(filetype: str) -> XLSXGenerator:
@@ -308,7 +328,7 @@ filetype = "xlsx"
 spreadsheet = get_spreadsheet_generator(filetype)
 
 # Add fields
-spreadsheet.add_field("m", "kg", "gathered", error="0.001")
+spreadsheet.add_field("m", "kg", "gathered", error="0.04 * lsd")
 spreadsheet.add_field("v", "m/s", "gathered", error="2% + .05")
 spreadsheet.add_field("K", "J", "calculated", formula="m*v^2/2")
 
