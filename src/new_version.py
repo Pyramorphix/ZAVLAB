@@ -98,16 +98,16 @@ def plot_graph(data,quant=None, titles=['X', 'Y', 'title'], colors=['r'], stretc
 
         ax.xaxis.set_ticks_position("bottom") #+
         ax.yaxis.set_ticks_position("left") #+
-        ax.spines["left"].set_position(("data", minEl[0]))
-        ax.spines["bottom"].set_position(("data", minEl[1]))
-        ax.set(xlim=(minEl[0], maxEl[0]),ylim=(minEl[1], maxEl[1]))
-        plt.xticks(np.linspace(minEl[0], maxEl[0], 8), rotation=0, size=ticks_and_font_size[0])
-        plt.yticks(np.linspace(minEl[1], maxEl[1], 8),size=ticks_and_font_size[1])
+        ax.spines["left"].set_position(("data", minEl[0])) #+
+        ax.spines["bottom"].set_position(("data", minEl[1])) #+
+        ax.set(xlim=(minEl[0], maxEl[0]),ylim=(minEl[1], maxEl[1])) #+
+        plt.xticks(np.linspace(minEl[0], maxEl[0], 8), rotation=0, size=ticks_and_font_size[0]) #+
+        plt.yticks(np.linspace(minEl[1], maxEl[1], 8),size=ticks_and_font_size[1]) #+
         x_steps = (maxEl[0] - minEl[0])/ 8 / 20
         y_steps = (maxEl[1] - minEl[1])/ 8 / 20
     elif point_start_to_end[0] == None and point_start_to_end[1] != None:
         minEl, maxEl = returnMinAndMaxElementForData(data, quant, stretch_graph_coefficients)
-        ax.xaxis.set_ticks_position("bottom")
+        ax.xaxis.set_ticks_position("bottom") #+
         ax.yaxis.set_ticks_position("left")
         ax.spines["left"].set_position(("data", minEl[0]))
         ax.spines["bottom"].set_position(("data", point_start_to_end[1][0]))

@@ -4,6 +4,8 @@
 3. add figure_size to subpplots_settings parameter
 4. rewrite the comment for __check_axes_titles (now we have option for barcharts).
 5. rewrite the comment for __check_subplots_titles_font_size, __check_axes_number_of_small_ticks, __check_axes_font_size. (and some others)
+10.make check for number of titles for axes if one of the data presented on them is 3d graph
+11. make option to choose colormap
 '''
 import json as js
 import numpy as np
@@ -14,7 +16,8 @@ import matplotlib.ticker as ticker
 
 class Earl:
     def __init__(self, file_path_name_to_conf="./../settings/configuration.json", verbose=True, **kwargs):
-        with open(file_path_name_to_conf, 'r', encoding='utf-8') as file:
+        self.file_path_name_to_conf = file_path_name_to_conf
+        with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
             self.config = js.load(file)
         self.plt = plt
         self.fig, self.axes = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
@@ -40,40 +43,43 @@ class Earl:
         for i in range(self.number_of_subplots):
             self.print_subplot_settings(i)
         self.initial_preparation_for_subplots()
+        self.plot_data_on_subplots()
+        self.config_cubplots_after_plotting_data()
 
     def initial_preparation_for_subplots(self):
         self.plt.close()
-        self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
+        self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1], figsize=(12, 10))
+        self.colorbars = []
         for i in range(self.number_of_subplots):
             x = (i) % self.config['subplots_settings'][0]['rows_cols'][0]
             y = (i) // self.config['subplots_settings'][0]['rows_cols'][0]
-            try:
-                fontsizes_for_axes = self.__find_proper_axes_font_size(i)
-                fontsize_for_title_subplot = self.__find_proper_subplots_titles_font_size(i)
-                number_axes_number_of_small_ticks = self.__find_proper_axes_number_of_small_ticks(i)
-                fontsize_legend_font_size = self.__find_proper_legends_font_size(i)
-                position_legend_position = self.__find_proper_legend_position(i)
-                round_axes_round_accuracy = self.__find_proper_axes_round_accuracy(i)
-                scaling_logarithmic_scaling = self.__find_proper_logarithmic_scaling(i)
-                scaling_axes_scaling = self.__find_proper_axes_scaling(i)
-            except ValueError as e:
-                print(f"You have an error: {e}")
-                sys.exit(1)
+            # try:
+            #     fontsizes_for_axes = self.__find_proper_axes_font_size(i)
+            #     fontsize_for_title_subplot = self.__find_proper_subplots_titles_font_size(i)
+            #     number_axes_number_of_small_ticks = self.__find_proper_axes_number_of_small_ticks(i)
+            #     fontsize_legend_font_size = self.__find_proper_legends_font_size(i)
+            #     position_legend_position = self.__find_proper_legend_position(i)
+            #     round_axes_round_accuracy = self.__find_proper_axes_round_accuracy(i)
+            #     scaling_logarithmic_scaling = self.__find_proper_logarithmic_scaling(i)
+            #     scaling_axes_scaling = self.__find_proper_axes_scaling(i)
+            # except ValueError as e:
+            #     print(f"You have an error: {e}")
+            #     sys.exit(1)
             #set titles and their sizes
-            self.ax[y][x].set_xlabel(self.subplots_settings[i]["axes_titles"][0], loc="center", fontsize=fontsizes_for_axes[0])
-            self.ax[y][x].set_ylabel(self.subplots_settings[i]["axes_titles"][1], loc="center", fontsize=fontsizes_for_axes[1])
-            self.ax[y][x].set_title(self.subplots_settings[i]["subplots_titles_text"], loc="center", fontsize=fontsize_for_title_subplot)
+            self.ax[y][x].set_xlabel(self.subplots_settings[i]["axes_titles"][0], loc="center", fontsize=self.subplots_settings[i]["axes_font_size"][0])
+            self.ax[y][x].set_ylabel(self.subplots_settings[i]["axes_titles"][1], loc="center", fontsize=self.subplots_settings[i]["axes_font_size"][1])
+            self.ax[y][x].set_title(self.subplots_settings[i]["subplots_titles_text"], loc="center", fontsize=self.subplots_settings[i]["subplots_titles_font_size"])
 
             #set legend properties
-            self.ax[y][x].legend(loc=position_legend_position, frameon=False, prop={'size': fontsize_legend_font_size})
+            self.ax[y][x].legend(loc=self.subplots_settings[i]["legend_position"], frameon=False, prop={'size': self.subplots_settings[i]["legends_font_size"]})
 
             #set inital axes properties
             self.min_number, self.max_number = [1, 1], [10, 10]
             self.steps = [9, 9]
-            if scaling_axes_scaling[1] == "stretch":
-                self.__config_parameters_for_stretch_option(i, scaling_axes_scaling)
-            elif scaling_axes_scaling[1] == "divide":
-                self.__config_parameters_for_dividing_option(scaling_axes_scaling)
+            if self.subplots_settings[i]["axes_scaling"][0] == "stretch":
+                self.__config_parameters_for_stretch_option(i)
+            elif self.subplots_settings[i]["axes_scaling"][0] == "divide":
+                self.__config_parameters_for_dividing_option(i)
             self.ax[y][x].xaxis.set_ticks_position("bottom")
             self.ax[y][x].yaxis.set_ticks_position("left")
             self.ax[y][x].spines["left"].set_position(("data", self.min_number[0]))
@@ -84,19 +90,19 @@ class Earl:
             self.ax[y][x].tick_params(axis='x', length=4, width=2)
             self.ax[y][x].tick_params(axis='y', length=4, width=2)
 
-            if scaling_logarithmic_scaling[0]:
+            if self.subplots_settings[i]["logarithmic_scaling"][0]:
                 self.ax[y][x].set_xscale("log")
-            if scaling_logarithmic_scaling[1]:
+            if self.subplots_settings[i]["logarithmic_scaling"][1]:
                 self.ax[y][x].set_yscale("log")
-            self.ax[y][x].xaxis.set_major_formatter(FormatStrFormatter(round_axes_round_accuracy[0]))
-            self.ax[y][x].yaxis.set_major_formatter(FormatStrFormatter(round_axes_round_accuracy[1]))
+            self.ax[y][x].xaxis.set_major_formatter(FormatStrFormatter(self.subplots_settings[i]["axes_round_accuracy"][0]))
+            self.ax[y][x].yaxis.set_major_formatter(FormatStrFormatter(self.subplots_settings[i]["axes_round_accuracy"][1]))
 
             #set inital ticks properties
             self.ax[y][x].minorticks_on()
             self.ax[y][x].tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
             self.ax[y][x].tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
-            self.ax[y][x].xaxis.set_minor_locator(ticker.AutoMinorLocator(number_axes_number_of_small_ticks[0]))
-            self.ax[y][x].yaxis.set_minor_locator(ticker.AutoMinorLocator(number_axes_number_of_small_ticks[1]))
+            self.ax[y][x].xaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_number_of_small_ticks"][0]))
+            self.ax[y][x].yaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_number_of_small_ticks"][1]))
             self.ax[y][x].tick_params(direction ='in', length=5, width=1.5)
 
             #set grid
@@ -107,14 +113,65 @@ class Earl:
         self.fig.align_titles()
         self.fig.tight_layout()
     
-    def __config_parameters_for_stretch_option(self, index, scaling): #Inspiration: songs from author Nico Santos
+    def plot_data_on_subplots(self):
+        for i in range(self.quant):
+            x = (self.curves_settings[i]["subplot_position"]) % self.config['subplots_settings'][0]['rows_cols'][0]
+            y = (self.curves_settings[i]["subplot_position"]) // self.config['subplots_settings'][0]['rows_cols'][0]
+            if self.curves_settings[i]["graph_type"] == 1:
+                self.plot_2d_graph(i, x, y)
+            elif self.curves_settings[i]["graph_type"] == 2:
+                self.plot_3d_graph(i, x, y)
+    
+    def plot_2d_graph(self, index, x, y):
+        x_data = self.curves_settings[index]["data"][0][0]
+        y_data = self.curves_settings[index]["data"][1][0]
+        color = self.curves_settings[index]["color"]
+        ls = self.curves_settings[index]["ls"]
+        marker_shape = self.curves_settings[index]["marker_shape"]
+        marker_size = self.curves_settings[index]["marker_size"]
+        lw = self.curves_settings[index]["line_width"]
+        alpha = self.curves_settings[index]["line_alpha"]
+        label = self.curves_settings[index]["label"]
+        if len(self.curves_settings[index]["data"][0]) == 2 and len(self.curves_settings[index]["data"][1]) == 2:
+            xerr_data = self.curves_settings[index]["data"][0][1]
+            yerr_data = self.curves_settings[index]["data"][1][1]
+            self.ax[y][x].errorbar(x=x_data, y=y_data, xerr=xerr_data, yerr=yerr_data, lw=lw, color=color, marker=marker_shape, markersize=marker_size, ls=ls, alpha=alpha, label=label)
+        elif len(self.curves_settings[index]["data"][0]) == 2 and len(self.curves_settings[index]["data"][1]) == 1:
+            xerr_data = self.curves_settings[index]["data"][0][1]
+            self.ax[y][x].errorbar(x=x_data, y=y_data, xerr=xerr_data, lw=lw, color=color, marker=marker_shape, markersize=marker_size, ls=ls, alpha=alpha, label=label)
+        elif len(self.curves_settings[index]["data"][0]) == 1 and len(self.curves_settings[index]["data"][1]) == 2:
+            yerr_data = self.curves_settings[index]["data"][1][1]
+            self.ax[y][x].errorbar(x=x_data, y=y_data, yerr=yerr_data, lw=lw, color=color, marker=marker_shape, markersize=marker_size, ls=ls, alpha=alpha, label=label)
+        elif len(self.curves_settings[index]["data"][0]) == 1 and len(self.curves_settings[index]["data"][1]) == 1:
+            self.ax[y][x].plot(x_data, y_data, lw=lw, color=color, marker=marker_shape, markersize=marker_size, ls=ls, alpha=alpha, label=label)
+    
+    def plot_3d_graph(self, index, x, y):
+        self.colorbars.append([0, 0])
+        self.colorbars[-1][0] = self.ax[y][x].pcolormesh(self.curves_settings[index]["data"][0], self.curves_settings[index]["data"][1], self.curves_settings[index]["data"][2], vmin=np.min(self.curves_settings[index]["data"][2]), vmax=np.max(self.curves_settings[index]["data"][2]), shading='gouraud', cmap='plasma')
+        self.colorbars[-1][1] = self.fig.colorbar(self.colorbars[-1][0], ax=self.ax[y][x], label=self.subplots_settings[self.curves_settings[index]["subplot_position"]]["axes_titles"][2])
+        #b.set_label(titles[2])
+    def config_cubplots_after_plotting_data(self):
+        for i in range(self.number_of_subplots):
+            x = (i) % self.config['subplots_settings'][0]['rows_cols'][0]
+            y = (i) // self.config['subplots_settings'][0]['rows_cols'][0]
+            try:
+                fontsize_legend_font_size = self.__find_proper_legends_font_size(i)
+                position_legend_position = self.__find_proper_legend_position(i)
+            except ValueError as e:
+                print(f"You have an error: {e}")
+                sys.exit(1)
+            #set legend properties
+            self.ax[y][x].legend(loc=position_legend_position, frameon=False, prop={'size': fontsize_legend_font_size})
+
+    
+    def __config_parameters_for_stretch_option(self, index): #Inspiration: songs from author Nico Santos
         flag = True
         for i in range(self.quant):
             if self.curves_settings[i]["subplot_position"] == index:
                 result_min, result_max = self.__find_min_max_element(i)
                 if flag:
                     self.min_number, self.max_number = result_min, result_max
-                    flag != flag
+                    flag = False
                 else:
                     if result_min[0] < self.min_number[0]:
                         self.min_number[0] = result_min[0]
@@ -124,19 +181,20 @@ class Earl:
                         self.max_number[0] = result_max[0]
                     if result_max[1] > self.max_number[1]:
                         self.max_number[1] = result_max[1]
-        self.min_number[0] *= scaling[2][0]
-        self.min_number[1] *= scaling[2][2]
-        self.max_number[0] *= scaling[2][1]
-        self.max_number[1] *= scaling[2][3]
+
+        self.min_number[0] *= self.subplots_settings[index]["axes_scaling"][1][0]
+        self.min_number[1] *= self.subplots_settings[index]["axes_scaling"][1][2]
+        self.max_number[0] *= self.subplots_settings[index]["axes_scaling"][1][1]
+        self.max_number[1] *= self.subplots_settings[index]["axes_scaling"][1][3]
         self.steps = [11, 11]
 
-    def __config_parameters_for_dividing_option(self, scaling):
-        self.min_number[0] = scaling[2][0][0]
-        self.min_number[1] = scaling[2][1][0]
-        self.max_number[0] = scaling[2][0][1]
-        self.max_number[1] = scaling[2][1][1]
-        self.steps[0] = scaling[2][0][2]
-        self.steps[1] = scaling[2][1][2]
+    def __config_parameters_for_dividing_option(self, index):
+        self.min_number[0] = self.subplots_settings[index]["axes_scaling"][1][0][0]
+        self.min_number[1] = self.subplots_settings[index]["axes_scaling"][1][1][0]
+        self.max_number[0] = self.subplots_settings[index]["axes_scaling"][1][0][1]
+        self.max_number[1] = self.subplots_settings[index]["axes_scaling"][1][1][1]
+        self.steps[0] = self.subplots_settings[index]["axes_scaling"][1][0][2]
+        self.steps[1] = self.subplots_settings[index]["axes_scaling"][1][1][2]
 
     def __find_min_max_element(self, index):
         min_el = [0, 0]
@@ -164,98 +222,98 @@ class Earl:
     def __find_proper_axes_font_size(self, index):
         flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
         for i in range(self.number_of_subplots):
-            if self.subplots_settings[i]["axes_font_size"][0] == index:
-                return self.subplots_settings[i]["axes_font_size"][1]
-            elif self.subplots_settings[i]["axes_font_size"][0] == -1:
+            if self.config["axes_font_size"][i][0] == index:
+                return self.config["axes_font_size"][i][1]
+            elif self.config["axes_font_size"][i][0] == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have fontsize for these axes titles of subplot {i} or fontsize for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
-            return self.subplots_settings[flag_minus_one]["axes_font_size"][1]
+            return self.config["axes_font_size"][flag_minus_one][1]
     
     def __find_proper_subplots_titles_font_size(self, index):
         flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
         for i in range(self.number_of_subplots):
-            if self.subplots_settings[i]["subplots_titles_font_size"][0] == index:
-                return self.subplots_settings[i]["subplots_titles_font_size"][1]
-            elif self.subplots_settings[i]["subplots_titles_font_size"][0] == -1:
+            if self.config["subplots_titles_font_size"][i][0] == index:
+                return self.config["subplots_titles_font_size"][i][1]
+            elif self.config["subplots_titles_font_size"][i][0] == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have fontsize for title for these subplot {i} or fontsize for all subplots. ([x, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
-            return self.subplots_settings[flag_minus_one]["subplots_titles_font_size"][1]        
+            return self.config["subplots_titles_font_size"][flag_minus_one][1]        
     
     def __find_proper_axes_number_of_small_ticks(self, index):
         flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
         for i in range(self.number_of_subplots):
-            if self.subplots_settings[i]["axes_number_of_small_ticks"][0] == index:
-                return self.subplots_settings[i]["axes_number_of_small_ticks"][1]
-            elif self.subplots_settings[i]["axes_number_of_small_ticks"][0] == -1:
+            if self.config["axes_number_of_small_ticks"][i][0] == index:
+                return self.config["axes_number_of_small_ticks"][i][1]
+            elif self.config["axes_number_of_small_ticks"][i][0] == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have number of small ticks for these axes titles of subplot {i} or number of small ticks for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
-            return self.subplots_settings[flag_minus_one]["axes_number_of_small_ticks"][1]
+            return self.config["axes_number_of_small_ticks"][flag_minus_one][1]
 
     def __find_proper_legends_font_size(self, index):
         flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
         for i in range(self.number_of_subplots):
-            if self.subplots_settings[i]["legends_font_size"][0] == index:
-                return self.subplots_settings[i]["legends_font_size"][1]
-            elif self.subplots_settings[i]["legends_font_size"][0] == -1:
+            if self.config["legends_font_size"][i][0] == index:
+                return self.config["legends_font_size"][i][1]
+            elif self.config["legends_font_size"][i][0] == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have legend fontsize for these subplot {i} or legend fontsize for all subplots. ([x, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
-            return self.subplots_settings[flag_minus_one]["legends_font_size"][1] 
+            return self.config["legends_font_size"][flag_minus_one][1] 
 
     def __find_proper_legend_position(self, index):
         flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
         for i in range(self.number_of_subplots):
-            if self.subplots_settings[i]["legend_position"][0] == index:
-                return self.subplots_settings[i]["legend_position"][1]
-            elif self.subplots_settings[i]["legend_position"][0] == -1:
+            if self.config["subplots_legend_position"][i][0] == index:
+                return self.config["subplots_legend_position"][i][1]
+            elif self.config["subplots_legend_position"][i][0] == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have legend position for title for these subplot {i} or legend position for all subplots. ([x, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
-            return self.subplots_settings[flag_minus_one]["legend_position"][1] 
+            return self.config["subplots_legend_position"][flag_minus_one][1] 
 
     def __find_proper_axes_round_accuracy(self, index):
         flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
         for i in range(self.number_of_subplots):
-            if self.subplots_settings[i]["axes_round_accuracy"][0] == index:
-                return self.subplots_settings[i]["axes_round_accuracy"][1]
-            elif self.subplots_settings[i]["axes_round_accuracy"][0] == -1:
+            if self.config["axes_round_accuracy"][i][0] == index:
+                return self.config["axes_round_accuracy"][i][1]
+            elif self.config["axes_round_accuracy"][i][0] == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have element axes_round_accuracy for these subplot {i} or axes_round_accuracy for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
-            return self.subplots_settings[flag_minus_one]["axes_round_accuracy"][1]
+            return self.config["axes_round_accuracy"][flag_minus_one][1]
 
     def __find_proper_logarithmic_scaling(self, index):
         flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
         for i in range(self.number_of_subplots):
-            if self.subplots_settings[i]["logarithmic_scaling"][0] == index:
-                return self.subplots_settings[i]["logarithmic_scaling"][1]
-            elif self.subplots_settings[i]["logarithmic_scaling"][0] == -1:
+            if self.config["logarithmic_scaling"][i][0] == index:
+                return self.config["logarithmic_scaling"][i][1]
+            elif self.config["logarithmic_scaling"][i][0] == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have argument for logarithmic_scaling for these axes titles of subplot {i} or one logarithmic_scaling argument for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
-            return self.subplots_settings[flag_minus_one]["logarithmic_scaling"][1]
+            return self.config["logarithmic_scaling"][flag_minus_one][1]
         
     def __find_proper_axes_scaling(self, index):
         flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
         for i in range(self.number_of_subplots):
-            if self.subplots_settings[i]["axes_scaling"][0] == index:
-                return self.subplots_settings[i]["axes_scaling"]
-            elif self.subplots_settings[i]["axes_scaling"][0] == -1:
+            if self.config["axes_scaling"][i][0] == index:
+                return self.config["axes_scaling"][i][1:]
+            elif self.config["axes_scaling"][i][0] == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have argument for axes_scaling for these axes titles of subplot {i} or one logarithmic_scaling argument for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
-            return self.subplots_settings[flag_minus_one]["axes_scaling"]    
+            return self.config["axes_scaling"][flag_minus_one][1:]
             
     def check_parameters(self, **kwargs):
         """
@@ -1050,7 +1108,41 @@ class Earl:
                 elif not ((logarithmic_scaling[i][1][0] in [0, 1]) and (logarithmic_scaling[i][1][1] in [0, 1])):
                     raise ValueError(f'logarithmic_scaling argument number {i} ({logarithmic_scaling[i][1]}) should be 0 or 1.' + text_that_explain_structure)
             return (f"logarithmic_scaling argument is correct.", logarithmic_scaling)
-
+        
+    def __check_data_and_graph_type_are_correlated(self, index):
+        text_to_explain_structure = ''' The structure of the data has two different options. If data type is "2D" then the structure is [[x, xerr], [y, yerr]] (xerr, yerr are not necessarily included). If data type is "3D" (z coordinate is vizualizated by color) then the structure is [x, y, z]. Note: z array is two dimensional len(y) elements in each rows and len(x) rows. All data (x, y, z, xerr, yerr) have to have type numpy.ndarray. If structure or data is incorrect it won't be vizualized'''
+        if self.curves_settings[index]["graph_type"] == 1:
+            if len(self.curves_settings[index]["data"]) != 2:
+                raise ValueError(f"data {index} for 2D plot should have 2 elements." + text_to_explain_structure)
+            elif len(self.curves_settings[index]["data"]) == 2:
+                if len(self.curves_settings[index]["data"][0]) > 2:
+                    raise ValueError(f"data {index} for x (first element) for 2D type maximum has two elements." + text_to_explain_structure)
+                elif len(self.curves_settings[index]["data"][1]) > 2:
+                    raise ValueError(f"data {index} for y (first element) for 2D type maximum has two elements." + text_to_explain_structure)
+                elif len(self.curves_settings[index]["data"][0]) <= 2 and len(self.curves_settings[index]["data"][1]) <= 2:
+                    lenght = self.curves_settings[index]["data"][0][0].shape[0]
+                    for i in range(2):
+                        for j in range(len(self.curves_settings[index]["data"][i])):
+                            if self.curves_settings[index]["data"][i][j].shape[0] != lenght:
+                                raise ValueError(f"data {i} x, y (xerr, yerr) should have the same lenght." + text_to_explain_structure)
+                    return f"data {index} is correct."
+        elif self.curves_settings[index]["graph_type"] == 2:
+            if len(self.curves_settings[index]["data"]) != 3:
+                raise ValueError(f"data {index} for 3D plot should have 3 elements." + text_to_explain_structure)
+            elif len(self.curves_settings[index]["data"]) == 3:
+                for i in range(3):
+                    if not isinstance(self.curves_settings[index]["data"][i], np.ndarray):
+                        raise ValueError(f"data {index} should have type numpy.ndarray." + text_to_explain_structure)
+                if self.curves_settings[index]["data"][0].ndim != 1 or self.curves_settings[index]["data"][1].ndim != 1:
+                    raise ValueError(f"data {i} (x and y elements) should be one dimensional array." + text_to_explain_structure)
+                elif self.curves_settings[index]["data"][0].shape[0] != self.curves_settings[index]["data"][1].shape[0]:
+                    raise ValueError(f"data {i} x and y elements should  have the same number of points." + text_to_explain_structure)       
+                elif self.curves_settings[index]["data"][2].ndim != 2:
+                    raise ValueError(f"data {i} (z) should be two dimensional array." + text_to_explain_structure)
+                elif self.curves_settings[index]["data"][0].shape[0] * self.curves_settings[index]["data"][1].shape[0] != self.curves_settings[index]["data"][2].shape[0] * self.curves_settings[index]["data"][2].shape[1]:
+                    raise ValueError(f"data {i} z elemnts should have number of points equal to x * y (number of elements from them)." + text_to_explain_structure)
+                return f"data {index} is correct."
+                    
     def construct_structure_curve(self, data_array):
         """Constructs and populates the structure for curve settings.
 
@@ -1077,9 +1169,10 @@ class Earl:
                 the settings for a single curve. This list is populated by this method.
         """
         graph_pos_types = {"2D":1, "3D":2}
+        index = 0
         for i in range(self.quant):
             self.curves_settings.append(dict())
-            self.curves_settings[i] = {"data": data_array[i],
+            self.curves_settings[-1] = {"data": data_array[i],
                                       "graph_type": graph_pos_types[self.config["graph_types"][i]],
                                       "color": self.config["color"][i],
                                       "ls": self.config["ls"][i],
@@ -1089,6 +1182,15 @@ class Earl:
                                       "line_width": self.config["line_width"][i],
                                       "line_alpha": self.config["line_alpha"][i],
                                       "label": self.config["labels"][i]}
+            try:
+                result = self.__check_data_and_graph_type_are_correlated(index)
+                index += 1
+                if self.verbose:
+                    print(result)
+            except (TypeError, ValueError) as e:
+                    del self.curves_settings[-1]
+                    print(f'Error: {e}')  # Print any validation errors
+
             
     def construct_structure_subplots(self):
         """Constructs and populates the structure for subplot settings.
@@ -1116,17 +1218,35 @@ class Earl:
                 the settings for a single subplot. This list is populated by this method.
         """
         for i in range(self.number_of_subplots):
+            x = (i) % self.config['subplots_settings'][0]['rows_cols'][0]
+            y = (i) // self.config['subplots_settings'][0]['rows_cols'][0]
+            try:
+                fontsizes_for_axes = self.__find_proper_axes_font_size(i)
+                fontsize_for_title_subplot = self.__find_proper_subplots_titles_font_size(i)
+                number_axes_number_of_small_ticks = self.__find_proper_axes_number_of_small_ticks(i)
+                fontsize_legend_font_size = self.__find_proper_legends_font_size(i)
+                position_legend_position = self.__find_proper_legend_position(i)
+                round_axes_round_accuracy = self.__find_proper_axes_round_accuracy(i)
+                scaling_logarithmic_scaling = self.__find_proper_logarithmic_scaling(i)
+                scaling_axes_scaling = self.__find_proper_axes_scaling(i)
+            except ValueError as e:
+                print(f"You have an error: {e}")
+                sys.exit(1)
+
             self.subplots_settings.append(dict())
-            self.subplots_settings[i] = {"axes_font_size": self.config["axes_font_size"][i], 
-                                         "subplots_titles_font_size": self.config["subplots_titles_font_size"][i],
+            self.subplots_settings[i] = {
+                                         "axes_font_size": fontsizes_for_axes, 
+                                         "subplots_titles_font_size": fontsize_for_title_subplot,
                                          "subplots_titles_text": self.config["subplots_titles_text"][i],
-                                         "legends_font_size": self.config["legends_font_size"][i],
-                                         "axes_scaling": self.config["axes_scaling"][i],
-                                         "axes_round_accuracy": self.config["axes_round_accuracy"][i],
-                                         "axes_number_of_small_ticks": self.config["axes_number_of_small_ticks"][i],
+                                         "legends_font_size": fontsize_legend_font_size,
+                                         "axes_scaling": scaling_axes_scaling,
+                                         "axes_round_accuracy": round_axes_round_accuracy,
+                                         "axes_number_of_small_ticks": number_axes_number_of_small_ticks,
                                          "axes_titles": self.config["axes_titles"][i],
-                                         "legend_position": self.config["subplots_legend_position"][i],
-                                         "logarithmic_scaling": self.config["logarithmic_scaling"][i]}
+                                         "legend_position": position_legend_position,
+                                         "logarithmic_scaling": scaling_logarithmic_scaling
+                                         }
+
             
     def prepare_config(self):
         """
@@ -1143,62 +1263,64 @@ class Earl:
         
         Inspiration: "Kukoriki" series, episode "Oh Ye Grateful".
         """
+        with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
+            config = js.load(file)
         # Color for each data series, defaulting to a dark red if not specified
-        self.config["color"] = self.extend_parameters(self.config["color"], self.quant, "#C0392B")
+        self.config["color"] = self.extend_parameters(self.config["color"], self.quant, config["color"][0])
         
         # Line style for each data series, defaulting to solid line if not specified
-        self.config["ls"] = self.extend_parameters(self.config["ls"], self.quant, '')
+        self.config["ls"] = self.extend_parameters(self.config["ls"], self.quant, config["ls"][0])
         
         # Marker shape for each data series, defaulting to circle 'o'
-        self.config["marker_shape"] = self.extend_parameters(self.config["marker_shape"], self.quant, 'o')
+        self.config["marker_shape"] = self.extend_parameters(self.config["marker_shape"], self.quant, config["marker_shape"][0])
         
         # Font size for axes labels, default uniform size for all subplots
-        self.config["axes_font_size"] = self.extend_parameters(self.config["axes_font_size"], self.number_of_subplots, [-1, [8, 8]])
+        self.config["axes_font_size"] = self.extend_parameters(self.config["axes_font_size"], self.number_of_subplots, config["axes_font_size"][0])
         
         # Font size for subplot titles, default size for all
-        self.config["subplots_titles_font_size"] = self.extend_parameters(self.config["subplots_titles_font_size"], self.number_of_subplots, [-1, 10])
+        self.config["subplots_titles_font_size"] = self.extend_parameters(self.config["subplots_titles_font_size"], self.number_of_subplots, config["subplots_titles_font_size"][0])
         
         # Titles for subplots, with a humorous default message for many subplots
         self.config["subplots_titles_text"] = self.extend_parameters(self.config["subplots_titles_text"], self.number_of_subplots, "You are crazy if you have more than 26 subplots.")
         
         # Font size for legends, default uniform size for all subplots
-        self.config["legends_font_size"] = self.extend_parameters(self.config["legends_font_size"], self.number_of_subplots, [-1, 8])
+        self.config["legends_font_size"] = self.extend_parameters(self.config["legends_font_size"], self.number_of_subplots, config["legends_font_size"][0])
         
         # Size of markers for each data series, default size
-        self.config["marker_size"] = self.extend_parameters(self.config["marker_size"], self.quant, 3)
+        self.config["marker_size"] = self.extend_parameters(self.config["marker_size"], self.quant, config["marker_size"][0])
         
         # Width of lines for each data series, default width
-        self.config["line_width"] = self.extend_parameters(self.config["line_width"], self.quant, 0.5)
+        self.config["line_width"] = self.extend_parameters(self.config["line_width"], self.quant, config["line_width"][0])
         
         # Transparency (alpha) for lines, default fully opaque
-        self.config["line_alpha"] = self.extend_parameters(self.config["line_alpha"], self.quant, 1)
+        self.config["line_alpha"] = self.extend_parameters(self.config["line_alpha"], self.quant, config["line_alpha"][0])
         
         # Rounding accuracy for axes numbers, default to two decimal places
-        self.config["axes_round_accuracy"] = self.extend_parameters(self.config["axes_round_accuracy"], self.number_of_subplots, [-1, ["%0.2f", "%0.2f"]])
+        self.config["axes_round_accuracy"] = self.extend_parameters(self.config["axes_round_accuracy"], self.number_of_subplots, config["axes_round_accuracy"][0])
         
         # Distribution of subplots, default to 1 plot per subplot
-        self.config["subplots_settings"][0]["subplots_distribution"] = self.extend_parameters(self.config["subplots_settings"][0]["subplots_distribution"], self.quant, 1)
+        self.config["subplots_settings"][0]["subplots_distribution"] = self.extend_parameters(self.config["subplots_settings"][0]["subplots_distribution"], self.quant, config["subplots_settings"][0]["subplots_distribution"][0])
         
         # Type of graph for each data series, default to 2D
-        self.config["graph_types"] = self.extend_parameters(self.config["graph_types"], self.quant, "2D")
+        self.config["graph_types"] = self.extend_parameters(self.config["graph_types"], self.quant, config["graph_types"][0])
         # Scaling of axes, default to slight stretch in both directions
-        self.config["axes_scaling"] = self.extend_parameters(self.config["axes_scaling"], self.number_of_subplots, [-1, "stretch", [0.9, 1.1, 0.9, 1.1]])
+        self.config["axes_scaling"] = self.extend_parameters(self.config["axes_scaling"], self.number_of_subplots, config["axes_scaling"][0])
         
         # Number of small ticks between major ticks, default for both axes
-        self.config["axes_number_of_small_ticks"] = self.extend_parameters(self.config["axes_number_of_small_ticks"], self.number_of_subplots, [-1, [5, 5]])
+        self.config["axes_number_of_small_ticks"] = self.extend_parameters(self.config["axes_number_of_small_ticks"], self.number_of_subplots, config["axes_number_of_small_ticks"][0])
         
         # Labels for data series, empty by default
-        self.config["labels"] = self.extend_parameters(self.config["labels"], self.quant, '')
+        self.config["labels"] = self.extend_parameters(self.config["labels"], self.quant, config["labels"][0])
         
         # Titles for axes in each subplot, default to 'X' and 'Y'
-        self.config["axes_titles"] = self.extend_parameters(self.config["axes_titles"], self.number_of_subplots, ["X", "Y"])
+        self.config["axes_titles"] = self.extend_parameters(self.config["axes_titles"], self.number_of_subplots, config["axes_titles"][0])
         
         # Position of the legend in each subplot, default to 'best'
-        self.config["subplots_legend_position"] = self.extend_parameters(self.config["subplots_legend_position"], self.number_of_subplots, [-1, "best"])
+        self.config["subplots_legend_position"] = self.extend_parameters(self.config["subplots_legend_position"], self.number_of_subplots, config["subplots_legend_position"][0])
 
         #logarithmic scaling of the axes for each subplot, default not logarithm
-        self.config["logarithmic_scaling"] = self.extend_parameters(self.config["logarithmic_scaling"], self.number_of_subplots, [-1, [0, 0]])
-       
+        self.config["logarithmic_scaling"] = self.extend_parameters(self.config["logarithmic_scaling"], self.number_of_subplots, config["logarithmic_scaling"][0])
+        del config
 
     def extend_parameters(self, parameter, quant, element_extend_by):
         if len(parameter) < quant and len(parameter) > 0:
