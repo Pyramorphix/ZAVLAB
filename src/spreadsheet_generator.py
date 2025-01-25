@@ -2,8 +2,21 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from pathlib import Path
 
+# Maximum row count in the spreadsheet. Feel free to change if needed
 MAX_ROW_COUNT = 100
-MAX_EXPONENT_ABS = 10
+
+# This is for one very unethical hack in the code for calculating lsd error. (see: format_error())
+# Defines a maximum absolute value of the order of numbers in user input fields.
+# If equals to x, the program will correctly work with numbers from 10^{-x} to 10^{x+1} - 1.
+# I think, no one is crazy enough to type in numbers like 0.0000000005, so 9 is more than enough.
+# Feel free to change, but keep in mind that lsd excel formulas' complexity will scale proportionally 
+MAX_EXPONENT_ABS = 9
+
+# The row at which data begins in a spreadsheet.
+# The first row is for experiment titles, and the second one is for field labels.
+# Therefore, we start from the third.
+# Feel free to increase, decreasing will most likely break something
+DATA_BEGINNING_ROW = 3
 
 
 """
@@ -26,29 +39,40 @@ class Spreadsheet:
 
     Attributes
     ----------
-    fields: list[dict]
-        Each field is a dictionary with the following items:
+    experiments: list[dict]
+        A list of data for multiple experiments. Each experiment is represented
+        as a dictionaty with three elements:
         id: int
-            Automatically generated unique ID of a field
-        label: str
-            Header of a field
-        unit: str
-            Measure unit of a value, in the actual spreadsheet goes into label,
-            Also used in formulas
-        type: str
-            'gathered' or 'calculated', see above
-        error: str | None
-            Expression for calculating experimental error of a measured (gathered) value.
-            Can be written as excel formula of 'val' (which is the measured value),
-            also '%' can be used. 'x%' converts to 'x * 0.01 * val'
-        formula: str | None
-            Formula for computing a calculated value. Should be written as excel formula
-            of other values' labels. e.g. "(m * v^2)/2" if there are fields with labels 'm' and 'v'
+            Unique ID of the experiment. Generated automatically in .add_experiment() method
+        title: str
+            The name of the experiment
+        fields: list[dict]
+            Fields for collecting and computing data.
+            Each field is a dictionary with the following items:
+            id: int
+                Unique ID of a field. Generated automatically in .add_field() method
+            label: str
+                Header of a field
+            unit: str
+                Measure unit of a value, in the actual spreadsheet goes into label,
+                Also used in formulas
+            type: str
+                'gathered' or 'calculated', see above
+            error: str | None
+                Expression for calculating experimental error of a measured (gathered) value.
+                Can be written as excel formula of 'val' (which is the measured value),
+                also '%' can be used. 'x%' converts to 'x * 0.01 * val'
+            formula: str | None
+                Formula for computing a calculated value. Should be written as excel formula
+                of other values' labels. e.g. "(m * v^2)/2" if there are fields with labels 'm' and 'v'
 
     Methods
     -------
-    add_field(label, unit, field_type, error=None, formula=None) -> None
-        Add a field to *fields* list
+    add_experiment(title: str, fields: list = []) -> None
+        Add an experiment with provided arguments to *experiments* list
+
+    add_field(experiment, label, unit, field_type, error=None, formula=None) -> None
+        Add a field with provided arguments to *fields* list of given experiment
 
     generate(output_file) -> None
         Returns NotImplementedError if you try to call .generate() method
@@ -60,62 +84,224 @@ class Spreadsheet:
     def __init__(self, filetype: str):
 
         self.filetype: str = filetype
-        self.fields: list = []
+        self.experiments: list = []
     # ----------------------------------------
 
 
 
-    # Add specified field to the list
-    # --------------------------------------------------------------------------------------------
-    def add_field(self, label: str, unit: str, field_type: str, error=None, formula=None) -> None:
+    # Add new experiment
+    # --------------------------------------------------------------
+    def add_experiment(self, title: str = '', fields: list = []):
+        
+        ID: int = len(self.experiments) + 1  # Auto-incrementing ID
 
-        id_: int = len(self.fields) + 1  # Auto-incrementing ID
-
-        # Check if field type is correct
-        if field_type not in {'gathered', 'calculated'}:
-            raise ValueError(f"Field {id_}: invalid field type.\n"
-                             f"Expected: 'gathered' or 'calculated'\n"
-                             f"Got: '{field_type}'")
-
-        field = {
-            "id": id_,
-            "label": label,
-            "unit": unit,
-            "type": field_type,
-            "error": error,
-            "formula": formula,
+        experiment = {
+            'ID': ID,
+            'title': title,
+            'fields': []
         }
 
-        self.fields.append(field)
+        # If user has provided any fields, we add them
+        for field in fields:
+
+            field['ID'] = len(experiment['fields']) + 1  # Auto-incrementing field ID 
+
+            self.__validate_field(field)
+
+            experiment['fields'].append(field)
+
+
+        self.experiments.append(experiment)
+    # --------------------------------------------------------------
+
+
+
+    # Add field with specified parameters to specified experiment
     # --------------------------------------------------------------------------------------------
+    def add_field(
+        self,
+        experiment: str | int = 1,  # Either experiment ID or its label.
+                                    # By default we select the first experiment
+        label: str = '',
+        unit: str = '',
+        field_type: str = '',
+        error=None,
+        formula=None
+    ) -> None:
+
+        # Extract experiment ID from 'experiment' variable
+        exp_ID = self.__get_experiment_ID(experiment)
+
+        # Remember that IDs start with 1, so the position in the list is ID - 1
+        exp_pos = exp_ID - 1
 
 
+        ID: int = len(self.experiments[exp_pos]['fields']) + 1  # Auto-incrementing field ID
 
-    # Nice little string representation in case we ever want to print out our spreadsheet
-    # --------------------------------------------------------------------------------------------------------
-    def __str__(self) -> str:
-        
-        string: str = f"{type(self)}\nFields:"
-        
-        for field in self.fields:
-            string += f"\n{field['id']}. {field['label']}, {field['unit']} ({field['type']}); " + \
-            f"{'error: ' + field['error'] if field['type'] == 'gathered' else 'formula: ' + field['formula']}"
+        field = {
+            'ID': ID,
+            'label': label,
+            'unit': unit,
+            'type': field_type,
+            'error': error,
+            'formula': formula
+        }
 
-        return string
-    # --------------------------------------------------------------------------------------------------------
+        self.__validate_field(field)
+
+        self.experiments[exp_pos]['fields'].append(field)
+    # --------------------------------------------------------------------------------------------
 
 
 
     # If someone decides to call .generate() method from Spreadsheet object instead of Generator,
     # we gently remind him of it instead of bashing him in the head with the hammer
-    # --------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------
     def generate(self, output_file) -> None:
 
         del output_file  # Unused, cause we're here to just raise an error
 
         raise NotImplementedError("This method should be implemented by a generator subclasses "
                                   "(e.g. XLSXGenerator) and not the Spreadsheet class itself")
-    # --------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------
+
+
+
+    # Getting experiment ID from any given information about it
+    # ------------------------------------------------------------------
+    def __get_experiment_ID(self, info) -> int:
+        
+        # If info is an integer, we assume it's an ID
+        # and just check if the corresponding experiment exists
+        if isinstance(info, int):
+
+            for experiment in self.experiments:
+
+                if experiment['ID'] == info:
+
+                    return experiment['ID']
+
+            raise ValueError(f"No experiment found with ID = {info}")
+
+
+        # If info is a string, we assume it's a title
+        # and do the same procedure
+        if isinstance(info, str):
+
+            for experiment in self.experiments:
+
+                if experiment['title'] == info:
+
+                    return experiment['ID']
+
+            raise ValueError(f"No experiment found with title '{info}'")
+
+
+        # Otherwise, I don't know what you're trying to do
+        raise TypeError(f"You're trying to find an experiment "
+                        f"providing {info} ({type(info)}).\n"
+                        f"Try using experiment ID (int) or label (str)")
+    # ------------------------------------------------------------------
+
+
+
+    # Validating field items
+    # --------------------------------------------------------------------------------
+    def __validate_field(self, field) -> None:
+        
+        # Field must be a dictionary
+        if not isinstance(field, dict):
+            raise TypeError(f"Field must be a dictionary.\n"
+                            f"Got: {type(field)} for field\n"
+                            f"{field}") 
+
+
+        # Field must have an ID
+        if 'ID' not in field:
+            raise ValueError(f"Field must have an ID. "
+                             f"Got field:\n"
+                             f"{field}")
+        # Field ID must be an integer
+        if not isinstance(field['ID'], int):
+            raise TypeError(f"Field ID must be an integer.\n"
+                            f"Got: {type(field['ID'])} for field\n"
+                            f"{field}")
+
+
+        # Field label must be a non-empty string
+        if not isinstance(field['label'], str):
+            raise TypeError(f"Field label must be a non-empty string.\n"
+                            f"Got: {type(field['label'])} for field\n"
+                            f"{field}")
+
+        if not field['label']:
+            raise ValueError(f"Field label must not be empty.\n"
+                             f"Got: '{field['label']}' for field\n"
+                             f"{field}")
+
+
+        # Field type must be either 'gathered' or 'calculated'
+        if not isinstance(field['type'], str):
+            raise TypeError(f"Field type must be a non-empty string.\n"
+                            f"Got: {type(field['type'])} for field\n"
+                            f"{field}")
+
+        if field['type'] not in {"gathered", "calculated"}:
+            raise ValueError(f"Field type must be either 'gathered' or 'calculated'.\n"
+                             f"Got: '{field['type']}' for field\n"
+                             f"{field}")
+
+
+        # For calculated fields formula must be a non-empty string or number
+        if field['type'] == "calculated":
+
+            if not isinstance(field['formula'], (str, int, float)):
+                raise TypeError(f"Field formula must be a non-empty string or number.\n"
+                                f"Got: {type(field['label'])} for field\n"
+                                f"{field}")
+
+            if not field['formula']:
+                raise ValueError(f"Field formula must not be empty.\n"
+                                 f"Got: '{field['formula']}' for field\n"
+                                 f"{field}")
+
+    # --------------------------------------------------------------------------------
+
+
+
+    # Nice little string representation in case we ever want to print out our spreadsheet
+    # ---------------------------------------------------------------------------------------------
+    def __str__(self) -> str:
+
+        string: str = f"{self.__class__}"
+
+        for experiment in self.experiments:
+
+            string += '\n\n'
+
+            header = f"Experiment {experiment['ID']}. {experiment['title']}"
+
+            string += header + '\n'      # Experiment 1. Funny coefficient measurement
+            string += '-' * len(header)  # -------------------------------------------
+
+        
+            for field in experiment['fields']:
+
+                string += f"\n{field['ID']}. {field['label']}, {field['unit']} ({field['type']}); "
+                
+                if field['type'] == "gathered":
+                    string += f"error: {field['error']}"
+                
+                elif field['type'] == "calculated":
+                    string += f"formula: {field['formula']}"
+
+                # 1. LOL, laughs/s (gathered); error: lsd
+                # 2. time, s (gathered); error: 0.1
+                # 3. K, laughs (calculated); formula: LOL * time
+            
+
+        return string
+    # ---------------------------------------------------------------------------------------------
 
 # =====================================================================================================================
 
@@ -132,7 +318,8 @@ therefore we need to make an individual generator for each type.
 
 class XLSXGenerator(Spreadsheet):
     """
-    Generator which assembles .xlsx file from Spreadsheet fields list
+    Spreadsheet subclass.
+    Generator which assembles .xlsx file from Spreadsheet experiments list
 
     Attributes
     ----------
@@ -153,118 +340,198 @@ class XLSXGenerator(Spreadsheet):
     def generate(self, output_file) -> None:
 
         # Initializing the spreadsheet (workbook) and the sheet
-        # ----------------------------
+        # ----------------------------------------------------------
         workbook = openpyxl.Workbook()
         sheet = workbook.active
-        # ----------------------------
+
+        # IDK what on Earth must happen for sheet to be None,
+        # but pyright really dislikes the lack of this assert
+        if sheet is None:
+            raise TypeError("The sheet for some reason is None. "
+                            "The problem is clearly with openpyxl.")
+        # ----------------------------------------------------------
 
 
 
-        # Generating and writing headers
-        # ----------------------------------------------------------------------------------------------------------
-        header_row: list = []
+        # Writing experiment titles
+        # --------------------------------------------------------------------
+        title_row: list = []
 
-        # For matching excel column labels to field labels (e.g. m_1 -> A, v -> C etc.)
-        # which will be needed to convert formulas into excel format
-        column_labels: dict[str, str] = {}
-        column: int = 1    # In openpyxl column numeration starts with 1
-        
+        # We want the structure where title cells are merged
+        # and experiments are separated by one column e.g.:
+        # -------------------------------------------
+        # |  Experiment1  |    | Experiment2 |    | ...
+        # -------------------------------------------
+        # | a | b | c | d |    | e |  f  | g |    | ...
+        # -------------------------------------------
+        # | 1 | 9 | 0 | 0 |    | 1 | 125 | 8 |    | ...
+        # -------------------------------------------
+        # | 2 | 5 | 4 | 0 |    | 2 | 900 | 4 |    | ...
+        # -------------------------------------------
+        #        ...                 ... 
 
-        for field in self.fields:
-            
-            # Add the column label (notice that we don't add err field labels 'cause we don't need them)
-            column_labels[field['label']] = get_column_letter(column)
+        # To properly merge title cells, we need to keep track of their widths
+        column_widths: dict[int, int] = {}  # {column_number: column_width}
 
-            match field['type']:
-
-                case "gathered":
-
-                    # For user input fields we make two columns: value and error
-                    header_row.append(f"{field['label']}, {field['unit']}")
-
-                    header_row.append(f"{field['label']} err, {field['unit']}")
-
-                    # Keeping the track of the column number
-                    column += 2
-        
-
-                case "calculated":
-
-                    # For calculated fields we make only one column
-                    header_row.append(f"{field['label']}, {field['unit']}")
-
-                    # Keeping the track of the column number
-                    column += 1
+        column: int = 1  # In openpyxl column numeration starts with 1
 
 
-                # If field type is somtehing other, we return an error
-                case _:
+        for experiment in self.experiments:
 
-                    raise ValueError(f"Field {field['id']}: invalid field type.\n"
-                                     f"Expected: 'gathered' or 'calculated'\n"
-                                     f"Got: '{field['type']}'")
-        
-        sheet.append(header_row) 
-        # ----------------------------------------------------------------------------------------------------------
+            title_row.append(f"{experiment['title']}")
 
 
+            column_width = 0
 
-        # Writing rows
-        # -------------------------------------------------------------------------------------------------------
-        for row_number in range(2, MAX_ROW_COUNT + 2):
-        
-            data_row = []
-            
-            for field in self.fields:
+            for field in experiment['fields']:
 
                 match field['type']:
 
                     case "gathered":
 
-                        # Leave the column for the gathered data empty
-                        data_row.append(None)
+                        column_width += 2
 
-                        # Format error formula to a function of 'val'
-                        # e.g. 5% + 0.001  ->  0.05 * val + 0.001
-                        err_formula = format_error(field['error'])
-
-                        # Replace 'first' with coordinates of the first cell in a field
-                        err_formula = err_formula.replace('first', column_labels[field['label']] + '2')
-
-                        # Replace 'val' with cell coordinates of gathered data
-                        err_formula = err_formula.replace('val', column_labels[field['label']] + str(row_number))
-
-                        # And, finally, write the formula to the cell
-                        data_row.append(f"={err_formula}")
-                    
 
                     case "calculated":
 
-                        formula = field["formula"]
+                        column_width += 1
 
-                        # Change all labels in the formula to the coordinates of corresponding values
-                        for label, col_number in column_labels.items():
-                            formula = formula.replace(label, f"{col_number}{row_number}")
 
-                        # Write the formula to the cell
-                        data_row.append(f"={formula}")
+            # We add n - 1 empty cols to make the total width n,
+            # and one more empty col as a separator,
+            # which makes the total of n
+            title_row.extend([None for _ in range(column_width)])
+
+            column_widths[column] = column_width
+
+            # Keep track of the column number
+            column += column_width + 1
+
+
+        # Now we're left with this
+        # ------------------------------------
+        # | E1 | | | |    | E2 | | | |    | ...
+
+        # Let's add it to the sheet and then merge needed cells
+        sheet.append(title_row)
+
+        for number, width in column_widths.items():
+            sheet.merge_cells(f"{get_column_letter(number)}1:"
+                              f"{get_column_letter(number + width - 1)}1")
+
+        # --------------------------------------------------------------------
+
+
+
+        # Generating and writing headers
+        # --------------------------------------------------------------------------------------------------
+        header_row: list = []
+
+        # For matching excel column labels to field labels (e.g. m_1 -> A, v -> C etc.)
+        # which will be needed to convert formulas into excel format
+        column_labels: dict[tuple[int, str], str] = {}  # {(experiment_ID, field_label): column_label}
+
+        column: int = 1  # In openpyxl column numeration starts with 1
+        
+        
+        for experiment in self.experiments:
+
+            for field in experiment['fields']:
+                
+                # Add the column label (notice that we don't add err field labels 'cause we don't need them)
+                column_labels[experiment['ID'], field['label']] = get_column_letter(column)
+
+                match field['type']:
+
+                    case "gathered":
+
+                        # For user input fields we make two columns: value and error
+                        header_row.append(f"{field['label']}, {field['unit']}")
+
+                        header_row.append(f"{field['label']} err, {field['unit']}")
+
+                        # Keeping the track of the column number
+                        column += 2
             
 
-                    # If field type is somtehing other, we return an error
-                    case _:
+                    case "calculated":
 
-                        raise ValueError(f"Field {field['id']}: invalid field type.\n"
-                                         f"Expected: 'gathered' or 'calculated'\n"
-                                         f"Got: '{field['type']}'")
+                        # For calculated fields we make only one column
+                        header_row.append(f"{field['label']}, {field['unit']}")
+
+                        # Keeping the track of the column number
+                        column += 1
+
+
+            # Separator
+            header_row.append(None)
         
-            sheet.append(data_row)
-        # -------------------------------------------------------------------------------------------------------
+
+        sheet.append(header_row)  
+        # --------------------------------------------------------------------------------------------------
+
+
+
+        # Writing rows
+        # ---------------------------------------------------------------------------------------------------
+        for row_number in range(DATA_BEGINNING_ROW, MAX_ROW_COUNT + DATA_BEGINNING_ROW):
+        
+            data_row = []
+            
+            for experiment in self.experiments:
+
+                for field in experiment['fields']:
+
+                    match field['type']:
+
+                        case "gathered":
+
+                            # Leave the column for the gathered data empty
+                            data_row.append(None)
+
+                            # Format error formula to a function of 'val'
+                            # e.g. 5% + 0.001  ->  0.05 * val + 0.001
+                            err_formula = format_error(field['error'])
+
+                            # Replace 'first' with coordinates of the first cell in a field
+                            err_formula = err_formula.replace('first',
+                                    f"{column_labels[experiment['ID'], field['label']]}{DATA_BEGINNING_ROW}")
+
+                            # Replace 'val' with cell coordinates of gathered data
+                            err_formula = err_formula.replace('val',
+                                    f"{column_labels[experiment['ID'], field['label']]}{row_number}")
+
+                            # And, finally, write the formula to the cell
+                            data_row.append(f"={err_formula}")
+                        
+
+                        case "calculated":
+
+                            formula = field["formula"]
+
+                            # Change all labels in the formula to the coordinates of corresponding values
+                            for (_, label), col_number in column_labels.items():
+                                formula = formula.replace(label, f"{col_number}{row_number}")
+
+                            # Write the formula to the cell
+                            data_row.append(f"={formula}")
+
+
+                # Separator
+                data_row.append(None)
+                
+
+            sheet.append(data_row)  
+        # ---------------------------------------------------------------------------------------------------
+
 
 
         # Saving the spreadsheet
-        # ------------------------
+        # ----------------------------------
         workbook.save(output_file + ".xlsx")
-        # ------------------------
+        # ----------------------------------
+
+
 
 
 
@@ -315,7 +582,7 @@ def get_spreadsheet_generator(filetype: str) -> XLSXGenerator:
         # TODO: maybe add .ods support
 
         case _:
-            raise ValueError(f"Unsupported spreadsheet file type: {filetype}")
+            raise ValueError(f"No generator for file type: {filetype}")
 # ----------------------------------------------------------------------------
 
 
@@ -327,10 +594,23 @@ def get_spreadsheet_generator(filetype: str) -> XLSXGenerator:
 filetype = "xlsx"
 spreadsheet = get_spreadsheet_generator(filetype)
 
-# Add fields
-spreadsheet.add_field("m", "kg", "gathered", error="0.04 * lsd")
-spreadsheet.add_field("v", "m/s", "gathered", error="2% + .05")
-spreadsheet.add_field("K", "J", "calculated", formula="m*v^2/2")
+# Add experiment with fields
+spreadsheet.add_experiment(
+    title="Ohm's law check",
+    fields=[
+        {'type': "gathered",   'label': "V",     'unit': "mV",  'error': "3% + 0.01"},
+        {'type': "gathered",   'label': "I",     'unit': "mA",  'error': "0.1"},
+        {'type': "calculated", 'label': "R_mes", 'unit': "Ohm", 'formula': "V / I"},
+        {'type': "calculated", 'label': "R_act", 'unit': "Ohm", 'formula': "20"}
+    ]
+)
+
+# Add experiment and then fields
+spreadsheet.add_experiment(title="Kinetic energy")
+
+spreadsheet.add_field(experiment="Kinetic energy", label="m", unit="kg", field_type="gathered", error="0.04 * lsd")
+spreadsheet.add_field(experiment="Kinetic energy", label="v", unit="m/s", field_type="gathered", error="2% + .05")
+spreadsheet.add_field(experiment="Kinetic energy", label="K", unit="J", field_type="calculated", formula="m*v^2/2")
 
 print(spreadsheet)
 
