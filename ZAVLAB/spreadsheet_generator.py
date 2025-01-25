@@ -2,6 +2,8 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from pathlib import Path
 
+# GLOBAL CONSTANTS
+# ---------------------------------------------------------------------------------------------------
 # Maximum row count in the spreadsheet. Feel free to change if needed
 MAX_ROW_COUNT = 100
 
@@ -17,6 +19,13 @@ MAX_EXPONENT_ABS = 9
 # Therefore, we start from the third.
 # Feel free to increase, decreasing will most likely break something
 DATA_BEGINNING_ROW = 3
+
+# Font size of experiment titles (pretty self-explanatory). Feel free to change
+TITLE_FONT_SIZE = 28
+
+# Font size of everything else. Feel free to change 
+DEFAULT_FONT_SIZE = 22
+# ---------------------------------------------------------------------------------------------------
 
 
 """
@@ -273,7 +282,7 @@ class Spreadsheet:
     # ---------------------------------------------------------------------------------------------
     def __str__(self) -> str:
 
-        string: str = f"{self.__class__}"
+        string: str = f"ZAVLAB {self.__class__.__name__}"
 
         for experiment in self.experiments:
 
@@ -588,35 +597,3 @@ def get_spreadsheet_generator(filetype: str) -> XLSXGenerator:
 
 
 
-
-# Example Usage
-# ---------------------------------------------------------------------
-filetype = "xlsx"
-spreadsheet = get_spreadsheet_generator(filetype)
-
-# Add experiment with fields
-spreadsheet.add_experiment(
-    title="Ohm's law check",
-    fields=[
-        {'type': "gathered",   'label': "V",     'unit': "mV",  'error': "3% + 0.01"},
-        {'type': "gathered",   'label': "I",     'unit': "mA",  'error': "0.1"},
-        {'type': "calculated", 'label': "R_mes", 'unit': "Ohm", 'formula': "V / I"},
-        {'type': "calculated", 'label': "R_act", 'unit': "Ohm", 'formula': "20"}
-    ]
-)
-
-# Add experiment and then fields
-spreadsheet.add_experiment(title="Kinetic energy")
-
-spreadsheet.add_field(experiment="Kinetic energy", label="m", unit="kg", field_type="gathered", error="0.04 * lsd")
-spreadsheet.add_field(experiment="Kinetic energy", label="v", unit="m/s", field_type="gathered", error="2% + .05")
-spreadsheet.add_field(experiment="Kinetic energy", label="K", unit="J", field_type="calculated", formula="m*v^2/2")
-
-print(spreadsheet)
-
-# Setting path to ../output/
-path = Path().parent.absolute() / "output"
-
-
-spreadsheet.generate(f"{path}/spreadsheet")
-# ---------------------------------------------------------------------
