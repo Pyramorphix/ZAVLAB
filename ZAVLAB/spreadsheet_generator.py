@@ -470,7 +470,12 @@ class XLSXGenerator(Spreadsheet):
 
         for experiment in self.experiments:
 
-            title_row.append(f"{experiment['title']}")
+            if experiment['title']:
+                title_row.append(f"{experiment['title']}")
+
+            # If there's no title, write "Experiment {ID}"
+            else:
+                title_row.append(f"Experiment {experiment['ID']}")
 
 
             col_width = 0
@@ -569,9 +574,15 @@ class XLSXGenerator(Spreadsheet):
                     case "gathered":
 
                         # For user input fields we make two columns: value and error
-                        header_row.append(f"{field['label']}, {field['unit']}")
+                        if field['unit']:
+                            header_row.append(f"{field['label']}, {field['unit']}")
+                            header_row.append(f"{field['label']} err, {field['unit']}")
+                        
+                        # If no unit is specified, we write just the label
+                        else:
+                            header_row.append(f"{field['label']}")
+                            header_row.append(f"{field['label']} err")
 
-                        header_row.append(f"{field['label']} err, {field['unit']}")
 
                         # Keeping the track of the column number
                         col_number += 2
@@ -580,7 +591,12 @@ class XLSXGenerator(Spreadsheet):
                     case "calculated":
 
                         # For calculated fields we make only one column
-                        header_row.append(f"{field['label']}, {field['unit']}")
+                        if field['unit']:
+                            header_row.append(f"{field['label']}, {field['unit']}")
+
+                        # If no unit is specified, we write just the label
+                        else:
+                            header_row.append(f"{field['label']}")
 
                         # Keeping the track of the column number
                         col_number += 1
@@ -613,9 +629,18 @@ class XLSXGenerator(Spreadsheet):
                     # If we're not out of constants yet, we write one
                     if const_row_number < len(experiment['constants']) * 2: 
 
+                        # Constants field is vertical,
+                        # so on the even rows there are labels, ...
                         if const_row_number % 2 == 0:
-                            data_row.append(f"{experiment['constants'][const_row_number // 2]['label']}, "
-                                            f"{experiment['constants'][const_row_number // 2]['unit']}")
+
+                            if experiment['constants'][const_row_number // 2]['unit']:
+                                data_row.append(f"{experiment['constants'][const_row_number // 2]['label']}, "
+                                                f"{experiment['constants'][const_row_number // 2]['unit']}")
+                            # If unit is not specified, don't wtire it
+                            else:
+                                data_row.append(f"{experiment['constants'][const_row_number // 2]['label']}")
+                                
+                        # ... and on the odd rows there are values
                         else:
                             data_row.append(experiment['constants'][const_row_number // 2]['value'])
 
@@ -659,7 +684,6 @@ class XLSXGenerator(Spreadsheet):
                                     formula = formula.replace(field_label, f"{col_letter}{row_number}")
 
                             # Change all const labels in the formula to the coordinates of corresponding values
-                            print(const_cells.items())
                             for (experiment_ID, const_label), cell_coords in const_cells.items():
                                 if experiment_ID == experiment['ID']:
                                     formula = formula.replace(const_label, f"{cell_coords}")
