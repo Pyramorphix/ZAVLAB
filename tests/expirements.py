@@ -1,23 +1,40 @@
-import matplotlib.gridspec as gridspec
+
+
 import matplotlib.pyplot as plt
 import numpy as np
-def example_plot(ax, fontsize=12):
-    ax.plot([1, 2])
 
-    ax.locator_params(nbins=3)
-    ax.set_xlabel('x-label', fontsize=fontsize)
-    ax.set_ylabel('y-label', fontsize=fontsize)
-    ax.set_title('Title', fontsize=fontsize)
+import matplotlib as mpl
+cmaps = {}
 
-plt.close('all')
-fig = plt.figure()
+gradient = np.linspace(0, 1, 256)
+gradient = np.vstack((gradient, gradient))
 
-gs1 = gridspec.GridSpec(2, 2)
-ax1 = fig.add_subplot(gs1[0])
-ax2 = fig.add_subplot(gs1[1])
 
-example_plot(ax1)
-example_plot(ax2)
+def plot_color_gradients(category, cmap_list):
+    # Create figure and adjust figure height to number of colormaps
+    nrows = len(cmap_list)
+    figh = 0.35 + 0.15 + (nrows + (nrows - 1) * 0.1) * 0.22
+    fig, axs = plt.subplots(nrows=nrows + 1, figsize=(6.4, figh))
+    fig.subplots_adjust(top=1 - 0.35 / figh, bottom=0.15 / figh,
+                        left=0.2, right=0.99)
+    axs[0].set_title(f'{category} colormaps', fontsize=14)
 
-gs1.tight_layout(fig)
+    for ax, name in zip(axs, cmap_list):
+        print(type(mpl.colormaps[name]))
+        ax.imshow(gradient, aspect='auto', cmap="ocean")
+        ax.text(-0.01, 0.5, name, va='center', ha='right', fontsize=10,
+                transform=ax.transAxes)
+
+    # Turn off *all* ticks & spines, not just the ones with colormaps.
+    for ax in axs:
+        ax.set_axis_off()
+
+    # Save colormap list for later.
+    cmaps[category] = cmap_list
+plot_color_gradients('Miscellaneous',
+                     ['flag', 'prism', 'ocean', 'gist_earth', 'terrain',
+                      'gist_stern', 'gnuplot', 'gnuplot2', 'CMRmap',
+                      'cubehelix', 'brg', 'gist_rainbow', 'rainbow', 'jet',
+                      'turbo', 'nipy_spectral', 'gist_ncar'])
+
 plt.show()

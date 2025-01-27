@@ -1,18 +1,10 @@
-'''ToDo: 
-1. add comments for __check_logarithmic_scaling
-2. add possible arguments for subpplots_settings parameters (so we can change only one of them) (functions to change __check_...)
-3. add figure_size to subpplots_settings parameter
-4. rewrite the comment for __check_axes_titles (now we have option for barcharts).
-5. rewrite the comment for __check_subplots_titles_font_size, __check_axes_number_of_small_ticks, __check_axes_font_size. (and some others)
-10.make check for number of titles for axes if one of the data presented on them is 3d graph
-11. make option to choose colormap
-'''
 import json as js
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib.ticker as ticker
+from matplotlib.colors import Colormap
 
 class Earl:
     def __init__(self, file_path_name_to_conf="./../settings/configuration.json", verbose=True, **kwargs):
@@ -20,7 +12,12 @@ class Earl:
         with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
             self.config = js.load(file)
         self.plt = plt
-        self.fig, self.axes = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
+        self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
+        self.__prepare_axes()
+
+        if self.config['subplots_settings'][0]['rows_cols'][0] == 1 and self.config['subplots_settings'][0]['rows_cols'][1] == 1:
+            self.ax = np.array([[self.ax]])
+        
         self.quant = 0
         self.number_of_subplots = 0
         self.curves_settings = []
@@ -39,32 +36,24 @@ class Earl:
     
     def plot_graph(self, data_array, **kwargs):
         self.prepare_input(data_array=data_array, **kwargs)
-        #self.print_config()
-        for i in range(self.number_of_subplots):
-            self.print_subplot_settings(i)
+        if self.verbose:
+            self.print_config()
+            for i in range(self.quant):
+                self.print_curve_settings(i)
+            for i in range(self.number_of_subplots):
+                self.print_subplot_settings(i)
         self.initial_preparation_for_subplots()
         self.plot_data_on_subplots()
         self.config_cubplots_after_plotting_data()
 
     def initial_preparation_for_subplots(self):
         self.plt.close()
-        self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1], figsize=(12, 10))
+        self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1], figsize=(self.config['subplots_settings'][0]['figure_size'][0], self.config['subplots_settings'][0]['figure_size'][1]))
+        self.__prepare_axes()
         self.colorbars = []
         for i in range(self.number_of_subplots):
-            x = (i) % self.config['subplots_settings'][0]['rows_cols'][0]
-            y = (i) // self.config['subplots_settings'][0]['rows_cols'][0]
-            # try:
-            #     fontsizes_for_axes = self.__find_proper_axes_font_size(i)
-            #     fontsize_for_title_subplot = self.__find_proper_subplots_titles_font_size(i)
-            #     number_axes_number_of_small_ticks = self.__find_proper_axes_number_of_small_ticks(i)
-            #     fontsize_legend_font_size = self.__find_proper_legends_font_size(i)
-            #     position_legend_position = self.__find_proper_legend_position(i)
-            #     round_axes_round_accuracy = self.__find_proper_axes_round_accuracy(i)
-            #     scaling_logarithmic_scaling = self.__find_proper_logarithmic_scaling(i)
-            #     scaling_axes_scaling = self.__find_proper_axes_scaling(i)
-            # except ValueError as e:
-            #     print(f"You have an error: {e}")
-            #     sys.exit(1)
+            x = (i) % self.config['subplots_settings'][0]['rows_cols'][1]
+            y = (i) // self.config['subplots_settings'][0]['rows_cols'][1]
             #set titles and their sizes
             self.ax[y][x].set_xlabel(self.subplots_settings[i]["axes_titles"][0], loc="center", fontsize=self.subplots_settings[i]["axes_font_size"][0])
             self.ax[y][x].set_ylabel(self.subplots_settings[i]["axes_titles"][1], loc="center", fontsize=self.subplots_settings[i]["axes_font_size"][1])
@@ -89,10 +78,11 @@ class Earl:
             self.ax[y][x].set_yticks(np.linspace(self.min_number[1], self.max_number[1], self.steps[1]))
             self.ax[y][x].tick_params(axis='x', length=4, width=2)
             self.ax[y][x].tick_params(axis='y', length=4, width=2)
-
-            if self.subplots_settings[i]["logarithmic_scaling"][0]:
+            
+            colored_graph = self.__check_3d_graphs_in_this_subplot(i)
+            if self.subplots_settings[i]["logarithmic_scaling"][0] and (not colored_graph):
                 self.ax[y][x].set_xscale("log")
-            if self.subplots_settings[i]["logarithmic_scaling"][1]:
+            if self.subplots_settings[i]["logarithmic_scaling"][1] and (not colored_graph):
                 self.ax[y][x].set_yscale("log")
             self.ax[y][x].xaxis.set_major_formatter(FormatStrFormatter(self.subplots_settings[i]["axes_round_accuracy"][0]))
             self.ax[y][x].yaxis.set_major_formatter(FormatStrFormatter(self.subplots_settings[i]["axes_round_accuracy"][1]))
@@ -115,12 +105,13 @@ class Earl:
     
     def plot_data_on_subplots(self):
         for i in range(self.quant):
-            x = (self.curves_settings[i]["subplot_position"]) % self.config['subplots_settings'][0]['rows_cols'][0]
-            y = (self.curves_settings[i]["subplot_position"]) // self.config['subplots_settings'][0]['rows_cols'][0]
-            if self.curves_settings[i]["graph_type"] == 1:
-                self.plot_2d_graph(i, x, y)
-            elif self.curves_settings[i]["graph_type"] == 2:
-                self.plot_3d_graph(i, x, y)
+            if self.curves_settings[i]["subplot_position"] < self.number_of_subplots:
+                x = (self.curves_settings[i]["subplot_position"]) % self.config['subplots_settings'][0]['rows_cols'][1]
+                y = (self.curves_settings[i]["subplot_position"]) // self.config['subplots_settings'][0]['rows_cols'][1]
+                if self.curves_settings[i]["graph_type"] == 1:
+                    self.plot_2d_graph(i, x, y)
+                elif self.curves_settings[i]["graph_type"] == 2:
+                    self.plot_3d_graph(i, x, y, self.curves_settings[i]["subplot_position"])
     
     def plot_2d_graph(self, index, x, y):
         x_data = self.curves_settings[index]["data"][0][0]
@@ -145,15 +136,15 @@ class Earl:
         elif len(self.curves_settings[index]["data"][0]) == 1 and len(self.curves_settings[index]["data"][1]) == 1:
             self.ax[y][x].plot(x_data, y_data, lw=lw, color=color, marker=marker_shape, markersize=marker_size, ls=ls, alpha=alpha, label=label)
     
-    def plot_3d_graph(self, index, x, y):
+    def plot_3d_graph(self, index, x, y, sub_index):
         self.colorbars.append([0, 0])
-        self.colorbars[-1][0] = self.ax[y][x].pcolormesh(self.curves_settings[index]["data"][0], self.curves_settings[index]["data"][1], self.curves_settings[index]["data"][2], vmin=np.min(self.curves_settings[index]["data"][2]), vmax=np.max(self.curves_settings[index]["data"][2]), shading='gouraud', cmap='plasma')
-        self.colorbars[-1][1] = self.fig.colorbar(self.colorbars[-1][0], ax=self.ax[y][x], label=self.subplots_settings[self.curves_settings[index]["subplot_position"]]["axes_titles"][2])
-        #b.set_label(titles[2])
+        self.colorbars[-1][0] = self.ax[y][x].pcolormesh(self.curves_settings[index]["data"][0], self.curves_settings[index]["data"][1], self.curves_settings[index]["data"][2], vmin=np.min(self.curves_settings[index]["data"][2]), vmax=np.max(self.curves_settings[index]["data"][2]), shading='gouraud', cmap=self.subplots_settings[sub_index]["colormap"])
+        self.colorbars[-1][1] = self.fig.colorbar(self.colorbars[-1][0], ax=self.ax[y][x])
+        self.colorbars[-1][1].set_label(size=self.subplots_settings[self.curves_settings[index]["subplot_position"]]["axes_font_size"][2], label=self.subplots_settings[self.curves_settings[index]["subplot_position"]]["axes_titles"][2])
     def config_cubplots_after_plotting_data(self):
         for i in range(self.number_of_subplots):
-            x = (i) % self.config['subplots_settings'][0]['rows_cols'][0]
-            y = (i) // self.config['subplots_settings'][0]['rows_cols'][0]
+            x = (i) % self.config['subplots_settings'][0]['rows_cols'][1]
+            y = (i) // self.config['subplots_settings'][0]['rows_cols'][1]
             try:
                 fontsize_legend_font_size = self.__find_proper_legends_font_size(i)
                 position_legend_position = self.__find_proper_legend_position(i)
@@ -163,7 +154,19 @@ class Earl:
             #set legend properties
             self.ax[y][x].legend(loc=position_legend_position, frameon=False, prop={'size': fontsize_legend_font_size})
 
-    
+    def __prepare_axes(self):
+        if self.config['subplots_settings'][0]['rows_cols'][0] == 1 and self.config['subplots_settings'][0]['rows_cols'][1] == 1:
+            self.ax = np.array([[self.ax]])
+        elif self.config['subplots_settings'][0]['rows_cols'][0] == 1 and self.config['subplots_settings'][0]['rows_cols'][1] > 1:
+            self.ax = np.array([self.ax])
+        elif self.config['subplots_settings'][0]['rows_cols'][0] > 1 and self.config['subplots_settings'][0]['rows_cols'][1] == 1:
+            self.ax = np.array([self.ax]).T
+    def __check_3d_graphs_in_this_subplot(self, index):
+        for i in range(self.quant):
+            if self.curves_settings[i]["subplot_position"] == index and self.curves_settings[i]["graph_type"] == 2:
+                return True
+        return False   
+
     def __config_parameters_for_stretch_option(self, index): #Inspiration: songs from author Nico Santos
         flag = True
         for i in range(self.quant):
@@ -314,7 +317,19 @@ class Earl:
             raise ValueError(f"you don't have argument for axes_scaling for these axes titles of subplot {i} or one logarithmic_scaling argument for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
         else:
             return self.config["axes_scaling"][flag_minus_one][1:]
-            
+        
+    def __find_proper_colormap(self, index):
+        flag_minus_one = -1 #-1 meens that there is no item with value -1 in position of subplot index
+        for i in range(len(self.config["colormap"])):
+            if self.config["colormap"][i][0] == index:
+                return self.config["colormap"][i][1]
+            elif self.config["colormap"][i][0] == -1:
+                flag_minus_one = i
+        if flag_minus_one == -1:
+            return  "plasma" #raise ValueError(f"you don't have colormap for these subplot {i} or colormap for all subplots. ([x, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
+        else:
+            return self.config["colormap"][flag_minus_one][1] 
+        
     def check_parameters(self, **kwargs):
         """
         Validate plot parameters passed as keyword arguments against predefined checks.
@@ -354,13 +369,17 @@ class Earl:
             "labels": self.__check_labels,
             "axes_titles": self.__check_axes_titles, 
             "subplots_legend_position": self.__check_subplots_legend_position,
-            "logarithmic_scaling": self.__check_logarithmic_scaling
+            "logarithmic_scaling": self.__check_logarithmic_scaling,
+            "rows_cols": self.__check_rows_cols,
+            "figure_size": self.__check_figure_size,
+            "subplots_distribution": self.__check_subplots_distribution,
+            "colormap": self.__check_colormap
         }
 
         for key, value in kwargs.items():
             try:
                 # Check if the key exists in the configuration
-                if key not in json_keys:
+                if key not in check_functions.keys():
                     raise KeyError(f"{key} is not an argument in configuration file. Maybe you should check your spelling :)")
                 
                 # Attempt to validate the value with the appropriate check function
@@ -368,7 +387,10 @@ class Earl:
                     result = check_functions[key](value)
                     if self.verbose:
                         print(result[0])  # Print the validation result if verbose mode is on
-                    self.config[key] = result[1]
+                    if key in ["rows_cols", "figure_size", "subplots_distribution"]:
+                        self.config["subplots_settings"][0][key] = result[1]
+                    else:
+                        self.config[key] = result[1]
                 except (TypeError, ValueError) as e:
                     print(f'Error: {e}')  # Print any validation errors
                 
@@ -400,7 +422,7 @@ class Earl:
             raise TypeError(f"Color argument is incorrect. It should be a list with color codes as string or one color as string for all data.")
         if isinstance(colors, str):
             if colors[0] == "#" and len(colors) == 7:
-                return [f"Color argument is correct", [colors]]
+                return (f"Color argument is correct", [colors])
             else:
                 raise ValueError(f"Color has incorrect code. It should be presented in the way like #XXXXXX, where X is numbers (0, ... 9) or letters from A to F. You can use this site https://csscolor.ru/ to get the right colot code.")
         elif isinstance(colors, list):
@@ -409,7 +431,7 @@ class Earl:
                     raise TypeError(f"Color argument number {i} ({colors[i]}) is incorrect. It should be a string.")
                 if not (colors[i][0] == "#" and len(colors[i]) == 7):
                     raise ValueError(f"Color number {i} ({colors[i]}) has incorrect code. It should be presented in the way like #XXXXXX, where X is numbers (0, ... 9) or letters from A to F. You can use this site https://csscolor.ru/ to get the right colot code.")
-            return [f"Color argument is correct", colors]
+            return (f"Color argument is correct", colors)
         
     def __check_ls(self, ls):
         """
@@ -499,7 +521,7 @@ class Earl:
 
         Inspiration: "Kukoriki" series, episodes "Syr-Bor, New Year's", "A Place in History".
         """
-        text_that_explain_structure = " The structure of one element is [x, [y, y]] (x - number of subplot, y - number - size of font for axes for x subplot)"
+        text_that_explain_structure = " The structure of one element is [x, [y, y]] ([x, [y, y, y]]) (x - number of subplot, y - number - size of font for axes (and colorbar title) for x subplot)"
         if not isinstance(axes_font_size, (list, int)):
             raise TypeError(f"axes_font_size argument is incorrect. It should be a list with elements." +text_that_explain_structure)
         if isinstance(axes_font_size, int):
@@ -516,10 +538,10 @@ class Earl:
                     raise ValueError(f'axes_font_size argument number {i} ({axes_font_size[i][0]}) should be positive or -1.' + text_that_explain_structure)
                 elif not isinstance(axes_font_size[i][1], list):
                     raise ValueError(f'axes_font_size argument number {i} ({axes_font_size[i][1]}) should be list.' + text_that_explain_structure)
-                elif len(axes_font_size[i][1]) != 2:
+                elif len(axes_font_size[i][1]) not in [2, 3]:
                     raise ValueError(f'axes_font_size argument number {i} ({axes_font_size[i][1]}) should have two elements.' + text_that_explain_structure)
-                elif len(axes_font_size[i][1]) == 2:
-                    for j in range(2):
+                elif len(axes_font_size[i][1]) in [2, 3]:
+                    for j in range(len(axes_font_size[i][1])):
                         if not (isinstance(axes_font_size[i][1][j], int)):
                             raise ValueError(f'axes_font_size argument number {i} ({axes_font_size[i][1][j]}) should be int.' + text_that_explain_structure)
                         elif axes_font_size[i][1][j] < 1:
@@ -809,12 +831,23 @@ class Earl:
             raise ValueError(f"rows_cols should be a key in subplots_settings")
         elif not ("subplots_distribution" in subplots_settings.keys()):
             raise ValueError(f"subplots_distribution should be a key in subplots_settings")
+        elif not ("figure_size" in subplots_settings.keys()):
+            raise ValueError(f"figure_size should be a key in subplots_settings")
+        
         elif not isinstance(subplots_settings["rows_cols"], list):
             raise ValueError(f"rows_cols should be a list with two integer elements: numbers of rows and number of columns in your subplot.")
         elif len(subplots_settings["rows_cols"]) != 2:
             raise ValueError(f"rows_cols should have two integer elements: numbers of rows and number of columns in your subplot.")
         elif not (isinstance(subplots_settings["rows_cols"][0], int) and isinstance(subplots_settings["rows_cols"][1], int)):
-            raise ValueError(f"rows_cols elements should be integer.")
+            raise ValueError(f"rows_cols elements should be integer: numbers of rows and number of columns in your subplot.")
+        
+        elif not isinstance(subplots_settings["figure_size"], list):
+            raise ValueError(f"figure_size should be a list with two integer (float) elements: width and height of your figure.")
+        elif len(subplots_settings["figure_size"]) != 2:
+            raise ValueError(f"figure_size should have two integer (float) elements: width and height of your figure.")
+        elif not (isinstance(subplots_settings["figure_size"][0], (int, float)) and isinstance(subplots_settings["figure_size"][1], (int, float))):
+            raise ValueError(f"figure_size elements should be integer (float): width and height of your figure.")    
+            
         elif not isinstance(subplots_settings["subplots_distribution"], list):
             raise ValueError(f"subplots_distribution should be a list with elements (0, 1, ... ). The index of the element responds to the index of the the data in your data_array, the value of the element responds to the index of the subplot.")
         elif isinstance(subplots_settings["subplots_distribution"], list):
@@ -825,6 +858,45 @@ class Earl:
                     raise ValueError(f"subplots_distribution elements should be more than 0 (problem with element {i} ({subplots_settings['subplots_distribution'][i]})).")
         return (f"subplots_settings argument is correct", [subplots_settings])
     
+    def __check_rows_cols(self, rows_cols):
+        text_to_explain_structure = ''' The structure is [x, y] where x is a number rows, y is number of cols on plot presented'''
+        if not isinstance(rows_cols, list):
+            raise TypeError(f"rows_cols argument should be list." + text_to_explain_structure)
+        elif len(rows_cols) != 2:
+            raise ValueError(f"rows_cols argument should have two elements (x, y)." + text_to_explain_structure)
+        elif len(rows_cols) == 2:
+            for j in range(2):
+                if (not isinstance(rows_cols[j], int)) or (rows_cols[j] < 1):
+                    raise ValueError(f"rows_cols {j} argument should be integer and positive." + text_to_explain_structure)
+            return (f'rows_cols argument is correct. ', rows_cols)
+        
+    def __check_figure_size(self, figure_size):
+        text_to_explain_structure = ''' Structure is [x, y] where x is width, y is height of the entire figure (all subplots).'''
+        if not isinstance(figure_size, list):
+            raise TypeError(f"figure_size argument should be list." + text_to_explain_structure)
+        elif len(figure_size) != 2:
+            raise ValueError(f"figure_size argument should have two elements (x, y)." + text_to_explain_structure)
+        elif len(figure_size) == 2:
+            for j in range(2):
+                if (not isinstance(figure_size[j], (int, float))) or (figure_size[j] < 1):
+                    raise ValueError(f"figure_size {j} argument should be integer or float and positive." + text_to_explain_structure)
+            return (f"figure_size argument is correct", figure_size)
+    def __check_subplots_distribution(self, subplots_distribution):
+        text_to_explain_structure = ''' The structure is [x_0, x_1, x_2, ...] where x_j is a number of a subplot (counting from left to right from top to bottom, starting from 0). j represents the index of data from data_array. Or it can be one number (index of a subplot) for all data.'''
+        if not isinstance(subplots_distribution, (list, int)):
+            raise TypeError(f"subplots_distribution should be a list or integer." + text_to_explain_structure)
+        if isinstance(subplots_distribution, int):
+            if subplots_distribution < 0:
+                raise TypeError(f"subplots_distribution should be positive." + text_to_explain_structure)
+            return (f"subplots_distribution argument is correct", [subplots_distribution])
+        elif isinstance(subplots_distribution, list):
+            for i in range(len(subplots_distribution)):
+                if not isinstance(subplots_distribution[i],  int):
+                    raise TypeError(f"subplots_distribution {i} should be integer." + text_to_explain_structure)
+                elif subplots_distribution[i] < 0:
+                    raise ValueError(f"subplots_distribution {i} should be positive (>= 0)." + text_to_explain_structure)
+            return (f"subplots_distribution argument is correct", subplots_distribution)
+        
     def __check_graph_types(self, graph_types):
         """
         Validate the type of graph for plotting.
@@ -1108,7 +1180,27 @@ class Earl:
                 elif not ((logarithmic_scaling[i][1][0] in [0, 1]) and (logarithmic_scaling[i][1][1] in [0, 1])):
                     raise ValueError(f'logarithmic_scaling argument number {i} ({logarithmic_scaling[i][1]}) should be 0 or 1.' + text_that_explain_structure)
             return (f"logarithmic_scaling argument is correct.", logarithmic_scaling)
-        
+    
+    def __check_colormap(self, colormap):
+        text_that_explain_structure = '''The structure is [x, y] (x - number of subplot or -1 (for all subplots that aren't called), y - string or Colormap class. Possible options for colormap presented on this site https://matplotlib.org/stable/users/explain/colors/colormaps.html . Remember!!! we do NOT take responsibility if you have made a mistake in colormap spelling.'''
+        if not isinstance(colormap, (list, str, Colormap)):
+            raise TypeError(f"colormap argument is incorrect." + text_that_explain_structure)
+        if isinstance(colormap, (str, Colormap)):
+            return (f"colormap argument is correct", [-1, colormap])
+        elif isinstance(colormap, list):
+            for i in range(len(colormap)):
+                if not isinstance(colormap[i], list):
+                    raise TypeError(f'colormap argument number {i} ({colormap[i]}) should be list.' + text_that_explain_structure)
+                elif len(colormap[i]) != 2:
+                    raise TypeError(f'colormap argument number {i} ({colormap[i]}) should have two elements.' + text_that_explain_structure)
+                elif not isinstance(colormap[i][0], int):
+                    raise ValueError(f'colormap argument number {i} ({colormap[i][0]}) should be int.' + text_that_explain_structure)
+                elif colormap[i][0] < 0 and colormap[i][0] != -1:
+                    raise ValueError(f'colormap argument number {i} ({colormap[i][0]}) should be positive or -1.' + text_that_explain_structure)
+                elif not isinstance(colormap[i][1], (str, Colormap)):
+                    raise ValueError(f'colormap argument number {i} ({colormap[i][1]}) should be int.' + text_that_explain_structure)
+            return (f"colormap argument is correct.", colormap)
+     
     def __check_data_and_graph_type_are_correlated(self, index):
         text_to_explain_structure = ''' The structure of the data has two different options. If data type is "2D" then the structure is [[x, xerr], [y, yerr]] (xerr, yerr are not necessarily included). If data type is "3D" (z coordinate is vizualizated by color) then the structure is [x, y, z]. Note: z array is two dimensional len(y) elements in each rows and len(x) rows. All data (x, y, z, xerr, yerr) have to have type numpy.ndarray. If structure or data is incorrect it won't be vizualized'''
         if self.curves_settings[index]["graph_type"] == 1:
@@ -1142,7 +1234,15 @@ class Earl:
                 elif self.curves_settings[index]["data"][0].shape[0] * self.curves_settings[index]["data"][1].shape[0] != self.curves_settings[index]["data"][2].shape[0] * self.curves_settings[index]["data"][2].shape[1]:
                     raise ValueError(f"data {i} z elemnts should have number of points equal to x * y (number of elements from them)." + text_to_explain_structure)
                 return f"data {index} is correct."
-                    
+    
+    def __prepare_axes_titles_for_subplots(self, index):
+        for i in range(self.quant):
+            if self.curves_settings[i]["subplot_position"] == index and self.curves_settings[i]["graph_type"] == 2:
+                if len(self.subplots_settings[index]["axes_titles"]) != 3:
+                    self.subplots_settings[index]["axes_titles"].append("")
+                if len(self.subplots_settings[index]["axes_font_size"]) != 3:
+                    self.subplots_settings[index]["axes_font_size"].append(10)
+
     def construct_structure_curve(self, data_array):
         """Constructs and populates the structure for curve settings.
 
@@ -1218,8 +1318,8 @@ class Earl:
                 the settings for a single subplot. This list is populated by this method.
         """
         for i in range(self.number_of_subplots):
-            x = (i) % self.config['subplots_settings'][0]['rows_cols'][0]
-            y = (i) // self.config['subplots_settings'][0]['rows_cols'][0]
+            x = (i) % self.config['subplots_settings'][0]['rows_cols'][1]
+            y = (i) // self.config['subplots_settings'][0]['rows_cols'][1]
             try:
                 fontsizes_for_axes = self.__find_proper_axes_font_size(i)
                 fontsize_for_title_subplot = self.__find_proper_subplots_titles_font_size(i)
@@ -1229,6 +1329,7 @@ class Earl:
                 round_axes_round_accuracy = self.__find_proper_axes_round_accuracy(i)
                 scaling_logarithmic_scaling = self.__find_proper_logarithmic_scaling(i)
                 scaling_axes_scaling = self.__find_proper_axes_scaling(i)
+                color_colormap = self.__find_proper_colormap(i)
             except ValueError as e:
                 print(f"You have an error: {e}")
                 sys.exit(1)
@@ -1244,8 +1345,10 @@ class Earl:
                                          "axes_number_of_small_ticks": number_axes_number_of_small_ticks,
                                          "axes_titles": self.config["axes_titles"][i],
                                          "legend_position": position_legend_position,
-                                         "logarithmic_scaling": scaling_logarithmic_scaling
+                                         "logarithmic_scaling": scaling_logarithmic_scaling,
+                                         "colormap": color_colormap
                                          }
+            self.__prepare_axes_titles_for_subplots(i)
 
             
     def prepare_config(self):
@@ -1320,6 +1423,7 @@ class Earl:
 
         #logarithmic scaling of the axes for each subplot, default not logarithm
         self.config["logarithmic_scaling"] = self.extend_parameters(self.config["logarithmic_scaling"], self.number_of_subplots, config["logarithmic_scaling"][0])
+        
         del config
 
     def extend_parameters(self, parameter, quant, element_extend_by):
@@ -1330,6 +1434,12 @@ class Earl:
             parameter = [element_extend_by] * quant
         return parameter
     
+    def save_config(self, name="New_config.json"):
+        with open(name, "w") as json_file:
+            js.dump(self.config, json_file, 
+                    indent=2, 
+                    ensure_ascii=False)
+
     def print_curve_settings(self, curve_index):
         print(self.curves_settings[curve_index])
     def print_subplot_settings(self, subplot_index):

@@ -47,6 +47,7 @@
     "subplots_settings": [
         {
         "rows_cols": [1, 1],
+        "figure_size": [12, 10],
         "subplots_distribution": [0]
         }
     ],
@@ -56,5 +57,6 @@
     "labels": [""],
     "axes_titles": [["X", "Y"]],
     "subplots_legend_position": [[-1, "best"]],
-    "logarithmic_scaling": [[-1, [0, 0]]]
+    "logarithmic_scaling": [[-1, [0, 0]]],
+    "colormap": [[-1, "plasma"]]
 }
