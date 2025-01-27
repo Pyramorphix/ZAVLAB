@@ -747,7 +747,7 @@ def format_error(expr: str) -> str:
 # Function to select the appropriate generator based on chosen filetype
 # (Currently supported: .xlsx)
 # ----------------------------------------------------------------------------
-def get_spreadsheet_generator(filetype: str) -> XLSXGenerator:
+def get_spreadsheet_generator(filetype: str = "xlsx") -> XLSXGenerator:
 
     match filetype:
 

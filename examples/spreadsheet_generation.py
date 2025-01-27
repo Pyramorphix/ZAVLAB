@@ -3,8 +3,7 @@ from ZAVLAB.spreadsheet_generator import get_spreadsheet_generator
 
 if __name__ == "__main__":
 
-    filetype = "xlsx"
-    spreadsheet = get_spreadsheet_generator(filetype)
+    spreadsheet = get_spreadsheet_generator()
 
     # Add experiment with fields
     spreadsheet.add_experiment(
