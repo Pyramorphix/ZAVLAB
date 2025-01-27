@@ -1,8 +1,8 @@
 import openpyxl
 from openpyxl.utils import get_column_letter
-from pathlib import Path
+from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment
 
-# GLOBAL CONSTANTS
+# GLOBAL CONSTANTS (TODO: move to config)
 # ---------------------------------------------------------------------------------------------------
 # Maximum row count in the spreadsheet. Feel free to change if needed
 MAX_ROW_COUNT = 100
@@ -29,7 +29,20 @@ DEFAULT_FONT_SIZE = 22
 
 
 """
-Here we make the basement for out spreadsheet
+This part was made by Vlad.
+In this file, all comments in Russian must be treated as funny jokes!
+Comments in English are intended to be helpful (but can be also treated as jokes if you want).
+If you'll find comments in any other language, immediately report to the Waste Management!
+(Sentinel Prime said he will reward you for this)
+
+Now, let's go!
+"""
+
+
+
+
+"""
+Here we make the basement for out spreadsheet.
 """
 # =====================================================================================================================
 
@@ -38,6 +51,9 @@ class Spreadsheet:
     The basement for creating a spreadsheet. Basically a list consisting of fields.
 
     Each field is either for user input (type='gathered') or for calculated values (type='calculated').
+    For the convenience, there are also constant fields (type='const'),
+    which can be pre-defined in the code, or typed in the spreadsheet by the user.
+    They are displayed in the first column of every experiment and have only one cell each.
     Every field has the label and measure unit.
 
     User input fields additionally have the 'error' element for entering the experimental error.
@@ -45,6 +61,9 @@ class Spreadsheet:
 
     Calculated values have the 'formula' element for the calculation formula.
     It should be typed in using excel-readable format with field labels (e.g. 'm*v^2/2')
+
+    Constant fields have the 'value' element for the constant value.
+    By default it's None, which leads to an empty cell.
 
     Attributes
     ----------
@@ -66,7 +85,7 @@ class Spreadsheet:
                 Measure unit of a value, in the actual spreadsheet goes into label,
                 Also used in formulas
             type: str
-                'gathered' or 'calculated', see above
+                "gathered" or "calculated", see above
             error: str | None
                 Expression for calculating experimental error of a measured (gathered) value.
                 Can be written as excel formula of 'val' (which is the measured value),
@@ -74,13 +93,20 @@ class Spreadsheet:
             formula: str | None
                 Formula for computing a calculated value. Should be written as excel formula
                 of other values' labels. e.g. "(m * v^2)/2" if there are fields with labels 'm' and 'v'
+            value: int | float | str | None
+                The value of the constant field. Not used for "gathered" or "calculated" fields.
+        constants: list[dict]
+            Fields with type="const". They're just much easier to process when in a separate list.
+            They're fields, so the items of each const is the same, except for
+            type: str
+                only "const"
 
     Methods
     -------
     add_experiment(title: str, fields: list = []) -> None
         Add an experiment with provided arguments to *experiments* list
 
-    add_field(experiment, label, unit, field_type, error=None, formula=None) -> None
+    add_field(experiment, label, unit, field_type, error=None, formula=None, value=None) -> None
         Add a field with provided arguments to *fields* list of given experiment
 
     generate(output_file) -> None
@@ -100,14 +126,19 @@ class Spreadsheet:
 
     # Add new experiment
     # --------------------------------------------------------------
-    def add_experiment(self, title: str = '', fields: list = []):
+    def add_experiment(
+        self,
+        title: str = '',
+        fields: list = [],
+    ) -> None:
         
         ID: int = len(self.experiments) + 1  # Auto-incrementing ID
 
         experiment = {
             'ID': ID,
             'title': title,
-            'fields': []
+            'fields': [],
+            'constants': [],
         }
 
         # If user has provided any fields, we add them
@@ -115,9 +146,23 @@ class Spreadsheet:
 
             field['ID'] = len(experiment['fields']) + 1  # Auto-incrementing field ID 
 
+            # If the measure unit is not specified, set it to ''
+            if 'unit' not in field:
+                field['unit'] = ''
+
             self.__validate_field(field)
 
-            experiment['fields'].append(field)
+
+            if field['type'] == "const":
+
+                # Constants have their own ID system
+                field['ID'] = len(experiment['constants']) + 1
+
+                experiment['constants'].append(field)
+
+
+            else:  # НЕ БРАТЬ КОНСТА!
+                experiment['fields'].append(field)
 
 
         self.experiments.append(experiment)
@@ -135,7 +180,8 @@ class Spreadsheet:
         unit: str = '',
         field_type: str = '',
         error=None,
-        formula=None
+        formula=None,
+        value=None,
     ) -> None:
 
         # Extract experiment ID from 'experiment' variable
@@ -145,7 +191,13 @@ class Spreadsheet:
         exp_pos = exp_ID - 1
 
 
-        ID: int = len(self.experiments[exp_pos]['fields']) + 1  # Auto-incrementing field ID
+        # Auto-incrementing field ID (constants have their own ID system)
+        if field_type == "const":
+            ID: int = len(self.experiments[exp_pos]['constants']) + 1  
+
+        else:
+            ID: int = len(self.experiments[exp_pos]['fields']) + 1  
+
 
         field = {
             'ID': ID,
@@ -153,12 +205,17 @@ class Spreadsheet:
             'unit': unit,
             'type': field_type,
             'error': error,
-            'formula': formula
+            'formula': formula,
+            'value': value,
         }
 
         self.__validate_field(field)
 
-        self.experiments[exp_pos]['fields'].append(field)
+        if field_type == "const":
+            self.experiments[exp_pos]['constants'].append(field)
+
+        else:
+            self.experiments[exp_pos]['fields'].append(field)
     # --------------------------------------------------------------------------------------------
 
 
@@ -215,7 +272,7 @@ class Spreadsheet:
 
 
     # Validating field items
-    # --------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------
     def __validate_field(self, field) -> None:
         
         # Field must be a dictionary
@@ -249,14 +306,14 @@ class Spreadsheet:
                              f"{field}")
 
 
-        # Field type must be either 'gathered' or 'calculated'
+        # Field type must be either "gathered", "calculated" or "const"
         if not isinstance(field['type'], str):
             raise TypeError(f"Field type must be a non-empty string.\n"
                             f"Got: {type(field['type'])} for field\n"
                             f"{field}")
 
-        if field['type'] not in {"gathered", "calculated"}:
-            raise ValueError(f"Field type must be either 'gathered' or 'calculated'.\n"
+        if field['type'] not in {"gathered", "calculated", "const"}:
+            raise ValueError(f"Field type must be either \"gathered\", \"calculated\" or \"const\".\n"
                              f"Got: '{field['type']}' for field\n"
                              f"{field}")
 
@@ -274,7 +331,7 @@ class Spreadsheet:
                                  f"Got: '{field['formula']}' for field\n"
                                  f"{field}")
 
-    # --------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------
 
 
 
@@ -293,7 +350,29 @@ class Spreadsheet:
             string += header + '\n'      # Experiment 1. Funny coefficient measurement
             string += '-' * len(header)  # -------------------------------------------
 
+
+            if not experiment['constants']:
+                string += "\nNo constants."  # НЕ БРАТЬ КОНСТА!
+
+            else:
+                string += "\nConstants:"
+
+            for const in experiment['constants']:
+
+                string += f"\n{const['ID']}. {const['label']}, {const['unit']}; "
+
+                string += f"value: {const['value']}"
+
+                # Constants
+                # 1. Konst, bool (const); value: NO  (НЕ БРАТЬ КОНСТА!)
+
         
+            if not experiment['fields']:
+                string += "\nNo fields."
+
+            else:
+                string += "\nFields:"
+
             for field in experiment['fields']:
 
                 string += f"\n{field['ID']}. {field['label']}, {field['unit']} ({field['type']}); "
@@ -304,6 +383,7 @@ class Spreadsheet:
                 elif field['type'] == "calculated":
                     string += f"formula: {field['formula']}"
 
+                # Fields
                 # 1. LOL, laughs/s (gathered); error: lsd
                 # 2. time, s (gathered); error: 0.1
                 # 3. K, laughs (calculated); formula: LOL * time
@@ -368,21 +448,24 @@ class XLSXGenerator(Spreadsheet):
 
         # We want the structure where title cells are merged
         # and experiments are separated by one column e.g.:
-        # -------------------------------------------
-        # |  Experiment1  |    | Experiment2 |    | ...
-        # -------------------------------------------
-        # | a | b | c | d |    | e |  f  | g |    | ...
-        # -------------------------------------------
-        # | 1 | 9 | 0 | 0 |    | 1 | 125 | 8 |    | ...
-        # -------------------------------------------
-        # | 2 | 5 | 4 | 0 |    | 2 | 900 | 4 |    | ...
-        # -------------------------------------------
-        #        ...                 ... 
+        # ----------------------------------------------------------------
+        # |            Experiment1            |    | Experiment2 |    | ...
+        # ----------------------------------------------------------------
+        # | const | a, smth | b, m | b err, m |    | c |  d  | e |    | ...
+        # ----------------------------------------------------------------
+        # | l, cm |    2    | 1984 |    20    |    | 1 | 125 | 3 |    | ...
+        # ----------------------------------------------------------------
+        # | 80085 |    3    | 2000 |    21    |    | 2 | 900 | 3 |    | ...
+        # ----------------------------------------------------------------
+        #     ^           ...                        ^   ...
+        #     |                                      |
+        # Constants                             No constants
+        #                                     (НЕ БРАТЬ КОНСТА!)
 
         # To properly merge title cells, we need to keep track of their widths
-        column_widths: dict[int, int] = {}  # {column_number: column_width}
+        col_widths: dict[int, int] = {}  # {column_number: column_width}
 
-        column: int = 1  # In openpyxl column numeration starts with 1
+        col_number: int = 1  # In openpyxl column numeration starts with 1
 
 
         for experiment in self.experiments:
@@ -390,7 +473,13 @@ class XLSXGenerator(Spreadsheet):
             title_row.append(f"{experiment['title']}")
 
 
-            column_width = 0
+            col_width = 0
+
+            # If we have constants, reserve the first column for them
+            if experiment['constants']:
+
+                col_width += 1
+
 
             for field in experiment['fields']:
 
@@ -398,23 +487,23 @@ class XLSXGenerator(Spreadsheet):
 
                     case "gathered":
 
-                        column_width += 2
+                        col_width += 2
 
 
                     case "calculated":
 
-                        column_width += 1
+                        col_width += 1
 
 
             # We add n - 1 empty cols to make the total width n,
             # and one more empty col as a separator,
             # which makes the total of n
-            title_row.extend([None for _ in range(column_width)])
+            title_row.extend([None for _ in range(col_width)])
 
-            column_widths[column] = column_width
+            col_widths[col_number] = col_width
 
             # Keep track of the column number
-            column += column_width + 1
+            col_number += col_width + 1
 
 
         # Now we're left with this
@@ -424,7 +513,7 @@ class XLSXGenerator(Spreadsheet):
         # Let's add it to the sheet and then merge needed cells
         sheet.append(title_row)
 
-        for number, width in column_widths.items():
+        for number, width in col_widths.items():
             sheet.merge_cells(f"{get_column_letter(number)}1:"
                               f"{get_column_letter(number + width - 1)}1")
 
@@ -436,19 +525,44 @@ class XLSXGenerator(Spreadsheet):
         # --------------------------------------------------------------------------------------------------
         header_row: list = []
 
-        # For matching excel column labels to field labels (e.g. m_1 -> A, v -> C etc.)
+        # For matching excel column labels to field labels (e.g. m_1 -> B, v -> D etc.)
+        # and excel cell coordinates to constant labels (e.g. tau -> A4, length -> A6 etc.)
         # which will be needed to convert formulas into excel format
-        column_labels: dict[tuple[int, str], str] = {}  # {(experiment_ID, field_label): column_label}
+        field_columns: dict[tuple[int, str], str] = {}  # {(experiment_ID, field_label): column_label}
+        const_cells: dict[tuple[int, str], str] = {}  # {(experiment_ID, const_label): cell_coords}
 
-        column: int = 1  # In openpyxl column numeration starts with 1
+        col_number: int = 1  # In openpyxl column numeration starts with 1
         
         
         for experiment in self.experiments:
 
+            # If we have constants, add them to const_cells (for further replacement in the formulas)
+            # and write the "Constants" title
+            if experiment['constants']:
+
+                # In the first row there will be title, and we want the value to insert it in formulas.
+                # Therefore, we take the next row
+                row_number: int = DATA_BEGINNING_ROW + 1
+                    
+                for const in experiment['constants']:
+
+                    const_cells[(experiment['ID'], const['label'])] = get_column_letter(col_number) + str(row_number)
+
+                    # Skip the next header and go to the next value
+                    row_number += 2
+
+
+                field_columns[experiment['ID'], "constants"] = get_column_letter(col_number)
+
+                header_row.append(f"Constants")
+                
+                col_number += 1
+
+
             for field in experiment['fields']:
                 
                 # Add the column label (notice that we don't add err field labels 'cause we don't need them)
-                column_labels[experiment['ID'], field['label']] = get_column_letter(column)
+                field_columns[experiment['ID'], field['label']] = get_column_letter(col_number)
 
                 match field['type']:
 
@@ -460,7 +574,7 @@ class XLSXGenerator(Spreadsheet):
                         header_row.append(f"{field['label']} err, {field['unit']}")
 
                         # Keeping the track of the column number
-                        column += 2
+                        col_number += 2
             
 
                     case "calculated":
@@ -469,11 +583,12 @@ class XLSXGenerator(Spreadsheet):
                         header_row.append(f"{field['label']}, {field['unit']}")
 
                         # Keeping the track of the column number
-                        column += 1
+                        col_number += 1
 
 
             # Separator
             header_row.append(None)
+            col_number += 1
         
 
         sheet.append(header_row)  
@@ -488,6 +603,26 @@ class XLSXGenerator(Spreadsheet):
             data_row = []
             
             for experiment in self.experiments:
+
+                # If we have a constant field, add it first
+                if experiment['constants']:
+
+                    # Making row_number that starts with zero for easier calculations
+                    const_row_number = row_number - DATA_BEGINNING_ROW
+
+                    # If we're not out of constants yet, we write one
+                    if const_row_number < len(experiment['constants']) * 2: 
+
+                        if const_row_number % 2 == 0:
+                            data_row.append(f"{experiment['constants'][const_row_number // 2]['label']}, "
+                                            f"{experiment['constants'][const_row_number // 2]['unit']}")
+                        else:
+                            data_row.append(experiment['constants'][const_row_number // 2]['value'])
+
+                    # Otherwise, just write an empty cell
+                    else:
+                        data_row.append(None)
+
 
                 for field in experiment['fields']:
 
@@ -504,11 +639,11 @@ class XLSXGenerator(Spreadsheet):
 
                             # Replace 'first' with coordinates of the first cell in a field
                             err_formula = err_formula.replace('first',
-                                    f"{column_labels[experiment['ID'], field['label']]}{DATA_BEGINNING_ROW}")
+                                    f"{field_columns[experiment['ID'], field['label']]}{DATA_BEGINNING_ROW}")
 
                             # Replace 'val' with cell coordinates of gathered data
                             err_formula = err_formula.replace('val',
-                                    f"{column_labels[experiment['ID'], field['label']]}{row_number}")
+                                    f"{field_columns[experiment['ID'], field['label']]}{row_number}")
 
                             # And, finally, write the formula to the cell
                             data_row.append(f"={err_formula}")
@@ -518,9 +653,16 @@ class XLSXGenerator(Spreadsheet):
 
                             formula = field["formula"]
 
-                            # Change all labels in the formula to the coordinates of corresponding values
-                            for (_, label), col_number in column_labels.items():
-                                formula = formula.replace(label, f"{col_number}{row_number}")
+                            # Change all field labels in the formula to the coordinates of corresponding values
+                            for (experiment_ID, field_label), col_letter in field_columns.items():
+                                if experiment_ID == experiment['ID']:
+                                    formula = formula.replace(field_label, f"{col_letter}{row_number}")
+
+                            # Change all const labels in the formula to the coordinates of corresponding values
+                            print(const_cells.items())
+                            for (experiment_ID, const_label), cell_coords in const_cells.items():
+                                if experiment_ID == experiment['ID']:
+                                    formula = formula.replace(const_label, f"{cell_coords}")
 
                             # Write the formula to the cell
                             data_row.append(f"={formula}")
