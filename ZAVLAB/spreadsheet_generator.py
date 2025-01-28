@@ -1,9 +1,15 @@
 import openpyxl
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment
+from openpyxl.utils import get_column_letter, column_index_from_string
+from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment, Side, Border
+from copy import copy
 
 # GLOBAL CONSTANTS (TODO: move to config)
 # ---------------------------------------------------------------------------------------------------
+
+#  ----------------------
+# | Spreadsheet settings |
+#  ----------------------
+
 # Maximum row count in the spreadsheet. Feel free to change if needed
 MAX_ROW_COUNT = 100
 
@@ -17,15 +23,52 @@ MAX_EXPONENT_ABS = 9
 # The row at which data begins in a spreadsheet.
 # The first row is for experiment titles, and the second one is for field labels.
 # Therefore, we start from the third.
-# Feel free to increase, decreasing will most likely break something
+# Do not change unless you clearly understand what you're doing!'
 DATA_BEGINNING_ROW = 3
 
-# Font size of experiment titles (pretty self-explanatory). Feel free to change
+
+
+#   -----
+# | Fonts |
+#   -----
+
+# Font size of experiment titles (pretty self-explanatory)
 TITLE_FONT_SIZE = 28
 
-# Font size of everything else. Feel free to change 
+# Font size of everything else
 DEFAULT_FONT_SIZE = 22
+
+# Bold font settings
+IS_TITLE_FONT_BOLD = True
+IS_LABEL_FONT_BOLD = True
+IS_DATA_FONT_BOLD = False
+
+# Font family
+TITLE_FONT = "Calibri"
+DEFAULT_FONT = "Calibri"
+
+
+
+#   --------
+# | Coloring |
+#   --------
+
+# Cell background colors
+TITLE_BG_COLOR = "dddddd"
+CONST_BG_COLOR = "afd095"
+GATHERED_BG_COLOR = "ec9ba4"
+CALCULATED_BG_COLOR = "ffffa6"
+
+# Cell font colors
+TITLE_FONT_COLOR = "000000"
+CONST_FONT_COLOR = "000000"
+GATHERED_FONT_COLOR = "000000"
+CALCULATED_FONT_COLOR = "000000"
+
 # ---------------------------------------------------------------------------------------------------
+
+
+
 
 
 """
@@ -38,6 +81,129 @@ If you'll find comments in any other language, immediately report to the Waste M
 Now, let's go!
 """
 
+
+
+
+
+"""
+Here we define all the styles (cell colors, font sizes etc.)
+"""
+# =====================================================================================================================
+
+# Border presets
+thick_bd = Side(style="thick", color="000000")
+bd = Side(style="medium", color="000000")
+thin_bd = Side(style="thin", color="000000")
+
+# Experiment title
+# --------------------------------------------------------------
+title_style = NamedStyle(
+    name="title",
+    font=Font(name=TITLE_FONT,
+              size=TITLE_FONT_SIZE,
+              color=TITLE_FONT_COLOR,
+              bold=IS_TITLE_FONT_BOLD),
+
+    fill=PatternFill(start_color=TITLE_BG_COLOR,
+                     end_color=TITLE_BG_COLOR,
+                     fill_type="solid"),
+
+    border=Border(
+        bottom=thick_bd,
+    ),
+
+    alignment=Alignment(horizontal="center", vertical="center"),
+)
+# --------------------------------------------------------------
+
+
+# Data field labels
+# ------------------------------------------------------------------------
+label_style = NamedStyle(
+    name="label",
+    font=Font(name=DEFAULT_FONT,
+              size=DEFAULT_FONT_SIZE,
+              bold=IS_LABEL_FONT_BOLD),
+
+    border=Border(
+        left=bd,
+        top=bd,
+        right=bd,
+        bottom=bd,
+    ),
+
+    alignment=Alignment(horizontal="center", vertical="center"),
+)
+
+const_label_style = copy(label_style)
+const_label_style.name = "const_label"
+const_label_style.font.color = CONST_FONT_COLOR
+const_label_style.alignment.horizontal = "right"
+const_label_style.border.bottom = None
+const_label_style.fill = PatternFill(start_color=CONST_BG_COLOR,
+                                     end_color=CONST_BG_COLOR,
+                                     fill_type="solid")
+
+gathered_label_style = copy(label_style)
+gathered_label_style.name = "gathered_label"
+gathered_label_style.font.color = GATHERED_FONT_COLOR
+gathered_label_style.fill = PatternFill(start_color=GATHERED_BG_COLOR,
+                                        end_color=GATHERED_BG_COLOR,
+                                        fill_type="solid")
+
+calculated_label_style = copy(label_style)
+calculated_label_style.name = "calculated_label"
+calculated_label_style.font.color = CALCULATED_FONT_COLOR
+calculated_label_style.fill = PatternFill(start_color=CALCULATED_BG_COLOR,
+                                          end_color=CALCULATED_BG_COLOR,
+                                          fill_type="solid")
+# ------------------------------------------------------------------------
+
+
+# Data field contents
+# -----------------------------------------------------------------------
+data_style = NamedStyle(
+    name="data",
+    font=Font(name=DEFAULT_FONT,
+              size=DEFAULT_FONT_SIZE,
+              bold=IS_DATA_FONT_BOLD),
+
+    border=Border(
+        left=thin_bd,
+        right=thin_bd,
+        bottom=thin_bd,
+    ),
+    
+    alignment=Alignment(horizontal="right", vertical="center"),
+)
+
+const_data_style = copy(data_style)
+const_data_style.name = "const_data"
+const_data_style.font.color = CONST_FONT_COLOR
+const_data_style.border.left = bd
+const_data_style.border.right = bd
+const_data_style.border.bottom = bd
+const_data_style.fill = PatternFill(start_color=CONST_BG_COLOR,
+                                     end_color=CONST_BG_COLOR,
+                                     fill_type="solid")
+
+gathered_data_style = copy(data_style)
+gathered_data_style.name = "gathered_data"
+gathered_data_style.font.color = GATHERED_FONT_COLOR
+gathered_data_style.fill = PatternFill(start_color=GATHERED_BG_COLOR,
+                                        end_color=GATHERED_BG_COLOR,
+                                        fill_type="solid")
+
+calculated_data_style = copy(data_style)
+calculated_data_style.name = "calculated_data"
+calculated_data_style.font.color = CALCULATED_FONT_COLOR
+calculated_data_style.fill = PatternFill(start_color=CALCULATED_BG_COLOR,
+                                          end_color=CALCULATED_BG_COLOR,
+                                          fill_type="solid")
+
+# -----------------------------------------------------------------------
+
+# =====================================================================================================================
 
 
 
@@ -114,7 +280,7 @@ class Spreadsheet:
         from Spreadsheet class (it should be called from one of the generator subclasses)
     """
 
-    # Making an empty list and initializing file type (e.g. 'xlsx' or 'ods') for further file assembling
+    # Make an empty list and initialize file type (e.g. 'xlsx' or 'ods') for further file assembling
     # ----------------------------------------
     def __init__(self, filetype: str):
 
@@ -428,7 +594,7 @@ class XLSXGenerator(Spreadsheet):
 
     def generate(self, output_file) -> None:
 
-        # Initializing the spreadsheet (workbook) and the sheet
+        # Initialize the spreadsheet (workbook) and the sheet
         # ----------------------------------------------------------
         workbook = openpyxl.Workbook()
         sheet = workbook.active
@@ -439,6 +605,26 @@ class XLSXGenerator(Spreadsheet):
             raise TypeError("The sheet for some reason is None. "
                             "The problem is clearly with openpyxl.")
         # ----------------------------------------------------------
+
+
+
+        # Register styles (in openpyxl we need to do it before using them)
+        # ---------------------------------
+        styles = [
+            title_style,
+            label_style,
+            const_label_style,
+            gathered_label_style,
+            calculated_label_style,
+            data_style,
+            const_data_style,
+            gathered_data_style,
+            calculated_data_style,
+        ]
+
+        for style in styles:
+            workbook.add_named_style(style)
+        # ---------------------------------
 
 
 
@@ -515,13 +701,17 @@ class XLSXGenerator(Spreadsheet):
         # ------------------------------------
         # | E1 | | | |    | E2 | | | |    | ...
 
-        # Let's add it to the sheet and then merge needed cells
+        # Add it to the sheet and then merge needed cells
         sheet.append(title_row)
 
-        for number, width in col_widths.items():
-            sheet.merge_cells(f"{get_column_letter(number)}1:"
-                              f"{get_column_letter(number + width - 1)}1")
+        for col_number, width in col_widths.items():
+            sheet.merge_cells(f"{get_column_letter(col_number)}1:"
+                              f"{get_column_letter(col_number + width - 1)}1")
 
+
+        # Apply styling
+        for col_number, _ in col_widths.items():
+            sheet[f"{get_column_letter(col_number)}1"].style = "title"
         # --------------------------------------------------------------------
 
 
@@ -535,6 +725,15 @@ class XLSXGenerator(Spreadsheet):
         # which will be needed to convert formulas into excel format
         field_columns: dict[tuple[int, str], str] = {}  # {(experiment_ID, field_label): column_label}
         const_cells: dict[tuple[int, str], str] = {}  # {(experiment_ID, const_label): cell_coords}
+
+        # The most optimized solution I've found to get field type from experiment ID and field label
+        # is just to create a dictionary (used for applying styles)
+        field_types: dict[tuple[int, str], str] = {
+            (experiment['ID'], field['label']): field['type']
+            for experiment in self.experiments
+            for field in experiment['fields']
+        }
+
 
         col_number: int = 1  # In openpyxl column numeration starts with 1
         
@@ -557,7 +756,7 @@ class XLSXGenerator(Spreadsheet):
                     row_number += 2
 
 
-                field_columns[experiment['ID'], "constants"] = get_column_letter(col_number)
+                field_columns[experiment['ID'], "Constants"] = get_column_letter(col_number)
 
                 header_row.append(f"Constants")
                 
@@ -607,7 +806,27 @@ class XLSXGenerator(Spreadsheet):
             col_number += 1
         
 
+        # Add the row to the sheet
         sheet.append(header_row)  
+
+
+        # Apply styling (due to excel features, we need to apply styles only after writing cell contents)
+        for (experiment_ID, field_label), col_letter in field_columns.items():
+
+            if field_label == "Constants":
+                sheet[f"{col_letter}2"].style = "const_label"
+
+            else:
+                field_type = field_types[experiment_ID, field_label]
+
+                # For gathered field we also apply style to error field of it 
+                if field_type == "gathered":
+                    sheet[f"{col_letter}2"].style = "gathered_label"
+                    sheet[f"{next_column(col_letter)}2"].style = "gathered_label"
+
+                elif field_type == "calculated":
+                    sheet[f"{col_letter}2"].style = "calculated_label"
+
         # --------------------------------------------------------------------------------------------------
 
 
@@ -696,7 +915,36 @@ class XLSXGenerator(Spreadsheet):
                 data_row.append(None)
                 
 
+            # Add the row to the sheet
             sheet.append(data_row)  
+
+
+            # Apply styling (due to excel features, we need to apply styles only after writing cell contents)
+            for (experiment_ID, field_label), col_letter in field_columns.items():
+
+                if field_label == "Constants":
+
+                    const_row_number = row_number - DATA_BEGINNING_ROW
+                    experiment = self.experiments[experiment_ID - 1]
+                    
+                    if const_row_number < len(experiment['constants']) * 2: 
+                        # Label
+                        if const_row_number % 2 == 0:
+                            sheet[f"{col_letter}{row_number}"].style = "const_label"
+                        # Value
+                        else:
+                            sheet[f"{col_letter}{row_number}"].style = "const_data"
+
+                else:
+                    field_type = field_types[experiment_ID, field_label]
+
+                    # For gathered field we also apply style to error field of it 
+                    if field_type == "gathered":
+                        sheet[f"{col_letter}{row_number}"].style = "gathered_data"
+                        sheet[f"{next_column(col_letter)}{row_number}"].style = "gathered_data"
+
+                    elif field_type == "calculated":
+                        sheet[f"{col_letter}{row_number}"].style = "calculated_data"
         # ---------------------------------------------------------------------------------------------------
 
 
@@ -737,6 +985,17 @@ def format_error(expr: str) -> str:
 
     return expr
 # --------------------------------------------------------------------------------------------
+
+
+
+# Get the letter of the next column from given one (e.g. 'G' -> 'H', 'AZ' -> 'BA')
+# --------------------------------------------------------
+def next_column(column_letter: str) -> str:
+
+    column_index = column_index_from_string(column_letter)
+
+    return get_column_letter(column_index + 1)
+# --------------------------------------------------------
 
 # =====================================================================================================================
 
