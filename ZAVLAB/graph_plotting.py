@@ -7,7 +7,7 @@ import matplotlib.ticker as ticker
 from matplotlib.colors import Colormap
 
 class Earl:
-    def __init__(self, file_path_name_to_conf="./../settings/configuration.json", verbose=True, **kwargs):
+    def __init__(self, file_path_name_to_conf="./settings/config.json", verbose=True):
         self.file_path_name_to_conf = file_path_name_to_conf
         with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
             self.config = js.load(file)
@@ -36,12 +36,12 @@ class Earl:
     
     def plot_graph(self, data_array, **kwargs):
         self.prepare_input(data_array=data_array, **kwargs)
-        if self.verbose:
-            self.print_config()
-            for i in range(self.quant):
-                self.print_curve_settings(i)
-            for i in range(self.number_of_subplots):
-                self.print_subplot_settings(i)
+        # if self.verbose:
+        #     self.print_config()
+        #     for i in range(self.quant):
+        #         self.print_curve_settings(i)
+        #     for i in range(self.number_of_subplots):
+        #         self.print_subplot_settings(i)
         self.initial_preparation_for_subplots()
         self.plot_data_on_subplots()
         self.config_cubplots_after_plotting_data()
@@ -79,18 +79,26 @@ class Earl:
             self.ax[y][x].tick_params(axis='x', length=4, width=2)
             self.ax[y][x].tick_params(axis='y', length=4, width=2)
             
-            colored_graph = self.__check_3d_graphs_in_this_subplot(i)
-            if self.subplots_settings[i]["logarithmic_scaling"][0] and (not colored_graph):
-                self.ax[y][x].set_xscale("log")
-            if self.subplots_settings[i]["logarithmic_scaling"][1] and (not colored_graph):
-                self.ax[y][x].set_yscale("log")
+            self.logscaling = [0, 0]
+            try:
+                result = self.__try_put_log_scaling_x(i, x, y)
+                if self.verbose and not (result is None):
+                    print(result)
+                result = self.__try_put_log_scaling_y(i, x, y)
+                if self.verbose and not (result is None):
+                    print(result)                
+            except ValueError as e:
+                print(f"Error is {e}")
+
             self.ax[y][x].xaxis.set_major_formatter(FormatStrFormatter(self.subplots_settings[i]["axes_round_accuracy"][0]))
             self.ax[y][x].yaxis.set_major_formatter(FormatStrFormatter(self.subplots_settings[i]["axes_round_accuracy"][1]))
 
             #set inital ticks properties
             self.ax[y][x].minorticks_on()
-            self.ax[y][x].tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
-            self.ax[y][x].tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
+            if not self.logscaling[0]:
+                self.ax[y][x].tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
+            if not self.logscaling[1]:
+                self.ax[y][x].tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
             self.ax[y][x].xaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_number_of_small_ticks"][0]))
             self.ax[y][x].yaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_number_of_small_ticks"][1]))
             self.ax[y][x].tick_params(direction ='in', length=5, width=1.5)
@@ -161,6 +169,25 @@ class Earl:
             self.ax = np.array([self.ax])
         elif self.config['subplots_settings'][0]['rows_cols'][0] > 1 and self.config['subplots_settings'][0]['rows_cols'][1] == 1:
             self.ax = np.array([self.ax]).T
+    def __try_put_log_scaling_x(self, index, x, y):
+        if self.subplots_settings[index]["logarithmic_scaling"][0] and self.min_number[0] > 0:
+            self.ax[y][x].set_xscale("log")
+            self.logscaling[0] = 1
+            return f"logarithmic_scaling for x subplot {index} is done"
+        elif self.subplots_settings[index]["logarithmic_scaling"][0] and self.min_number[0] <= 0:
+            self.logscaling[0] = 0
+            raise ValueError(f"you can not use logarithmic scaling for negative data. The problem is for subplot {index} (x scale).")
+        self.logscaling[0] = 0
+    def __try_put_log_scaling_y(self, index, x, y):
+        if self.subplots_settings[index]["logarithmic_scaling"][1] and self.min_number[1] > 0:
+            self.logscaling[1] = 1
+            self.ax[y][x].set_yscale("log")
+            return f"logarithmic_scaling for y subplot {index} is done"
+        if self.subplots_settings[index]["logarithmic_scaling"][1] and self.min_number[1] <= 0:
+            self.logscaling[1] = 0
+            raise ValueError(f"you can not use logarithmic scaling for negative data. The problem is for subplot {index} (y scale).")
+        self.logscaling[1] = 0
+
     def __check_3d_graphs_in_this_subplot(self, index):
         for i in range(self.quant):
             if self.curves_settings[i]["subplot_position"] == index and self.curves_settings[i]["graph_type"] == 2:
@@ -1234,7 +1261,153 @@ class Earl:
                 elif self.curves_settings[index]["data"][0].shape[0] * self.curves_settings[index]["data"][1].shape[0] != self.curves_settings[index]["data"][2].shape[0] * self.curves_settings[index]["data"][2].shape[1]:
                     raise ValueError(f"data {i} z elemnts should have number of points equal to x * y (number of elements from them)." + text_to_explain_structure)
                 return f"data {index} is correct."
+            
+    def __check_start_point(self, start_point):
+        text_to_explain_structure = ''' The structure is list of elements like [x, y] where x(y) is x(y) choord of start point. x(y) can be int or float. If you have only one line, you can write not a list of [x, y] but just [x, y].'''
+        if not isinstance(start_point, list):
+            raise TypeError(f"Start_point should be a list with x, y choords or list of [x, y]. " + text_to_explain_structure)
+        elif isinstance(start_point, list):
+            if len(start_point) == 2: #check for second option (only one line)
+                if not isinstance(start_point[0], (list, int, float)):
+                    raise TypeError(f"Start_point 0 should be a list with x, y choords or list of [x, y]. " + text_to_explain_structure)
+                elif not isinstance(start_point[1], (list, int, float)):
+                    raise TypeError(f"Start_point 1 should be a list with x, y choords or list of [x, y]. " + text_to_explain_structure)
+                elif isinstance(start_point[0], (int, float)) and isinstance(start_point[1], (int, float)):
+                    return (f"Start_point argument is correct.", [start_point])
+                elif (isinstance(start_point[0], list) and isinstance(start_point[1], (int, float))) or (isinstance(start_point[1], list) and isinstance(start_point[0], (int, float))):
+                    raise TypeError(f"Start_point elements should have the same type. Options are [x, y] (x and are int or float) or list of [x, y]." + text_to_explain_structure)
+            for i in range(len(start_point)):
+                if not isinstance(start_point[i], list):
+                    raise TypeError(f"Start_point {i} ({start_point[i]}) should be a list of [x, y]." + text_to_explain_structure)
+                elif isinstance(start_point[i], list):
+                    if len(start_point[i]) != 2:
+                        raise TypeError(f"Start_point {i} ({start_point[i]}) should have to be int(float) elements." + text_to_explain_structure)
+                    elif not isinstance(start_point[i][0], (int, float)):
+                        raise TypeError(f"Start_point {i} index 0 ({start_point[i][0]}) should be an int(float) element." + text_to_explain_structure)
+                    elif not isinstance(start_point[i][1], (int, float)):
+                        raise TypeError(f"Start_point {i} index 1 ({start_point[i][1]}) should be an int(float) element." + text_to_explain_structure)
+            return (f"Start_point argument is correct.", start_point)
+        
+    def __check_end_point(self, end_point):
+        text_to_explain_structure = ''' The structure is list of elements like [x, y] where x(y) is x(y) choord of end point. x(y) can be int or float. If you have only one line, you can write not a list of [x, y] but just [x, y].'''
+        if not isinstance(end_point, list):
+            raise TypeError(f"end_point should be a list with x, y choords or list of [x, y]. " + text_to_explain_structure)
+        elif isinstance(end_point, list):
+            if len(end_point) == 2: #check for second option (only one line)
+                if not isinstance(end_point[0], (list, int, float)):
+                    raise TypeError(f"end_point 0 should be a list with x, y choords or list of [x, y]. " + text_to_explain_structure)
+                elif not isinstance(end_point[1], (list, int, float)):
+                    raise TypeError(f"end_point 1 should be a list with x, y choords or list of [x, y]. " + text_to_explain_structure)
+                elif isinstance(end_point[0], (int, float)) and isinstance(end_point[1], (int, float)):
+                    return (f"end_point argument is correct.", [end_point])
+                elif (isinstance(end_point[0], list) and isinstance(end_point[1], (int, float))) or (isinstance(end_point[1], list) and isinstance(end_point[0], (int, float))):
+                    raise TypeError(f"end_point elements should have the same type. Options are [x, y] (x and y are int or float) or list of [x, y]." + text_to_explain_structure)
+            for i in range(len(end_point)):
+                if not isinstance(end_point[i], list):
+                    raise TypeError(f"end_point {i} ({end_point[i]}) should be a list of [x, y]." + text_to_explain_structure)
+                elif isinstance(end_point[i], list):
+                    if len(end_point[i]) != 2:
+                        raise TypeError(f"end_point {i} ({end_point[i]}) should have to be int(float) elements." + text_to_explain_structure)
+                    elif not isinstance(end_point[i][0], (int, float)):
+                        raise TypeError(f"end_point {i} index 0 ({end_point[i][0]}) should be an int(float) element." + text_to_explain_structure)
+                    elif not isinstance(end_point[i][1], (int, float)):
+                        raise TypeError(f"end_point {i} index 1 ({end_point[i][1]}) should be an int(float) element." + text_to_explain_structure)
+            return (f"end_point argument is correct.", end_point)    
     
+    def __check_text_position(self, text_position): #check if bool is false 
+        text_to_explain_structure = ''' The structure is list of elements like [x, y] where x(y) is x(y) choord of lower left part of text.
+        x(y) can be int or float. If you have only one line, you can write not a list of [x, y] but just [x, y].
+        If x(y) argument is False, then this coordinate will be such that the text will be located in the middle of the graph
+        with a slight offset from the straight line.'''
+        if not isinstance(text_position, list):
+            raise TypeError(f"text_position should be a list with x, y choords or list of [x, y], where x(y) can be int(float) or False." + text_to_explain_structure)
+        elif isinstance(text_position, list):
+            if len(text_position) == 2: #check for second option (only one line)
+                if not isinstance(text_position[0], (list, int, float, bool)):
+                    raise TypeError(f"text_position 0 should be a list with x, y choords (or False) or list of [x, y]. " + text_to_explain_structure)
+                elif not isinstance(text_position[1], (list, int, float, bool)):
+                    raise TypeError(f"text_position 1 should be a list with x, y choords or list of [x, y]. " + text_to_explain_structure)
+                elif isinstance(text_position[0], (int, float, bool)) and isinstance(text_position[1], (int, float, bool)):
+                    if isinstance(text_position[0], bool) and text_position[0]:
+                        raise ValueError(f"text_position 0 ({text_position[0]}) can be False, int or float." + text_to_explain_structure)
+                    return (f"text_position argument is correct.", [text_position])
+                elif (isinstance(text_position[0], list) and isinstance(text_position[1], (int, float, bool))) or (isinstance(text_position[1], list) and isinstance(text_position[0], (int, float, bool))):
+                    raise TypeError(f"text_position elements should have the same type. Options are [x, y] (x and y are int, float or False) or list of [x, y]." + text_to_explain_structure)
+            for i in range(len(text_position)):
+                if not isinstance(text_position[i], list):
+                    raise TypeError(f"text_position {i} ({text_position[i]}) should be a list of [x, y]." + text_to_explain_structure)
+                elif isinstance(text_position[i], list):
+                    if len(text_position[i]) != 2:
+                        raise TypeError(f"text_position {i} ({text_position[i]}) should have to be int(float or False) elements." + text_to_explain_structure)
+                    elif not isinstance(text_position[i][0], (int, float, bool)):
+                        raise TypeError(f"text_position {i} index 0 ({text_position[i][0]}) should be an int(float or False) element." + text_to_explain_structure)
+                    elif isinstance(text_position[i][0], bool) and text_position[i][0]:
+                        raise ValueError(f"text_position {i} 0 ({text_position[i][0]}) can be False, int or float." + text_to_explain_structure)
+                    elif not isinstance(text_position[i][1], (int, float, bool)):
+                        raise TypeError(f"text_position {i} index 1 ({text_position[i][1]}) should be an int(float or False) element." + text_to_explain_structure)
+                    elif isinstance(text_position[i][1], bool) and text_position[i][1]:
+                        raise ValueError(f"text_position {i} 1 ({text_position[i][1]}) can be False, int or float." + text_to_explain_structure)                    
+            return (f"text_position argument is correct.", text_position)  
+
+    def __check_subplot_pos_line(self, subplot_pos_line):
+        if not isinstance(subplot_pos_line, (int, list)):
+            raise TypeError(f'subplot_pos_line argument is incorrect. It should be a list with integer elements which are number of subplot where line is located (starting from 0) or one integer for all lines.')
+        if isinstance(subplot_pos_line, int):
+            if subplot_pos_line >= 0:
+                return (f"subplot_pos_line argument is correct.", [subplot_pos_line])
+            else:
+                raise ValueError(f"subplot_pos_line argument should be more or equal to 0.")
+        elif isinstance(subplot_pos_line, list):
+            for i in range(len(subplot_pos_line)):
+                if not isinstance(subplot_pos_line[i], int):
+                    raise ValueError(f"subplot_pos_line argument {i} ({subplot_pos_line[i]}) should be an integer.")
+                elif subplot_pos_line[i] < 0:
+                    raise ValueError(f"subplot_pos_line argument {i} ({subplot_pos_line[i]}) should be more or equal to 0.")
+            return (f"subplot_pos_line argument is correct.", subplot_pos_line)
+        
+    def __check_text_rotation(self, text_rotatation):
+        if not isinstance(text_rotatation, (float, int, list)):
+            raise TypeError(f'text_rotatation argument is incorrect. It should be a list width float (int) elements which are angles of textes rotation or one float number for all lines.')
+        if isinstance(text_rotatation, (float, int)):
+            if text_rotatation >= 0:
+                return (f"text_rotatation argument is correct.", [text_rotatation])
+            else:
+                raise ValueError(f"text_rotatation argument should be more or equal to 0.")
+        elif isinstance(text_rotatation, list):
+            for i in range(len(text_rotatation)):
+                if not isinstance(text_rotatation[i], (float, int)):
+                    raise ValueError(f"text_rotatation argument {i} ({text_rotatation[i]}) should be a float (int).")
+                elif text_rotatation[i] < 0:
+                    raise ValueError(f"text_rotatation argument {i} ({text_rotatation[i]}) should be more or equal to 0.")
+            return (f"text_rotatation argument is correct.", text_rotatation)
+        
+    def __check_text(self, text):
+        if not isinstance(text, (list, str)):
+            raise TypeError(f"text should be a list with strings(text as a label for the line) or one string for all data.")
+        if isinstance(text, str):
+            return (f"text argument is correct", [text])
+        elif isinstance(text, list):
+            for i in range(len(text)):
+                if not isinstance(text[i], str):
+                    raise TypeError(f"text element {i} ({text[i]}) should be a list with strings(text as a label for the line).")
+            return  (f"text argument is correct", text)
+    
+    def __check_text_fontsize(self, text_fontsize):
+        if not isinstance(text_fontsize, (int, list)):
+            raise TypeError(f'text_fontsize argument is incorrect. It should be a list with integer elements which are text fontsize or one integer for all data.')
+        if isinstance(text_fontsize, int):
+            if text_fontsize > 0:
+                return (f"text_fontsize argument is correct.", [text_fontsize])
+            else:
+                raise ValueError(f"text_fontsize argument should be more than 0.")
+        elif isinstance(text_fontsize, list):
+            for i in range(len(text_fontsize)):
+                if not isinstance(text_fontsize[i], int):
+                    raise ValueError(f"text_fontsize argument {i} ({text_fontsize[i]}) should be an integer.")
+                elif text_fontsize[i] < 1:
+                    raise ValueError(f"text_fontsize argument {i} ({text_fontsize[i]}) should be more than 0.")
+            return (f"text_fontsize argument is correct.", text_fontsize)
+        
     def __prepare_axes_titles_for_subplots(self, index):
         for i in range(self.quant):
             if self.curves_settings[i]["subplot_position"] == index and self.curves_settings[i]["graph_type"] == 2:
@@ -1270,6 +1443,7 @@ class Earl:
         """
         graph_pos_types = {"2D":1, "3D":2}
         index = 0
+        count = 0
         for i in range(self.quant):
             self.curves_settings.append(dict())
             self.curves_settings[-1] = {"data": data_array[i],
@@ -1289,7 +1463,10 @@ class Earl:
                     print(result)
             except (TypeError, ValueError) as e:
                     del self.curves_settings[-1]
+                    count += 1
                     print(f'Error: {e}')  # Print any validation errors
+        self.quant = len(self.curves_settings)
+            
 
             
     def construct_structure_subplots(self):
@@ -1439,6 +1616,14 @@ class Earl:
             js.dump(self.config, json_file, 
                     indent=2, 
                     ensure_ascii=False)
+    def save_config_for_lines(self, name="New_config_for_lines.json"):
+        with open(name, "w") as json_file:
+            js.dump(self.config_for_line, json_file, 
+                    indent=2, 
+                    ensure_ascii=False)
+
+    def show_plot(self):
+        self.plt.show()
 
     def print_curve_settings(self, curve_index):
         print(self.curves_settings[curve_index])
@@ -1446,3 +1631,102 @@ class Earl:
         print(self.subplots_settings[subplot_index])
     def print_config(self):
         print(js.dumps(self.config, indent=4, ensure_ascii=False))
+
+    def draw_lines(self, name_of_config_file="./settings/config_for_lines.json", **kwargs):
+        self.file_path_name_to_conf_for_line = name_of_config_file
+        with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
+            self.config_for_line = js.load(file)
+        self.prepare_lines_input(**kwargs)
+        self.extend_line_config()
+        self.draw_lines_after_conf()
+        self.draw_text_efter_conf()
+    
+    def prepare_lines_input(self, **kwargs):
+        check_functions = {
+                           "line_color": self.__check_color,
+                           "line_ls": self.__check_ls,
+                           "labels": self.__check_labels,
+                           "text": self.__check_text,
+                           "start_point": self.__check_start_point,
+                           "end_point": self.__check_end_point,
+                           "text_pos": self.__check_text_position,
+                           "subplot_pos_line": self.__check_subplot_pos_line,
+                           "line_alpha": self.__check_line_alpha,
+                           "line_width": self.__check_line_width,
+                           "text_rotation": self.__check_text_rotation,
+                           "text_color": self.__check_color,
+                           "text_fontsize": self.__check_text_fontsize,
+
+                           }
+        for key, value in kwargs.items():
+            try:
+                # Check if the key exists in the configuration
+                if key not in check_functions.keys():
+                    raise KeyError(f"{key} is not an argument in configuration file. Maybe you should check your spelling :)")
+                try:
+                    result = check_functions[key](value)
+                    if self.verbose:
+                        print(result[0])  # Print the validation result if verbose mode is on
+                    self.config_for_line[key] = result[1]
+                except (TypeError, ValueError) as e:
+                    print(f'Error: {e}')  # Print any validation errors
+
+            except KeyError as e:
+                # This catches the KeyError from above if the key is not in json_keys
+                print(f"Error has occurred. \n {e}")
+    
+    def extend_line_config(self):
+        with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
+            config = js.load(file)
+        quant = len(self.config_for_line["end_point"])
+        self.config_for_line["start_point"] = self.extend_parameters(self.config_for_line["start_point"], quant, config["start_point"][0])
+        self.config_for_line["line_color"] = self.extend_parameters(self.config_for_line["line_color"], quant, config["line_color"][0])
+        self.config_for_line["line_ls"] = self.extend_parameters(self.config_for_line["line_ls"], quant, config["line_ls"][0])
+        self.config_for_line["labels"] = self.extend_parameters(self.config_for_line["labels"], quant, config["labels"][0])
+        self.config_for_line["text"] = self.extend_parameters(self.config_for_line["text"], quant, config["text"][0])
+        self.config_for_line["text_pos"] = self.extend_parameters(self.config_for_line["text_pos"], quant, config["text_pos"][0])
+        self.config_for_line["subplot_pos_line"] = self.extend_parameters(self.config_for_line["subplot_pos_line"], quant, config["subplot_pos_line"][0])
+        self.config_for_line["line_alpha"] = self.extend_parameters(self.config_for_line["line_alpha"], quant, config["line_alpha"][0])
+        self.config_for_line["line_width"] = self.extend_parameters(self.config_for_line["line_width"], quant, config["line_width"][0])
+        self.config_for_line["text_rotation"] = self.extend_parameters(self.config_for_line["text_rotation"], quant, config["text_rotation"][0])
+        self.config_for_line["text_color"] = self.extend_parameters(self.config_for_line["text_color"], quant, config["text_color"][0])
+        self.config_for_line["text_font_size"] = self.extend_parameters(self.config_for_line["text_font_size"], quant, config["text_font_size"][0])
+
+    def draw_lines_after_conf(self):
+        for i in range(len(self.config_for_line["end_point"])):
+            if self.config_for_line["subplot_pos_line"][i] >= self.number_of_subplots:
+                continue
+            x = (self.config_for_line["subplot_pos_line"][i]) % self.config['subplots_settings'][0]['rows_cols'][1]
+            y = (self.config_for_line["subplot_pos_line"][i]) // self.config['subplots_settings'][0]['rows_cols'][1]
+            self.ax[y][x].plot([self.config_for_line["start_point"][i][0], self.config_for_line["end_point"][i][0]],
+                                [self.config_for_line["start_point"][i][1], self.config_for_line["end_point"][i][1]],
+                                 color=self.config_for_line["line_color"][i], alpha=self.config_for_line["line_alpha"][i],
+                                 lw=self.config_for_line["line_width"][i], ls=self.config_for_line["line_ls"][i], label=self.config_for_line["labels"][i])
+    
+    def draw_text_efter_conf(self):
+        for i in range(len(self.config_for_line["end_point"])):
+            if self.config_for_line["subplot_pos_line"][i] >= self.number_of_subplots:
+                continue
+            x = (self.config_for_line["subplot_pos_line"][i]) % self.config['subplots_settings'][0]['rows_cols'][1]
+            y = (self.config_for_line["subplot_pos_line"][i]) // self.config['subplots_settings'][0]['rows_cols'][1]
+            self.__prepare_text_position(i, x, y)
+            self.ax[y][x].text(x=self.config_for_line["text_pos"][i][0], y=self.config_for_line["text_pos"][i][1],
+                                rotation=self.config_for_line["text_rotation"][i], s=self.config_for_line["text"][i],
+                                fontsize=self.config_for_line["text_font_size"][i], color=self.config_for_line["text_color"][i])
+    
+    def __prepare_text_position(self, index, x, y):
+        if self.config_for_line["text_pos"][index][0] == False:
+            xlims = self.ax[y][x].get_xlim()
+            self.config_for_line["text_pos"][index][0] = (xlims[1] + xlims[0]) / 2
+        ylims = self.ax[y][x].get_ylim()
+        if self.config_for_line["text_pos"][index][1] == False:
+            if self.config_for_line["end_point"][index][0] - self.config_for_line["start_point"][index][0] != 0:
+                k = (self.config_for_line["end_point"][index][1] - self.config_for_line["start_point"][index][1]) / (self.config_for_line["end_point"][index][0] - self.config_for_line["start_point"][index][0])
+                b = self.config_for_line["end_point"][index][1] - k * self.config_for_line["end_point"][index][0]
+                step = (ylims[1] - ylims[0]) / len(self.ax[y][x].get_yticks())
+                step /= 4
+                self.config_for_line["text_pos"][index][1] = k * self.config_for_line["text_pos"][index][0] + b + step
+            else:
+                self.config_for_line["text_pos"][index][1] = (ylims[1] + ylims[0]) / 2
+
+

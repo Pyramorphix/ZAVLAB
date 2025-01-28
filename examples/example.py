@@ -1,4 +1,6 @@
-from graph_plotting import Earl
+import sys
+sys.path.insert(1, './..')
+from ZAVLAB.graph_plotting import Earl
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -85,11 +87,13 @@ data_array[-1] = [
 example_graph.plot_graph(data_array, ls=["-"] * 16, labels=labels, graph_types=["2D"] * 16 + ["3D", "3D"], 
                         axes_font_size=[[0, [16, 16]], [2, [14, 14, 14]]], subplots_titles_font_size=[[1, 20]],
                         axes_number_of_small_ticks=[[2, [1, 1]]], axes_round_accuracy=[[3, ["%0.0f", "%0.1f"]]],
-                        logarithmic_scaling=[[0, [1, 0]], [1, [0, 1]]], axes_scaling=[[2, "divide", [[0, 11, 11], [0, 50, 7]]]],
+                        logarithmic_scaling=[[0, [1, 0]], [1, [0, 0]]], axes_scaling=[[2, "divide", [[0, 11, 11], [0, 50, 7]]]],
                         line_alpha=1, colros=["l"], rows_cols=[2, 2], figure_size=[14, 14],
                         subplots_distribution=[0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 2, 1], colormap=[[2, "YlOrRd"], [1, "Spectral"]],
                         axes_titles=[["X", "Y"]] * 2 + [["X", "Y", "colorbar"]] + [["X", "Y"]],
 )
+example_graph.draw_lines(end_point=[8, 41], start_point=[0, 16], text='hey', subplot_pos_line=2)
+
 # print('--------')
 # print(example_graph.print_config())
 # print("Curves structures:")
