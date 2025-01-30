@@ -1,5 +1,7 @@
 import sys
-sys.path.insert(1, './..')
+import os
+neighbor_dir = os.path.join(os.path.dirname(__file__), '../')
+sys.path.insert(0, neighbor_dir)
 from ZAVLAB.graph_plotting import Earl
 import matplotlib.pyplot as plt
 import numpy as np

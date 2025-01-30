@@ -5,6 +5,7 @@ import sys
 from matplotlib.ticker import FormatStrFormatter
 import matplotlib.ticker as ticker
 from matplotlib.colors import Colormap
+from pathlib import Path
 
 class Earl:
     """
@@ -45,14 +46,14 @@ class Earl:
     From various music tracks discovered via Spotify.
     """
 
-    def __init__(self, file_path_name_to_conf="./settings/config.json", verbose=True):
+    def __init__(self, file_path_name_to_conf=Path(__file__).parent.parent / "settings/config.json", verbose=True):
         """
         Initializes the Earl class with the given configuration file and sets up the plot.
 
         Arguments:
         ----------
         file_path_name_to_conf : str, optional
-            The file path to the configuration file containing plot settings (default is "./settings/config.json").
+            The file path to the configuration file containing plot settings (default is "../settings/config.json").
         verbose : bool, optional
             A flag indicating whether to print verbose output (default is True).
 
@@ -76,7 +77,7 @@ class Earl:
         Example:
         --------
         ```python
-        earl = Earl(file_path_name_to_conf="./settings/config.json", verbose=True)
+        earl = Earl(file_path_name_to_conf="../settings/config.json", verbose=True)
         ```
         """
 
@@ -86,15 +87,13 @@ class Earl:
         self.plt = plt
         self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
         self.__prepare_axes()
-
-        if self.config['subplots_settings'][0]['rows_cols'][0] == 1 and self.config['subplots_settings'][0]['rows_cols'][1] == 1:
-            self.ax = np.array([[self.ax]])
         
         self.quant = 0
         self.number_of_subplots = 0
         self.curves_settings = []
         self.subplots_settings = []
         self.verbose = verbose
+        self.colorbars = []
 
     def save_plot(self, name="graph.png"):
         """
@@ -128,7 +127,7 @@ class Earl:
 
         self.fig.savefig(name)
 
-    def prepare_input(self, data_array=[[]], **kwargs):
+    def __prepare_input(self, data_array=[[]], **kwargs):
         """
         Prepares the input data and configuration for plotting.
 
@@ -150,18 +149,18 @@ class Earl:
         Notes:
         ------
         - The method sets `self.quant` to the length of the input data array.
-        - It calls `self.check_parameters` to validate the provided keyword arguments.
+        - It calls `self.__check_parameters` to validate the provided keyword arguments.
         - It calculates the total number of subplots based on the configuration settings.
-        - It calls `self.prepare_config` to prepare the configuration for plotting.
-        - It calls `self.construct_structure_curve` to construct the structure for curves based on the input data.
-        - It calls `self.construct_structure_subplots` to construct the structure for subplots.
+        - It calls `self.__prepare_config` to prepare the configuration for plotting.
+        - It calls `self.__construct_structure_curve` to construct the structure for curves based on the input data.
+        - It calls `self.__construct_structure_subplots` to construct the structure for subplots.
 
         Example:
         --------
         Assuming `data_array` is a valid array of data points and `kwargs` contains additional
         configuration parameters, calling:
         ```python
-        earl.prepare_input(data_array=[[1, 2, 3], [4, 5, 6]], line_color="red", line_ls="solid")
+        earl.__prepare_input(data_array=[[1, 2, 3], [4, 5, 6]], line_color="red", line_ls="solid")
         ```
         will prepare the input data and configuration for plotting.
 
@@ -171,11 +170,11 @@ class Earl:
         """
 
         self.quant = len(data_array)
-        self.check_parameters(**kwargs)
+        self.__check_parameters(**kwargs)
         self.number_of_subplots = self.config['subplots_settings'][0]['rows_cols'][0] * self.config['subplots_settings'][0]['rows_cols'][1]
-        self.prepare_config()
-        self.construct_structure_curve(data_array)
-        self.construct_structure_subplots()
+        self.__prepare_config()
+        self.__construct_structure_curve(data_array)
+        self.__construct_structure_subplots()
     
     def plot_graph(self, data_array=[[]], **kwargs):
         """
@@ -197,17 +196,17 @@ class Earl:
 
         Notes:
         ------
-        - The method calls `self.prepare_input` to prepare the input data and configuration.
-        - It calls `self.initial_preparation_for_subplots` to perform initial preparations for the subplots.
-        - It calls `self.plot_data_on_subplots` to plot the data on the subplots.
-        - It calls `self.config_subplots_after_plotting_data` to configure the subplots after plotting the data.
+        - The method calls `self.__prepare_input` to prepare the input data and configuration.
+        - It calls `self.__initial_preparation_for_subplots` to perform initial preparations for the subplots.
+        - It calls `self.__plot_data_on_subplots` to plot the data on the subplots.
+        - It calls `self.__config_subplots_after_plotting_data` to configure the subplots after plotting the data.
 
         Example:
         --------
         Assuming `data_array` is a valid array of data points and `kwargs` contains additional
         configuration parameters, calling:
         ```python
-        earl.plot_graph(data_array=[[1, 2, 3], [4, 5, 6]], line_color="red", line_ls="solid")
+        earl.plot_graph(data_array=[[1, 2, 3], [4, 5, 6]], line_color="#101010", line_ls="-")
         ```
         will plot the graph based on the input data and configuration parameters.
 
@@ -216,12 +215,12 @@ class Earl:
         From various music tracks discovered via Spotify.
         """
 
-        self.prepare_input(data_array=data_array, **kwargs)
-        self.initial_preparation_for_subplots()
-        self.plot_data_on_subplots()
-        self.config_subplots_after_plotting_data()
+        self.__prepare_input(data_array=data_array, **kwargs)
+        self.__initial_preparation_for_subplots()
+        self.__plot_data_on_subplots()
+        self.__config_subplots_after_plotting_data()
 
-    def initial_preparation_for_subplots(self):
+    def __initial_preparation_for_subplots(self):
         """
         Performs initial preparations for the subplots based on the configuration settings.
 
@@ -257,7 +256,7 @@ class Earl:
         --------
         Assuming the configuration settings are properly set, calling:
         ```python
-        earl.initial_preparation_for_subplots()
+        earl.__initial_preparation_for_subplots()
         ```
         will perform the initial preparations for the subplots based on the configuration settings.
 
@@ -330,7 +329,7 @@ class Earl:
         self.fig.align_titles()
         self.fig.tight_layout()
     
-    def plot_data_on_subplots(self):
+    def __plot_data_on_subplots(self):
         """
         Plots the data on the specified subplots based on the curve settings.
 
@@ -350,13 +349,13 @@ class Earl:
         - The method iterates through each curve setting in `self.curves_settings`.
         - It calculates the subplot position (x, y) based on the `subplot_position` parameter.
         - It checks the `graph_type` to determine whether to plot a 2D or 3D graph.
-        - It calls `self.plot_2d_graph` to plot a 2D graph or `self.plot_3d_graph` to plot a 3D graph.
+        - It calls `self.__plot_2d_graph` to plot a 2D graph or `self.__plot_3d_graph` to plot a 3D graph.
 
         Example:
         --------
         Assuming `self.curves_settings` is properly configured, calling:
         ```python
-        earl.plot_data_on_subplots()
+        earl.__plot_data_on_subplots()
         ```
         will plot the data on the specified subplots based on the curve settings.
 
@@ -370,11 +369,11 @@ class Earl:
                 x = (self.curves_settings[i]["subplot_position"]) % self.config['subplots_settings'][0]['rows_cols'][1]
                 y = (self.curves_settings[i]["subplot_position"]) // self.config['subplots_settings'][0]['rows_cols'][1]
                 if self.curves_settings[i]["graph_type"] == 1:
-                    self.plot_2d_graph(i, x, y)
+                    self.__plot_2d_graph(i, x, y)
                 elif self.curves_settings[i]["graph_type"] == 2:
-                    self.plot_3d_graph(i, x, y, self.curves_settings[i]["subplot_position"])
+                    self.__plot_3d_graph(i, x, y, self.curves_settings[i]["subplot_position"])
     
-    def plot_2d_graph(self, index, x, y):
+    def __plot_2d_graph(self, index, x, y):
         """
         Plots a 2D graph on the specified subplot based on the curve settings.
 
@@ -406,7 +405,7 @@ class Earl:
         --------
         Assuming `self.curves_settings` is properly configured, calling:
         ```python
-        earl.plot_2d_graph(index, x, y)
+        earl.__plot_2d_graph(index, x, y)
         ```
         will plot a 2D graph on the specified subplot based on the curve settings.
 
@@ -437,7 +436,7 @@ class Earl:
         elif len(self.curves_settings[index]["data"][0]) == 1 and len(self.curves_settings[index]["data"][1]) == 1:
             self.ax[y][x].plot(x_data, y_data, lw=lw, color=color, marker=marker_shape, markersize=marker_size, ls=ls, alpha=alpha, label=label)
     
-    def plot_3d_graph(self, index, x, y, sub_index):
+    def __plot_3d_graph(self, index, x, y, sub_index):
         """
         Plots a 3D graph on the specified subplot based on the curve settings.
 
@@ -478,7 +477,7 @@ class Earl:
         --------
         Assuming `self.curves_settings` and `self.subplots_settings` are properly configured, calling:
         ```python
-        earl.plot_3d_graph(index, x, y, sub_index)
+        earl.__plot_3d_graph(index, x, y, sub_index)
         ```
         will plot a 3D graph on the specified subplot based on the curve settings.
 
@@ -492,7 +491,7 @@ class Earl:
         self.colorbars[-1][1] = self.fig.colorbar(self.colorbars[-1][0], ax=self.ax[y][x])
         self.colorbars[-1][1].set_label(size=self.subplots_settings[self.curves_settings[index]["subplot_position"]]["axes_font_size"][2], label=self.subplots_settings[self.curves_settings[index]["subplot_position"]]["axes_titles"][2])
 
-    def config_subplots_after_plotting_data(self):
+    def __config_subplots_after_plotting_data(self):
         """
         Configures the subplots after plotting the data.
 
@@ -1490,7 +1489,7 @@ class Earl:
         else:
             return self.config["colormap"][flag_minus_one][1] 
         
-    def check_parameters(self, **kwargs):
+    def __check_parameters(self, **kwargs):
         """
         Validate plot parameters passed as keyword arguments against predefined checks.
 
@@ -3789,7 +3788,7 @@ class Earl:
                 if len(self.subplots_settings[index]["axes_font_size"]) != 3:
                     self.subplots_settings[index]["axes_font_size"].append(10)
 
-    def construct_structure_curve(self, data_array):
+    def __construct_structure_curve(self, data_array):
         """
         Constructs and populates the structure for curve settings.
 
@@ -3886,7 +3885,7 @@ class Earl:
                     print(f'Error: {e}')  # Print any validation errors
         self.quant = len(self.curves_settings)
 
-    def construct_structure_subplots(self):
+    def __construct_structure_subplots(self):
         """
         Constructs and populates the structure for subplot settings.
 
@@ -4006,7 +4005,7 @@ class Earl:
                                          }
             self.__prepare_axes_titles_for_subplots(i)
             
-    def prepare_config(self):
+    def __prepare_config(self):
         """
         Prepares and extends the configuration parameters for plotting.
 
@@ -4041,7 +4040,7 @@ class Earl:
 
         Methods:
         -------
-        self.extend_parameters(list, int, default_value)
+        self.__extend_parameters(list, int, default_value)
             Extends a list to a given length with a default value if needed.
 
         Notes:
@@ -4064,65 +4063,65 @@ class Earl:
         with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
             config = js.load(file)
         # Color for each data series, defaulting to a dark red if not specified
-        self.config["color"] = self.extend_parameters(self.config["color"], self.quant, config["color"][0])
+        self.config["color"] = self.__extend_parameters(self.config["color"], self.quant, config["color"][0])
         
         # Line style for each data series, defaulting to solid line if not specified
-        self.config["ls"] = self.extend_parameters(self.config["ls"], self.quant, config["ls"][0])
+        self.config["ls"] = self.__extend_parameters(self.config["ls"], self.quant, config["ls"][0])
         
         # Marker shape for each data series, defaulting to circle 'o'
-        self.config["marker_shape"] = self.extend_parameters(self.config["marker_shape"], self.quant, config["marker_shape"][0])
+        self.config["marker_shape"] = self.__extend_parameters(self.config["marker_shape"], self.quant, config["marker_shape"][0])
         
         # Font size for axes labels, default uniform size for all subplots
-        self.config["axes_font_size"] = self.extend_parameters(self.config["axes_font_size"], self.number_of_subplots, config["axes_font_size"][0])
+        self.config["axes_font_size"] = self.__extend_parameters(self.config["axes_font_size"], self.number_of_subplots, config["axes_font_size"][0])
         
         # Font size for subplot titles, default size for all
-        self.config["subplots_titles_font_size"] = self.extend_parameters(self.config["subplots_titles_font_size"], self.number_of_subplots, config["subplots_titles_font_size"][0])
+        self.config["subplots_titles_font_size"] = self.__extend_parameters(self.config["subplots_titles_font_size"], self.number_of_subplots, config["subplots_titles_font_size"][0])
         
         # Titles for subplots, with a humorous default message for many subplots
-        self.config["subplots_titles_text"] = self.extend_parameters(self.config["subplots_titles_text"], self.number_of_subplots, "You are crazy if you have more than 26 subplots.")
+        self.config["subplots_titles_text"] = self.__extend_parameters(self.config["subplots_titles_text"], self.number_of_subplots, "You are crazy if you have more than 26 subplots.")
         
         # Font size for legends, default uniform size for all subplots
-        self.config["legends_font_size"] = self.extend_parameters(self.config["legends_font_size"], self.number_of_subplots, config["legends_font_size"][0])
+        self.config["legends_font_size"] = self.__extend_parameters(self.config["legends_font_size"], self.number_of_subplots, config["legends_font_size"][0])
         
         # Size of markers for each data series, default size
-        self.config["marker_size"] = self.extend_parameters(self.config["marker_size"], self.quant, config["marker_size"][0])
+        self.config["marker_size"] = self.__extend_parameters(self.config["marker_size"], self.quant, config["marker_size"][0])
         
         # Width of lines for each data series, default width
-        self.config["line_width"] = self.extend_parameters(self.config["line_width"], self.quant, config["line_width"][0])
+        self.config["line_width"] = self.__extend_parameters(self.config["line_width"], self.quant, config["line_width"][0])
         
         # Transparency (alpha) for lines, default fully opaque
-        self.config["line_alpha"] = self.extend_parameters(self.config["line_alpha"], self.quant, config["line_alpha"][0])
+        self.config["line_alpha"] = self.__extend_parameters(self.config["line_alpha"], self.quant, config["line_alpha"][0])
         
         # Rounding accuracy for axes numbers, default to two decimal places
-        self.config["axes_round_accuracy"] = self.extend_parameters(self.config["axes_round_accuracy"], self.number_of_subplots, config["axes_round_accuracy"][0])
+        self.config["axes_round_accuracy"] = self.__extend_parameters(self.config["axes_round_accuracy"], self.number_of_subplots, config["axes_round_accuracy"][0])
         
         # Distribution of subplots, default to 1 plot per subplot
-        self.config["subplots_settings"][0]["subplots_distribution"] = self.extend_parameters(self.config["subplots_settings"][0]["subplots_distribution"], self.quant, config["subplots_settings"][0]["subplots_distribution"][0])
+        self.config["subplots_settings"][0]["subplots_distribution"] = self.__extend_parameters(self.config["subplots_settings"][0]["subplots_distribution"], self.quant, config["subplots_settings"][0]["subplots_distribution"][0])
         
         # Type of graph for each data series, default to 2D
-        self.config["graph_types"] = self.extend_parameters(self.config["graph_types"], self.quant, config["graph_types"][0])
+        self.config["graph_types"] = self.__extend_parameters(self.config["graph_types"], self.quant, config["graph_types"][0])
         
         # Scaling of axes, default to slight stretch in both directions
-        self.config["axes_scaling"] = self.extend_parameters(self.config["axes_scaling"], self.number_of_subplots, config["axes_scaling"][0])
+        self.config["axes_scaling"] = self.__extend_parameters(self.config["axes_scaling"], self.number_of_subplots, config["axes_scaling"][0])
         
         # Number of small ticks between major ticks, default for both axes
-        self.config["axes_number_of_small_ticks"] = self.extend_parameters(self.config["axes_number_of_small_ticks"], self.number_of_subplots, config["axes_number_of_small_ticks"][0])
+        self.config["axes_number_of_small_ticks"] = self.__extend_parameters(self.config["axes_number_of_small_ticks"], self.number_of_subplots, config["axes_number_of_small_ticks"][0])
         
         # Labels for data series, empty by default
-        self.config["labels"] = self.extend_parameters(self.config["labels"], self.quant, config["labels"][0])
+        self.config["labels"] = self.__extend_parameters(self.config["labels"], self.quant, config["labels"][0])
         
         # Titles for axes in each subplot, default to 'X' and 'Y'
-        self.config["axes_titles"] = self.extend_parameters(self.config["axes_titles"], self.number_of_subplots, config["axes_titles"][0])
+        self.config["axes_titles"] = self.__extend_parameters(self.config["axes_titles"], self.number_of_subplots, config["axes_titles"][0])
         
         # Position of the legend in each subplot, default to 'best'
-        self.config["subplots_legend_position"] = self.extend_parameters(self.config["subplots_legend_position"], self.number_of_subplots, config["subplots_legend_position"][0])
+        self.config["subplots_legend_position"] = self.__extend_parameters(self.config["subplots_legend_position"], self.number_of_subplots, config["subplots_legend_position"][0])
 
         #logarithmic scaling of the axes for each subplot, default not logarithm
-        self.config["logarithmic_scaling"] = self.extend_parameters(self.config["logarithmic_scaling"], self.number_of_subplots, config["logarithmic_scaling"][0])
+        self.config["logarithmic_scaling"] = self.__extend_parameters(self.config["logarithmic_scaling"], self.number_of_subplots, config["logarithmic_scaling"][0])
         
         del config
 
-    def extend_parameters(self, parameter, quant, element_extend_by):
+    def __extend_parameters(self, parameter, quant, element_extend_by):
         """
         Extends a list to a specified length with a default value.
 
@@ -4433,7 +4432,7 @@ class Earl:
         print(js.dumps(self.config, indent=4, ensure_ascii=False))
 
 
-    def draw_lines(self, name_of_config_file="./settings/config_for_lines.json", **kwargs):
+    def draw_lines(self, name_of_config_file=Path(__file__).parent.parent / "settings/config_for_lines.json", **kwargs):
         """
         Draws lines based on the configuration file and additional keyword arguments.
 
@@ -4443,7 +4442,7 @@ class Earl:
         Arguments:
         ----------
         name_of_config_file : str, optional
-            The path to the configuration file for drawing lines. Defaults to "./settings/config_for_lines.json".
+            The path to the configuration file for drawing lines. Defaults to "../settings/config_for_lines.json".
         **kwargs : dict
             Additional keyword arguments that can be used to customize the drawing of lines.
 
@@ -4461,13 +4460,13 @@ class Earl:
         Notes:
         ------
         - The method reads the configuration file specified by `name_of_config_file` and loads it into `self.config_for_line`.
-        - The method then calls `self.prepare_lines_input(**kwargs)` to prepare the input for drawing lines.
-        - The method extends the line configuration by calling `self.extend_line_config()`.
-        - Finally, the method draws the lines and associated text by calling `self.draw_lines_after_conf()` and `self.draw_text_efter_conf()`.
+        - The method then calls `self.__prepare_lines_input(**kwargs)` to prepare the input for drawing lines.
+        - The method extends the line configuration by calling `self.__extend_line_config()`.
+        - Finally, the method draws the lines and associated text by calling `self.__draw_lines_after_conf()` and `self.__draw_text_efter_conf()`.
 
         Example:
         --------
-        Assuming the configuration file "./settings/config_for_lines.json" contains:
+        Assuming the configuration file "../settings/config_for_lines.json" contains:
         {
             "line_ls": ["-", "--", "-.", ":", ""],
             "line_alpha": [1],
@@ -4489,12 +4488,12 @@ class Earl:
         self.file_path_name_to_conf_for_line = name_of_config_file
         with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
             self.config_for_line = js.load(file)
-        self.prepare_lines_input(**kwargs)
-        self.extend_line_config()
-        self.draw_lines_after_conf()
-        self.draw_text_efter_conf()
+        self.__prepare_lines_input(**kwargs)
+        self.__extend_line_config()
+        self.__draw_lines_after_conf()
+        self.__draw_text_efter_conf()
     
-    def prepare_lines_input(self, **kwargs):
+    def __prepare_lines_input(self, **kwargs):
         """
         Prepares the input for line configurations by validating and setting the provided keyword arguments.
 
@@ -4536,7 +4535,7 @@ class Earl:
         --------
         Assuming `self.verbose` is True and `self.config_for_line` is an empty dictionary, calling:
         ```python
-        self.prepare_lines_input(line_color="red", line_ls="solid", labels=["Label1", "Label2"])
+        self.__prepare_lines_input(line_color="red", line_ls="solid", labels=["Label1", "Label2"])
         ```
         will validate and set the `line_color`, `line_ls`, and `labels` in `self.config_for_line`.
 
@@ -4578,7 +4577,7 @@ class Earl:
                 # This catches the KeyError from above if the key is not in json_keys
                 print(f"Error has occurred. \n {e}")
     
-    def extend_line_config(self):
+    def __extend_line_config(self):
         """
         Extends the line configuration parameters by reading from a configuration file and applying default values where necessary.
 
@@ -4614,12 +4613,12 @@ class Earl:
         - The method reads the configuration file and extends each parameter in `self.config_for_line`
         to match the length of the `end_point` parameter.
         - If a parameter is not fully specified, it uses the default value from the configuration file.
-        - The `extend_parameters` method is used to extend each parameter.
+        - The `__extend_parameters` method is used to extend each parameter.
 
         Example:
         --------
         Assuming `self.file_path_name_to_conf_for_line` points to a valid JSON configuration file and
-        `self.config_for_line` is partially populated, calling `self.extend_line_config()` will extend
+        `self.config_for_line` is partially populated, calling `self.__extend_line_config()` will extend
         all parameters in `self.config_for_line` to match the length of `end_point`, using default values
         from the configuration file where necessary.
 
@@ -4631,20 +4630,20 @@ class Earl:
         with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
             config = js.load(file)
         quant = len(self.config_for_line["end_point"])
-        self.config_for_line["start_point"] = self.extend_parameters(self.config_for_line["start_point"], quant, config["start_point"][0])
-        self.config_for_line["line_color"] = self.extend_parameters(self.config_for_line["line_color"], quant, config["line_color"][0])
-        self.config_for_line["line_ls"] = self.extend_parameters(self.config_for_line["line_ls"], quant, config["line_ls"][0])
-        self.config_for_line["labels"] = self.extend_parameters(self.config_for_line["labels"], quant, config["labels"][0])
-        self.config_for_line["text"] = self.extend_parameters(self.config_for_line["text"], quant, config["text"][0])
-        self.config_for_line["text_pos"] = self.extend_parameters(self.config_for_line["text_pos"], quant, config["text_pos"][0])
-        self.config_for_line["subplot_pos_line"] = self.extend_parameters(self.config_for_line["subplot_pos_line"], quant, config["subplot_pos_line"][0])
-        self.config_for_line["line_alpha"] = self.extend_parameters(self.config_for_line["line_alpha"], quant, config["line_alpha"][0])
-        self.config_for_line["line_width"] = self.extend_parameters(self.config_for_line["line_width"], quant, config["line_width"][0])
-        self.config_for_line["text_rotation"] = self.extend_parameters(self.config_for_line["text_rotation"], quant, config["text_rotation"][0])
-        self.config_for_line["text_color"] = self.extend_parameters(self.config_for_line["text_color"], quant, config["text_color"][0])
-        self.config_for_line["text_font_size"] = self.extend_parameters(self.config_for_line["text_font_size"], quant, config["text_font_size"][0])
+        self.config_for_line["start_point"] = self.__extend_parameters(self.config_for_line["start_point"], quant, config["start_point"][0])
+        self.config_for_line["line_color"] = self.__extend_parameters(self.config_for_line["line_color"], quant, config["line_color"][0])
+        self.config_for_line["line_ls"] = self.__extend_parameters(self.config_for_line["line_ls"], quant, config["line_ls"][0])
+        self.config_for_line["labels"] = self.__extend_parameters(self.config_for_line["labels"], quant, config["labels"][0])
+        self.config_for_line["text"] = self.__extend_parameters(self.config_for_line["text"], quant, config["text"][0])
+        self.config_for_line["text_pos"] = self.__extend_parameters(self.config_for_line["text_pos"], quant, config["text_pos"][0])
+        self.config_for_line["subplot_pos_line"] = self.__extend_parameters(self.config_for_line["subplot_pos_line"], quant, config["subplot_pos_line"][0])
+        self.config_for_line["line_alpha"] = self.__extend_parameters(self.config_for_line["line_alpha"], quant, config["line_alpha"][0])
+        self.config_for_line["line_width"] = self.__extend_parameters(self.config_for_line["line_width"], quant, config["line_width"][0])
+        self.config_for_line["text_rotation"] = self.__extend_parameters(self.config_for_line["text_rotation"], quant, config["text_rotation"][0])
+        self.config_for_line["text_color"] = self.__extend_parameters(self.config_for_line["text_color"], quant, config["text_color"][0])
+        self.config_for_line["text_font_size"] = self.__extend_parameters(self.config_for_line["text_font_size"], quant, config["text_font_size"][0])
 
-    def draw_lines_after_conf(self):
+    def __draw_lines_after_conf(self):
         """
         Draws lines on the specified subplots based on the configured line parameters.
 
@@ -4681,7 +4680,7 @@ class Earl:
         Example:
         --------
         Assuming `self.config_for_line` is properly configured and `self.ax` is a 2D list of Axes objects,
-        calling `self.draw_lines_after_conf()` will draw lines on the corresponding subplots based on the
+        calling `self.__draw_lines_after_conf()` will draw lines on the corresponding subplots based on the
         configured parameters.
 
         Inspiration:
@@ -4699,7 +4698,7 @@ class Earl:
                                  color=self.config_for_line["line_color"][i], alpha=self.config_for_line["line_alpha"][i],
                                  lw=self.config_for_line["line_width"][i], ls=self.config_for_line["line_ls"][i], label=self.config_for_line["labels"][i])
     
-    def draw_text_efter_conf(self):
+    def __draw_text_efter_conf(self):
         """
         Draws text on the specified subplots based on the configured text parameters.
 
@@ -4737,7 +4736,7 @@ class Earl:
         Example:
         --------
         Assuming `self.config_for_line` is properly configured and `self.ax` is a 2D list of Axes objects,
-        calling `self.draw_text_efter_conf()` will draw text on the corresponding subplots based on the
+        calling `self.__draw_text_efter_conf()` will draw text on the corresponding subplots based on the
         configured parameters.
 
         Inspiration:
@@ -4815,3 +4814,104 @@ class Earl:
                 self.config_for_line["text_pos"][index][1] = k * self.config_for_line["text_pos"][index][0] + b + step
             else:
                 self.config_for_line["text_pos"][index][1] = (ylims[1] + ylims[0]) / 2
+    
+    def change_config_file(self, file_path_name_to_conf):
+        """
+        Changes the configuration file for the plot settings.
+
+        This method updates the configuration file path and loads the new configuration settings from the specified file.
+        It then closes the current plot, creates new subplots based on the new configuration, and prepares the axes.
+
+        Arguments:
+        ----------
+        file_path_name_to_conf : str
+            The path to the new configuration file.
+
+        Returns:
+        -------
+        None
+
+        Attributes:
+        ----------
+        self.file_path_name_to_conf : str
+            The path to the current configuration file.
+        self.config : dict
+            The dictionary containing the configuration settings loaded from the file.
+        self.plt : matplotlib.pyplot
+            The matplotlib pyplot object used for plotting.
+        self.fig : matplotlib.figure.Figure
+            The figure object containing the subplots.
+        self.ax : numpy.ndarray
+            The array of Axes objects in the figure.
+
+        Notes:
+        ------
+        - The method reads the configuration file using the `json` module.
+        - It closes the current plot using `self.plt.close()`.
+        - It creates new subplots based on the 'rows_cols' settings in the configuration file.
+        - It calls the `__prepare_axes` method to prepare the axes for the new subplots.
+
+        Example:
+        --------
+        ```python
+        self.change_config_file('new_config.json')
+        ```
+        This will update the configuration file to 'new_config.json', close the current plot, create new subplots,
+        and prepare the axes based on the new configuration.
+
+        Inspiration:
+        ------------
+        From various music tracks discovered via Spotify.
+        """
+
+        self.file_path_name_to_conf = file_path_name_to_conf
+        with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
+            self.config = js.load(file)
+        self.plt.close()
+        self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
+        self.__prepare_axes()
+        self.curves_settings = []
+        self.subplots_settings = []
+        self.colorbars = []
+
+    def change_config_for_lines_file(self, name_of_config_file):
+        """
+        Changes the configuration file for the line settings.
+
+        This method updates the configuration file path for line settings and loads the new configuration settings from the specified file.
+
+        Arguments:
+        ----------
+        name_of_config_file : str
+            The path to the new configuration file for line settings.
+
+        Returns:
+        -------
+        None
+
+        Attributes:
+        ----------
+        self.file_path_name_to_conf_for_line : str
+            The path to the current configuration file for line settings.
+        self.config_for_line : dict
+            The dictionary containing the configuration settings for lines loaded from the file.
+
+        Notes:
+        ------
+        - The method reads the configuration file using the `json` module.
+
+        Example:
+        --------
+        ```python
+        self.change_config_for_lines_file('new_line_config.json')
+        ```
+        This will update the configuration file for line settings to 'new_line_config.json' and load the new settings.
+
+        Inspiration:
+        ------------
+        From various music tracks discovered via Spotify.
+        """
+
+        self.file_path_name_to_conf_for_line = name_of_config_file
+        with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
+            self.config_for_line = js.load(file)        
