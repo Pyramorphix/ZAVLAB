@@ -5,24 +5,20 @@ if __name__ == "__main__":
 
     spreadsheet = get_spreadsheet_generator()
 
-    # Add experiment with fields
-    spreadsheet.add_experiment(
-        title="Ohm's law",
-        fields=[
-            {'type': "gathered",   'label': "V",     'unit': "mV",  'error': "3% + 0.01"},
-            {'type': "gathered",   'label': "I",     'unit': "mA",  'error': "0.1"},
-            {'type': "calculated", 'label': "R_mes", 'unit': "Ohm", 'formula': "V / I"},
-            {'type': "calculated", 'label': "R_act", 'unit': "Ohm", 'formula': "20"},
-            {'type': "const", 'label': "Konst", 'value': "NO"},  # НЕ БРАТЬ КОНСТА!
-            {'type': "const", 'label': "tau", 'value': "6.28"},
-            {'type': "const", 'label': "mass", 'unit': "kg", 'value': "200"},
-            {'type': "calculated", 'label': "test", 'formula': "tau * mass"},
-            {'type': "calculated", 'label': "Брать конста?", 'formula': "Konst"}
-        ],
 
-    )
+    spreadsheet.add_experiment(title="Ohm's law")
 
-    # Add experiment and then fields
+    spreadsheet.add_field(experiment=1, field_type="gathered",   label="V",     unit="mV",  error="3% + 0.01")
+    spreadsheet.add_field(experiment=1, field_type="gathered",   label="I",     unit="mA",  error="lsd")
+    spreadsheet.add_field(experiment=1, field_type="calculated", label="R_mes", unit="Ohm", formula="V / I")
+    spreadsheet.add_field(experiment=1, field_type="calculated", label="R_act", unit="Ohm", formula="20")
+    spreadsheet.add_field(experiment=1, field_type="const", label="Konst", value="NO")  # НЕ БРАТЬ КОНСТА!
+    spreadsheet.add_field(experiment=1, field_type="const", label="tau", value="6.28")
+    spreadsheet.add_field(experiment=1, field_type="const", label="mass", unit="kg", value=200)
+    spreadsheet.add_field(experiment=1, field_type="calculated", label="test", formula="tau * mass")
+    spreadsheet.add_field(experiment=1, field_type="calculated", label="Брать конста?", formula="Konst")
+
+
     spreadsheet.add_experiment(title="Kinetic energy")
 
     spreadsheet.add_field(experiment="Kinetic energy", label="m", unit="kg", field_type="gathered", error="0.04 * lsd")
