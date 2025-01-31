@@ -87,27 +87,27 @@ def plot_graph(data,quant=None, titles=['X', 'Y', 'title'], colors=['r'], stretc
                     ticks_and_font_size=[8, 8, 10], horizontal_vertical_lines=[], alphas=[1], legend_font_size=10):
     if(quant == None):
         quant = len(data)
-    fig, ax = plt.subplots()
-    plt.xlabel(titles[0], fontsize=ticks_and_font_size[0])
-    plt.ylabel(titles[1], fontsize=ticks_and_font_size[1])
+    fig, ax = plt.subplots() #+
+    plt.xlabel(titles[0], fontsize=ticks_and_font_size[0]) #+
+    plt.ylabel(titles[1], fontsize=ticks_and_font_size[1])#+
     ticks_and_font_size = extend_parameters(ticks_and_font_size, 3, element_extend_by=10)
-    fig.suptitle(titles[2], fontsize=ticks_and_font_size[2], fontweight="bold")
+    fig.suptitle(titles[2], fontsize=ticks_and_font_size[2], fontweight="bold") #+
 
     if point_start_to_end[0] == None and point_start_to_end[1] == None:
         minEl, maxEl = returnMinAndMaxElementForData(data, quant, stretch_graph_coefficients)
 
-        ax.xaxis.set_ticks_position("bottom")
-        ax.yaxis.set_ticks_position("left")
-        ax.spines["left"].set_position(("data", minEl[0]))
-        ax.spines["bottom"].set_position(("data", minEl[1]))
-        ax.set(xlim=(minEl[0], maxEl[0]),ylim=(minEl[1], maxEl[1]))
-        plt.xticks(np.linspace(minEl[0], maxEl[0], 8), rotation=0, size=ticks_and_font_size[0])
-        plt.yticks(np.linspace(minEl[1], maxEl[1], 8),size=ticks_and_font_size[1])
+        ax.xaxis.set_ticks_position("bottom") #+
+        ax.yaxis.set_ticks_position("left") #+
+        ax.spines["left"].set_position(("data", minEl[0])) #+
+        ax.spines["bottom"].set_position(("data", minEl[1])) #+
+        ax.set(xlim=(minEl[0], maxEl[0]),ylim=(minEl[1], maxEl[1])) #+
+        plt.xticks(np.linspace(minEl[0], maxEl[0], 8), rotation=0, size=ticks_and_font_size[0]) #+
+        plt.yticks(np.linspace(minEl[1], maxEl[1], 8),size=ticks_and_font_size[1]) #+
         x_steps = (maxEl[0] - minEl[0])/ 8 / 20
         y_steps = (maxEl[1] - minEl[1])/ 8 / 20
     elif point_start_to_end[0] == None and point_start_to_end[1] != None:
         minEl, maxEl = returnMinAndMaxElementForData(data, quant, stretch_graph_coefficients)
-        ax.xaxis.set_ticks_position("bottom")
+        ax.xaxis.set_ticks_position("bottom") #+
         ax.yaxis.set_ticks_position("left")
         ax.spines["left"].set_position(("data", minEl[0]))
         ax.spines["bottom"].set_position(("data", point_start_to_end[1][0]))
@@ -167,15 +167,15 @@ def plot_graph(data,quant=None, titles=['X', 'Y', 'title'], colors=['r'], stretc
         ax.yaxis.set_major_formatter(FormatStrFormatter(axes_round[1]))
         ax.xaxis.set_major_formatter(FormatStrFormatter(axes_round[0]))
     
-    ax.tick_params(direction ='in', length=5, width=1.5)
-    ax.legend(loc=legend_position, frameon=False, prop={'size': legend_font_size})
-    ax.grid(color="#7a7c7d", linewidth=0.3)
-    ax.grid(which='minor', color='#7a7c7d', linestyle=':', linewidth=0.2)
-    ax.minorticks_on()
-    ax.tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
-    ax.tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
-    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(5))
-    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(5))
+    ax.tick_params(direction ='in', length=5, width=1.5) #+
+    ax.legend(loc=legend_position, frameon=False, prop={'size': legend_font_size}) #+
+    ax.grid(color="#7a7c7d", linewidth=0.3) #+
+    ax.grid(which='minor', color='#7a7c7d', linestyle=':', linewidth=0.2)#+
+    ax.minorticks_on() #+
+    ax.tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black') #+
+    ax.tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black') #+
+    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(5)) #+
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(5)) #+
     for i in range(len(points_draw_lines_to)):
         ax.axvline(x = points_draw_lines_to[i][0], ymax = (points_draw_lines_to[i][1] - minEl[1])/ (maxEl[1] - minEl[1]), color = points_draw_lines_to[i][2], linestyle='dashed') 
         ax.axhline(y = points_draw_lines_to[i][1], xmax = (points_draw_lines_to[i][0] - minEl[0]) / (maxEl[0] - minEl[0]), color = points_draw_lines_to[i][2], linestyle='dashed')
