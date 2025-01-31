@@ -34,10 +34,10 @@
         ],
     "ls":["-", "--", "-.", ":", ""],
     "marker_shape":[".", ",", "o", "v", "^", "<", ">", "1", "2", "3", "4",
-    "8", "s", "p", "P", "*", "h", "H", "+", "x", "X", "D", 
+    "8", "s", "p", "P", "*", "h", "H", "+", "x", "X-", "D", 
     "d", "|", "_", ""],
     "axes_font_size": [[-1, [8, 8]]],
-    "subplots_titles_font_size": [10],
+    "subplots_titles_font_size": [[-1, 10]],
     "subplots_titles_text":["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"],
     "legends_font_size": [[-1, 8]],
     "marker_size": [3],
@@ -47,13 +47,16 @@
     "subplots_settings": [
         {
         "rows_cols": [1, 1],
-        "subplots_distribution": [1]
+        "figure_size": [12, 10],
+        "subplots_distribution": [0]
         }
     ],
     "graph_types": ["2D"],
-    "axes_scaling":[["stretch", [0.9, 1.1, 0.9, 1.1]]],
-    "axes_number_of_small_ticks": [[5, 5]],
+    "axes_scaling":[[-1, "stretch", [0.9, 1.1, 0.9, 1.1]]],
+    "axes_number_of_small_ticks": [[-1, [5, 5]]],
     "labels": [""],
     "axes_titles": [["X", "Y"]],
-    "subplots_legend_position": ["best"]
+    "subplots_legend_position": [[-1, "best"]],
+    "logarithmic_scaling": [[-1, [0, 0]]],
+    "colormap": [[-1, "plasma"]]
 }
