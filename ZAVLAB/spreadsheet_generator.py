@@ -365,19 +365,6 @@ class Field:
                 raise ValueError(f"For calculated field, formula must not be empty.\n"
                                  f"Got: '{self.formula}' for field\n"
                                  f"{self}")
-
-        # For gathered fields error must be a non-empty string or number
-        if self.field_type == "gathered":
-
-            if not isinstance(self.error, (str, int, float)):
-                raise TypeError(f"For gathered field, error must be a non-empty string or number.\n"
-                                f"Got: {type(self.error)} for field\n"
-                                f"{self}")
-
-            if not self.error:
-                raise ValueError(f"For gathered field, error must not be empty.\n"
-                                 f"Got: '{self.error}' for field\n"
-                                 f"{self}")
     # ------------------------------------------------------------------------------------------------
 
 
@@ -984,7 +971,7 @@ class XLSXGenerator(Spreadsheet):
             for field in experiment.fields:
                 field_label_to_col[field.label] = col
                 col += 1
-                if field.field_type == "gathered":
+                if field.field_type == "gathered" and field.error is not 0:
                     col += 1
 
             # Reset col counter
@@ -994,8 +981,8 @@ class XLSXGenerator(Spreadsheet):
                 self.__write_field(field, row, col, experiment.amount,
                                    field_label_to_col, const_label_to_cell)
                 col += 1
-                # Gathered field takes 2 columns
-                if field.field_type == "gathered":
+                # Gathered field with error takes 2 columns
+                if field.field_type == "gathered" and field.error is not 0:
                     col += 1
             col -= 1
 
@@ -1057,7 +1044,7 @@ class XLSXGenerator(Spreadsheet):
 
         # Write label
         self.sheet.cell(row, col, format_label(field)).style = f"{field.field_type}_label"
-        if field.field_type == "gathered":
+        if field.field_type == "gathered" and field.error is not 0:
             # Write err label
             self.sheet.cell(row, col + 1, format_label(field, err=True)).style = f"{field.field_type}_label"
 
@@ -1075,14 +1062,15 @@ class XLSXGenerator(Spreadsheet):
             row -= amount
 
             # Write errors
-            for _ in range(amount):
-                err = format_error(field.error)
-                if err is not None:
-                    err = err.replace("first", f"{get_column_letter(col)}{start_row + 1}")
-                    err = err.replace("val", f"{get_column_letter(col)}{row}")
-                    err = '=' + err
-                self.sheet.cell(row, col + 1, err).style = "gathered_data"
-                row += 1
+            if field.error is not 0:
+                for _ in range(amount):
+                    err = format_error(field.error)
+                    if err is not None:
+                        err = err.replace("first", f"{get_column_letter(col)}{start_row + 1}")
+                        err = err.replace("val", f"{get_column_letter(col)}{row}")
+                        err = '=' + err
+                    self.sheet.cell(row, col + 1, err).style = "gathered_data"
+                    row += 1
 
 
         elif field.field_type == "calculated":
