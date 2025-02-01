@@ -46,14 +46,19 @@ class Earl:
     From various music tracks discovered via Spotify.
     """
 
-    def __init__(self, file_path_name_to_conf=Path(__file__).parent.parent / "settings/config.json", verbose=True):
+    def __init__(self, file_path_name_to_conf=Path(__file__).parent.parent / "settings/config.json", file_path_name_to_line_conf=None, verbose=True):
         """
         Initializes the Earl class with the given configuration file and sets up the plot.
+
+        This method reads the configuration file, sets up the plot with the specified number of subplots,
+        and prepares the axes for plotting.
 
         Arguments:
         ----------
         file_path_name_to_conf : str, optional
             The file path to the configuration file containing plot settings (default is "../settings/config.json").
+        file_path_name_to_line_conf : str, optional
+            The file path to the line configuration file (default is None).
         verbose : bool, optional
             A flag indicating whether to print verbose output (default is True).
 
@@ -70,20 +75,31 @@ class Earl:
 
         Notes:
         ------
-        - The method reads the configuration file and sets up the plot with the specified number of subplots.
-        - If there is only one subplot, it adjusts the `ax` attribute to be a 2D array for consistency.
-        - The `__prepare_axes` method is called to prepare the axes for plotting.
+        - The method reads the configuration file specified by `file_path_name_to_conf` and loads plot settings.
+        - It also reads an optional line configuration file specified by `file_path_name_to_line_conf`.
+        - The plot is set up with the number of subplots defined in the configuration.
+        - If there's only one subplot, `self.ax` is adjusted to be a 2D array for consistent indexing.
+        - The `__prepare_axes` method is called to further configure the plot axes.
 
         Example:
         --------
         ```python
         earl = Earl(file_path_name_to_conf="../settings/config.json", verbose=True)
         ```
+
+        Inspiration:
+        ------------
+        From various music tracks discovered via Spotify.
         """
 
         self.file_path_name_to_conf = file_path_name_to_conf
         with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
             self.config = js.load(file)
+        self.file_path_name_to_conf_for_line = file_path_name_to_line_conf
+        self.config_for_line = {}
+        if not (self.file_path_name_to_conf is None):
+            with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
+                self.config_for_line = js.load(file)
         self.plt = plt
         self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
         self.__prepare_axes()
@@ -2942,7 +2958,7 @@ class Earl:
         if not isinstance(axes_titles, (list, str)):
             raise TypeError(f"axes_titles should be a list, where each element is a list [\"X\", \"Y\"], \"X\"(\"Y\") ([\"X\", \"Y\", \"B\"])- titles for axes (\"B\" - title for barchart). Index of the element is relevant to the index of the plot is the same as the index of each list.")
         if isinstance(axes_titles, str):
-            return (f"axes_titles argument is correct.", [axes_titles])
+            return (f"axes_titles argument is correct.", [[axes_titles, axes_titles]])
         elif isinstance(axes_titles, list):
             for i in range(len(axes_titles)):
                 if not isinstance(axes_titles[i], list):
@@ -3099,7 +3115,7 @@ class Earl:
         if not isinstance(logarithmic_scaling, (list, int)):
             raise TypeError(f"logarithmic_scaling argument is incorrect." + text_that_explain_structure + " or one number (0 / 1) for all axes.")
         if isinstance(logarithmic_scaling, int):
-            return (f"logarithmic_scaling argument is correct", [-1, logarithmic_scaling])
+            return (f"logarithmic_scaling argument is correct", [-1, [logarithmic_scaling, logarithmic_scaling]])
         elif isinstance(logarithmic_scaling, list):
             for i in range(len(logarithmic_scaling)):
                 if not isinstance(logarithmic_scaling[i], list):
@@ -4432,7 +4448,7 @@ class Earl:
         print(js.dumps(self.config, indent=4, ensure_ascii=False))
 
 
-    def draw_lines(self, name_of_config_file=Path(__file__).parent.parent / "settings/config_for_lines.json", **kwargs):
+    def draw_lines(self, file_path_name_to_line_conf=Path(__file__).parent.parent / "settings/config_for_lines.json", **kwargs):
         """
         Draws lines based on the configuration file and additional keyword arguments.
 
@@ -4441,7 +4457,7 @@ class Earl:
 
         Arguments:
         ----------
-        name_of_config_file : str, optional
+        file_path_name_to_line_conf : str, optional
             The path to the configuration file for drawing lines. Defaults to "../settings/config_for_lines.json".
         **kwargs : dict
             Additional keyword arguments that can be used to customize the drawing of lines.
@@ -4459,7 +4475,7 @@ class Earl:
 
         Notes:
         ------
-        - The method reads the configuration file specified by `name_of_config_file` and loads it into `self.config_for_line`.
+        - The method reads the configuration file specified by `file_path_name_to_line_conf` and loads it into `self.config_for_line`.
         - The method then calls `self.__prepare_lines_input(**kwargs)` to prepare the input for drawing lines.
         - The method extends the line configuration by calling `self.__extend_line_config()`.
         - Finally, the method draws the lines and associated text by calling `self.__draw_lines_after_conf()` and `self.__draw_text_efter_conf()`.
@@ -4485,7 +4501,7 @@ class Earl:
         From various music tracks discovered via Spotify.
         """
 
-        self.file_path_name_to_conf_for_line = name_of_config_file
+        self.file_path_name_to_conf_for_line = file_path_name_to_line_conf
         with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
             self.config_for_line = js.load(file)
         self.__prepare_lines_input(**kwargs)
