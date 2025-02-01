@@ -818,21 +818,6 @@ class Spreadsheet:
         return string
     # ---------------------------------------------------------------------------------------------
 
-
-
-    # Raise an error if we try to call .generate() from Spreadsheet object,
-    # and not from its Generator subclass
-    # ----------------------------------------------------------------------------------------
-    def generate(self, output_file: str) -> None:
-
-        # We don't need this variable cause we're here just to raise an error
-        del output_file
-
-        raise NotImplementedError("You're tyring to call .generate() method from Spreadsheet "
-                                  "class. But it must be implemented by one of its generator "
-                                  "subclasses (e.g. XLSXGenerator)")
-    # ----------------------------------------------------------------------------------------
-
 # =====================================================================================================================
 
 
