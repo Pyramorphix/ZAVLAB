@@ -1030,7 +1030,12 @@ class XLSXGenerator(Spreadsheet):
             # Write value
             self.sheet.cell(row, col, const.value).style = "const_data"
             # Write error
-            self.sheet.cell(row, col + 1, const.error).style = "const_data"
+            err = format_error(const.error)
+            if err is not None:
+                err = err.replace("first", "val")
+                err = err.replace("val", f"{get_column_letter(col)}{row}")
+                err = '=' + err
+            self.sheet.cell(row, col + 1, err).style = "const_data"
             row += 1
     # ----------------------------------------------------------------------------------
 
@@ -1072,9 +1077,11 @@ class XLSXGenerator(Spreadsheet):
             # Write errors
             for _ in range(amount):
                 err = format_error(field.error)
-                err = err.replace("first", f"{get_column_letter(col)}{start_row + 1}")
-                err = err.replace("val", f"{get_column_letter(col)}{row}")
-                self.sheet.cell(row, col + 1, f"={err}").style = "gathered_data"
+                if err is not None:
+                    err = err.replace("first", f"{get_column_letter(col)}{start_row + 1}")
+                    err = err.replace("val", f"{get_column_letter(col)}{row}")
+                    err = '=' + err
+                self.sheet.cell(row, col + 1, err).style = "gathered_data"
                 row += 1
 
 
@@ -1096,7 +1103,10 @@ class XLSXGenerator(Spreadsheet):
 
 # Error formula formatting. The output is excel-style formula of 'val' and 'first'
 # --------------------------------------------------------------------------------------------
-def format_error(error: int | float | str | None) -> str:
+def format_error(error: int | float | str | None) -> str | None:
+
+    if error is None:
+        return None
 
     expr = str(error)
     # Formatting percentages
