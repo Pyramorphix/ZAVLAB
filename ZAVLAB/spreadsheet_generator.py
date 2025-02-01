@@ -641,11 +641,15 @@ class Spreadsheet:
 
     Methods
     -------
-    add_experiment(title: str, fields: list = []) -> None
+    add_experiment(Experiment object or
+                   title, fields=[], constants=[], amount) -> None
         Add an experiment with provided arguments to *experiments* list
 
-    add_field(experiment, label, unit, field_type, error=None, formula=None, value=None) -> None
-        Add a field with provided arguments to *fields* list of given experiment
+    add_field(experiment,
+              Field object or
+              label, unit, field_type, error=None, formula=None, value=None) -> None
+        Add a field with provided arguments to *fields* list of given experiment.
+        experiment variable is either title or ID 
 
     generate(output_file) -> None
         Returns NotImplementedError if you try to call .generate() method
@@ -813,6 +817,21 @@ class Spreadsheet:
 
         return string
     # ---------------------------------------------------------------------------------------------
+
+
+
+    # Raise an error if we try to call .generate() from Spreadsheet object,
+    # and not from its Generator subclass
+    # ----------------------------------------------------------------------------------------
+    def generate(self, output_file: str) -> None:
+
+        # We don't need this variable cause we're here just to raise an error
+        del output_file
+
+        raise NotImplementedError("You're tyring to call .generate() method from Spreadsheet "
+                                  "class. But it must be implemented by one of its generator "
+                                  "subclasses (e.g. XLSXGenerator)")
+    # ----------------------------------------------------------------------------------------
 
 # =====================================================================================================================
 
