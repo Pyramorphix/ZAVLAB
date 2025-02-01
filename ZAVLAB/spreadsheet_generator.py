@@ -719,6 +719,20 @@ class Spreadsheet:
         formula: int | float | str | None = None,
         value: int | float | str | None = None,
     ) -> None:
+        """
+        Add new field with specified parameters to specified experiment
+
+        Parameters
+        ----------
+        experiment: str | int
+            Either experiment ID or its label
+        field (Field object) or all the attributes of Field class except ID (generated automatically):
+        label, unit (opt), field_type, error (opt), formula (opt), value (opt)
+
+        Notes
+        -----
+        Calls Experiment.add_field to do the job
+        """
 
         # Extract experiment ID from 'experiment' variable
         exp_ID = self.__get_experiment_id(experiment)
@@ -735,10 +749,14 @@ class Spreadsheet:
     # we gently remind him of it instead of bashing him in the head with the hammer
     # ------------------------------------------------------------------------------------------
     def generate(self, output_file: str) -> None:
+        """
+        This method must be implemented by generator subclasses
+        (e.g. XLSXGenerator) and not the Spreadsheet class itself!
+        """
 
         del output_file  # Unused, cause we're here to just raise an error
 
-        raise NotImplementedError("This method should be implemented by a generator subclasses "
+        raise NotImplementedError("This method should be implemented by generator subclasses "
                                   "(e.g. XLSXGenerator) and not the Spreadsheet class itself")
     # ------------------------------------------------------------------------------------------
 
@@ -875,6 +893,20 @@ class XLSXGenerator(Spreadsheet):
 
     # ---------------------------------------------------------------------
     def generate(self, output_file: str) -> None:
+        """
+        Assemble .xlsx spreadsheet from experiments list in output_file
+    
+        Parameters
+        ----------
+        output_file: str
+            File path to desired output file e.g. "Path/to/file/spreadsheet"
+            Must not contain extension (.xlsx)
+            Passed to openpyxl.Workbook.save()
+
+        Notes
+        -----
+        Experiments are generated under each other with one row between them
+        """
 
         # We want the structure where title cells are merged
         # and experiments are separated by one column e.g.:
@@ -1172,6 +1204,25 @@ def format_label(field: Field, err: bool = False) -> str:
 # (Currently supported: .xlsx)
 # ----------------------------------------------------------------------------
 def get_spreadsheet_generator(filetype: str = "xlsx") -> XLSXGenerator:
+    """
+    Select the appropriate generator object based on chosen file type
+
+    Parameters
+    ----------
+    filetype: str = "xlsx"
+        Generated spreadsheet file type.
+        Currently supported: xlsx
+
+    Returns
+    -------
+    Generator object based on the file type:
+    "xlsx" -> XLSXGenerator
+
+    Raises
+    ------
+    ValueError
+        If given file type is not supported
+    """
 
     match filetype:
 
@@ -1183,7 +1234,4 @@ def get_spreadsheet_generator(filetype: str = "xlsx") -> XLSXGenerator:
         case _:
             raise ValueError(f"No generator for file type: {filetype}")
 # ----------------------------------------------------------------------------
-
-
-
 
