@@ -989,7 +989,7 @@ class XLSXGenerator(Spreadsheet):
 
             row += 2
             for const in experiment.constants:
-                const_label_to_cell[const.label] = f"{get_column_letter(col)}{row}"
+                const_label_to_cell[const.label] = f"${get_column_letter(col)}${row}"
                 row += 2
             
             # Reset row counter
