@@ -93,12 +93,14 @@ class Earl:
         """
 
         self.file_path_name_to_conf = file_path_name_to_conf
-        with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
+        print(self.file_path_name_to_conf)
+        with open(self.file_path_name_to_conf, "r", encoding="utf-8") as file:
             self.config = js.load(file)
         self.file_path_name_to_conf_for_line = file_path_name_to_line_conf
+        print(self.file_path_name_to_conf_for_line)
         self.config_for_line = {}
-        if not (self.file_path_name_to_conf is None):
-            with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
+        if not (self.file_path_name_to_conf_for_line is None):
+            with open(self.file_path_name_to_conf_for_line, "r", encoding="utf-8") as file:
                 self.config_for_line = js.load(file)
         self.plt = plt
         self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
@@ -3595,25 +3597,25 @@ class Earl:
         -------
         TypeError
             If text_rotation is not a float, integer, or list of floats or integers.
-        ValueError
-            If any text rotation angle is not a non-negative number.
 
         Notes:
         ------
         - The method first checks if the input is a float, integer, or a list.
         - For a single float or integer, it validates the format and returns a list containing the value.
         - For a list, it iterates through each element and validates the format.
-        - Each element in the list should be a non-negative float or integer.
         - If any element does not match the expected format, a TypeError or ValueError is raised.
 
         Example:
         --------
         Assuming `text_rotation` is:
         - 45.0 (correct format)
+        - -45.0 (correct format)
         - 45 (correct format)
+        - -45 (correct format)
         - 45.4 (correct format)
-        - [30.7, 45.0, 60] (correct format)
-        - [-10.0] (incorrect format)
+        - -45.4 (correct format)
+        - [30.7, 45.0, -60] (correct format)
+        - [10.0] (correct format)
         - [30.0, "45.0", 60.0] (incorrect format)
         - "45.0" (incorrect format)
 
@@ -3627,16 +3629,11 @@ class Earl:
         if not isinstance(text_rotatation, (float, int, list)):
             raise TypeError(f'text_rotatation argument is incorrect. It should be a list width float (int) elements which are angles of textes rotation or one float number for all lines.')
         if isinstance(text_rotatation, (float, int)):
-            if text_rotatation >= 0:
-                return (f"text_rotatation argument is correct.", [text_rotatation])
-            else:
-                raise ValueError(f"text_rotatation argument should be more or equal to 0.")
+            return (f"text_rotatation argument is correct.", [text_rotatation])
         elif isinstance(text_rotatation, list):
             for i in range(len(text_rotatation)):
                 if not isinstance(text_rotatation[i], (float, int)):
                     raise ValueError(f"text_rotatation argument {i} ({text_rotatation[i]}) should be a float (int).")
-                elif text_rotatation[i] < 0:
-                    raise ValueError(f"text_rotatation argument {i} ({text_rotatation[i]}) should be more or equal to 0.")
             return (f"text_rotatation argument is correct.", text_rotatation)
         
     def __check_text(self, text):
@@ -4076,7 +4073,7 @@ class Earl:
         "Kukoriki" series, episode "Oh Ye Grateful".
         """
 
-        with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
+        with open(self.file_path_name_to_conf, "r", encoding="utf-8") as file:
             config = js.load(file)
         # Color for each data series, defaulting to a dark red if not specified
         self.config["color"] = self.__extend_parameters(self.config["color"], self.quant, config["color"][0])
@@ -4446,7 +4443,7 @@ class Earl:
         """
 
         print(js.dumps(self.config, indent=4, ensure_ascii=False))
-
+        print(js.dumps(self.config_for_line, indent=4, ensure_ascii=False))
 
     def draw_lines(self, file_path_name_to_line_conf=Path(__file__).parent.parent / "settings/config_for_lines.json", **kwargs):
         """
@@ -4502,7 +4499,7 @@ class Earl:
         """
 
         self.file_path_name_to_conf_for_line = file_path_name_to_line_conf
-        with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
+        with open(self.file_path_name_to_conf_for_line, "r", encoding="utf-8") as file:
             self.config_for_line = js.load(file)
         self.__prepare_lines_input(**kwargs)
         self.__extend_line_config()
@@ -4643,7 +4640,7 @@ class Earl:
         From various music tracks discovered via Spotify.
         """
 
-        with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
+        with open(self.file_path_name_to_conf_for_line, "r", encoding="utf-8") as file:
             config = js.load(file)
         quant = len(self.config_for_line["end_point"])
         self.config_for_line["start_point"] = self.__extend_parameters(self.config_for_line["start_point"], quant, config["start_point"][0])
@@ -4881,7 +4878,7 @@ class Earl:
         """
 
         self.file_path_name_to_conf = file_path_name_to_conf
-        with open(self.file_path_name_to_conf, 'r', encoding='utf-8') as file:
+        with open(self.file_path_name_to_conf, "r", encoding="utf-8") as file:
             self.config = js.load(file)
         self.plt.close()
         self.fig, self.ax = self.plt.subplots(nrows=self.config['subplots_settings'][0]['rows_cols'][0], ncols=self.config['subplots_settings'][0]['rows_cols'][1])
@@ -4929,5 +4926,5 @@ class Earl:
         """
 
         self.file_path_name_to_conf_for_line = name_of_config_file
-        with open(self.file_path_name_to_conf_for_line, 'r', encoding='utf-8') as file:
+        with open(self.file_path_name_to_conf_for_line, "r", encoding="utf-8") as file:
             self.config_for_line = js.load(file)        
