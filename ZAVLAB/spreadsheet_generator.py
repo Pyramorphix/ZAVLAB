@@ -260,7 +260,7 @@ class Field:
         Also used in formulas
 
     field_type: str
-        "gathered" or "calculated", see above
+        "gathered", "calculated" or "const", see above
 
     error: int | float | str | None
         Expression for calculating experimental error of a measured (gathered) value.
@@ -571,6 +571,32 @@ class Experiment:
         else:
             self.fields.append(field)
     # -------------------------------------
+
+
+
+    # Get experiment length (total columns amount)
+    # ----------------------------------------------------
+    def length(self) -> int:
+
+        length: int = 0
+
+        if self.constants:
+            length += 2
+
+        for field in self.fields:
+            match field.field_type:
+
+                case "gathered":
+                    length += 1 if field.error == 0 else 2
+
+                case "calculated":
+                    length += 1
+
+                case _:
+                    pass
+
+        return length
+    # ----------------------------------------------------
 
 
 
@@ -951,14 +977,8 @@ class XLSXGenerator(Spreadsheet):
         for experiment in self.experiments:
             self.__wirte_experiment(experiment, row, col)
 
-            # Headers
-            row += 2
-
-            # Values
-            row += max(experiment.amount, len(experiment.constants) * 2)
-
-            # Separator
-            row += 1 
+            # Skip one cell
+            col += experiment.length() + 1
 
 
         # Save the spreadsheet
@@ -1007,7 +1027,7 @@ class XLSXGenerator(Spreadsheet):
             for field in experiment.fields:
                 field_label_to_col[field.label] = col
                 col += 1
-                if field.field_type == "gathered" and field.error is not 0:
+                if field.field_type == "gathered" and field.error != 0:
                     col += 1
 
             # Reset col counter
@@ -1018,7 +1038,7 @@ class XLSXGenerator(Spreadsheet):
                                    field_label_to_col, const_label_to_cell)
                 col += 1
                 # Gathered field with error takes 2 columns
-                if field.field_type == "gathered" and field.error is not 0:
+                if field.field_type == "gathered" and field.error != 0:
                     col += 1
             col -= 1
 
@@ -1080,7 +1100,7 @@ class XLSXGenerator(Spreadsheet):
 
         # Write label
         self.sheet.cell(row, col, format_label(field)).style = f"{field.field_type}_label"
-        if field.field_type == "gathered" and field.error is not 0:
+        if field.field_type == "gathered" and field.error != 0:
             # Write err label
             self.sheet.cell(row, col + 1, format_label(field, err=True)).style = f"{field.field_type}_label"
 
@@ -1098,7 +1118,7 @@ class XLSXGenerator(Spreadsheet):
             row -= amount
 
             # Write errors
-            if field.error is not 0:
+            if field.error != 0:
                 for _ in range(amount):
                     err = format_error(field.error)
                     if err is not None:
