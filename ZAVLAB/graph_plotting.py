@@ -93,11 +93,9 @@ class Earl:
         """
 
         self.file_path_name_to_conf = file_path_name_to_conf
-        print(self.file_path_name_to_conf)
         with open(self.file_path_name_to_conf, "r", encoding="utf-8") as file:
             self.config = js.load(file)
         self.file_path_name_to_conf_for_line = file_path_name_to_line_conf
-        print(self.file_path_name_to_conf_for_line)
         self.config_for_line = {}
         if not (self.file_path_name_to_conf_for_line is None):
             with open(self.file_path_name_to_conf_for_line, "r", encoding="utf-8") as file:
@@ -112,6 +110,8 @@ class Earl:
         self.subplots_settings = []
         self.verbose = verbose
         self.colorbars = []
+        self.__labels_was_printed = False
+        self.__config_files_changes = [False, False]
 
     def save_plot(self, name="graph.png"):
         """
@@ -295,9 +295,6 @@ class Earl:
             self.ax[y][x].set_ylabel(self.subplots_settings[i]["axes_titles"][1], loc="center", fontsize=self.subplots_settings[i]["axes_font_size"][1])
             self.ax[y][x].set_title(self.subplots_settings[i]["subplots_titles_text"], loc="center", fontsize=self.subplots_settings[i]["subplots_titles_font_size"])
 
-            #set legend properties
-            self.ax[y][x].legend(loc=self.subplots_settings[i]["legend_position"], frameon=False, prop={'size': self.subplots_settings[i]["legends_font_size"]})
-
             #set inital axes properties
             self.min_number, self.max_number = [1, 1], [10, 10]
             self.steps = [9, 9]
@@ -333,10 +330,10 @@ class Earl:
             self.ax[y][x].minorticks_on()
             if not self.logscaling[0]:
                 self.ax[y][x].tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
+                self.ax[y][x].xaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_number_of_small_ticks"][0]))
             if not self.logscaling[1]:
                 self.ax[y][x].tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
-            self.ax[y][x].xaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_number_of_small_ticks"][0]))
-            self.ax[y][x].yaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_number_of_small_ticks"][1]))
+                self.ax[y][x].yaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_number_of_small_ticks"][1]))
             self.ax[y][x].tick_params(direction ='in', length=5, width=1.5)
 
             #set grid
@@ -441,6 +438,9 @@ class Earl:
         lw = self.curves_settings[index]["line_width"]
         alpha = self.curves_settings[index]["line_alpha"]
         label = self.curves_settings[index]["label"]
+        if label != "":
+            if label[0] != '_':
+                self.__labels_was_printed = True
         if len(self.curves_settings[index]["data"][0]) == 2 and len(self.curves_settings[index]["data"][1]) == 2:
             xerr_data = self.curves_settings[index]["data"][0][1]
             yerr_data = self.curves_settings[index]["data"][1][1]
@@ -561,7 +561,8 @@ class Earl:
                 print(f"You have an error: {e}")
                 sys.exit(1)
             #set legend properties
-            self.ax[y][x].legend(loc=position_legend_position, frameon=False, prop={'size': fontsize_legend_font_size})
+            if self.__labels_was_printed:
+                self.ax[y][x].legend(loc=position_legend_position, frameon=False, prop={'size': fontsize_legend_font_size})
 
     def __prepare_axes(self):
         """
@@ -1030,7 +1031,7 @@ class Earl:
         for i in range(self.number_of_subplots):
             if self.config["axes_font_size"][i][0] == index:
                 return self.config["axes_font_size"][i][1]
-            elif self.config["axes_font_size"][i][0] == -1:
+            elif self.config["axes_font_size"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have fontsize for these axes titles of subplot {i} or fontsize for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1089,7 +1090,7 @@ class Earl:
         for i in range(self.number_of_subplots):
             if self.config["subplots_titles_font_size"][i][0] == index:
                 return self.config["subplots_titles_font_size"][i][1]
-            elif self.config["subplots_titles_font_size"][i][0] == -1:
+            elif self.config["subplots_titles_font_size"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have fontsize for title for these subplot {i} or fontsize for all subplots. ([x, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1148,7 +1149,7 @@ class Earl:
         for i in range(self.number_of_subplots):
             if self.config["axes_number_of_small_ticks"][i][0] == index:
                 return self.config["axes_number_of_small_ticks"][i][1]
-            elif self.config["axes_number_of_small_ticks"][i][0] == -1:
+            elif self.config["axes_number_of_small_ticks"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have number of small ticks for these axes titles of subplot {i} or number of small ticks for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1207,7 +1208,7 @@ class Earl:
         for i in range(self.number_of_subplots):
             if self.config["legends_font_size"][i][0] == index:
                 return self.config["legends_font_size"][i][1]
-            elif self.config["legends_font_size"][i][0] == -1:
+            elif self.config["legends_font_size"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have legend fontsize for these subplot {i} or legend fontsize for all subplots. ([x, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1266,7 +1267,7 @@ class Earl:
         for i in range(self.number_of_subplots):
             if self.config["subplots_legend_position"][i][0] == index:
                 return self.config["subplots_legend_position"][i][1]
-            elif self.config["subplots_legend_position"][i][0] == -1:
+            elif self.config["subplots_legend_position"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have legend position for title for these subplot {i} or legend position for all subplots. ([x, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1325,7 +1326,7 @@ class Earl:
         for i in range(self.number_of_subplots):
             if self.config["axes_round_accuracy"][i][0] == index:
                 return self.config["axes_round_accuracy"][i][1]
-            elif self.config["axes_round_accuracy"][i][0] == -1:
+            elif self.config["axes_round_accuracy"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have element axes_round_accuracy for these subplot {i} or axes_round_accuracy for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1384,7 +1385,7 @@ class Earl:
         for i in range(self.number_of_subplots):
             if self.config["logarithmic_scaling"][i][0] == index:
                 return self.config["logarithmic_scaling"][i][1]
-            elif self.config["logarithmic_scaling"][i][0] == -1:
+            elif self.config["logarithmic_scaling"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have argument for logarithmic_scaling for these axes titles of subplot {i} or one logarithmic_scaling argument for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1443,7 +1444,7 @@ class Earl:
         for i in range(self.number_of_subplots):
             if self.config["axes_scaling"][i][0] == index:
                 return self.config["axes_scaling"][i][1:]
-            elif self.config["axes_scaling"][i][0] == -1:
+            elif self.config["axes_scaling"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             raise ValueError(f"you don't have argument for axes_scaling for these axes titles of subplot {i} or one logarithmic_scaling argument for all subplots. ([x, [y, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1500,7 +1501,7 @@ class Earl:
         for i in range(len(self.config["colormap"])):
             if self.config["colormap"][i][0] == index:
                 return self.config["colormap"][i][1]
-            elif self.config["colormap"][i][0] == -1:
+            elif self.config["colormap"][i][0] == -1 and flag_minus_one == -1:
                 flag_minus_one = i
         if flag_minus_one == -1:
             return  "plasma" #raise ValueError(f"you don't have colormap for these subplot {i} or colormap for all subplots. ([x, y]] x - is index of subplot, if x == -1 these means that it will be used for all subplots that don't have theor own settings. To overcome these problem you have to check you arguments.)")
@@ -1575,7 +1576,6 @@ class Earl:
         }
         This method will validate the provided parameters and update `self.config` accordingly.
         """
-        json_keys = self.config.keys()
         # Dictionary mapping each parameter to its corresponding validation function
         check_functions = {
             "color": self.__check_color, 
@@ -4497,10 +4497,10 @@ class Earl:
         ------------
         From various music tracks discovered via Spotify.
         """
-
-        self.file_path_name_to_conf_for_line = file_path_name_to_line_conf
-        with open(self.file_path_name_to_conf_for_line, "r", encoding="utf-8") as file:
-            self.config_for_line = js.load(file)
+        if not self.__config_files_changes[1]:
+            self.file_path_name_to_conf_for_line = file_path_name_to_line_conf
+            with open(self.file_path_name_to_conf_for_line, "r", encoding="utf-8") as file:
+                self.config_for_line = js.load(file)
         self.__prepare_lines_input(**kwargs)
         self.__extend_line_config()
         self.__draw_lines_after_conf()
@@ -4886,6 +4886,7 @@ class Earl:
         self.curves_settings = []
         self.subplots_settings = []
         self.colorbars = []
+        self.__config_files_changes[0] = True
 
     def change_config_for_lines_file(self, name_of_config_file):
         """
@@ -4927,4 +4928,5 @@ class Earl:
 
         self.file_path_name_to_conf_for_line = name_of_config_file
         with open(self.file_path_name_to_conf_for_line, "r", encoding="utf-8") as file:
-            self.config_for_line = js.load(file)        
+            self.config_for_line = js.load(file)  
+        self.__config_files_changes[1] = True
