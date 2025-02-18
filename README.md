@@ -38,7 +38,9 @@ pip install -e .
 ```
 
 ## Usage
-ZAVLAB provides tools for generating spreadsheets, calculating errors, and plotting graphs. Below are examples of how to use the library.
+ZAVLAB provides tools for generating spreadsheets, calculating errors, and plotting graphs. You can get all the documentation from [wiki](https://github.com/Pyramorphix/ZAVLAB/wiki).
+
+Below are some examples of how to use the library.
 
 ### Spreadsheet Generation
 ZAVLAB can create spreadsheets for laboratory data collection. Here’s an example of how to generate a spreadsheet (for detailed comments see [example](examples/spreadsheet_generation.py)):
