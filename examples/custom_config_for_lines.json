@@ -1,0 +1,85 @@
+{
+  "_comment": "Descriptions for parameters are in Earl_class_doc.md",
+  "start_point": [
+    [
+      1,
+      10
+    ]
+  ],
+  "end_point": [
+    [
+      5,
+      50
+    ]
+  ],
+  "subplot_pos_line": [
+    0
+  ],
+  "line_color": [
+    "#1B1F3B",
+    "#FF5733",
+    "#2ECC71",
+    "#8E44AD",
+    "#3498DB",
+    "#D35400",
+    "#16A085",
+    "#C0392B",
+    "#5DADE2",
+    "#900C3F",
+    "#27AE60",
+    "#34495E",
+    "#E74C3C",
+    "#2C3E50",
+    "#58D68D",
+    "#6C3483",
+    "#1ABC9C",
+    "#E67E22",
+    "#2980B9",
+    "#922B21",
+    "#45B39D",
+    "#A569BD",
+    "#154360",
+    "#F39C12",
+    "#2E86C1",
+    "#7D3C98",
+    "#138D75",
+    "#B03A2E",
+    "#2471A3",
+    "#117A65",
+    "#641E16"
+  ],
+  "line_ls": [
+    "-",
+    "--",
+    "-.",
+    ":",
+    ""
+  ],
+  "line_alpha": [
+    1
+  ],
+  "line_width": [
+    1
+  ],
+  "labels": [
+    ""
+  ],
+  "text": [
+    "Example Line"
+  ],
+  "text_pos": [
+    [
+      6.202500000000001,
+      64.42120454545456
+    ]
+  ],
+  "text_rotation": [
+    0
+  ],
+  "text_color": [
+    "#000000"
+  ],
+  "text_font_size": [
+    8
+  ]
+}
