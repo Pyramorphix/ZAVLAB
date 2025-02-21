@@ -46,7 +46,7 @@ class Earl:
     From various music tracks discovered via Spotify.
     """
 
-    def __init__(self, file_path_name_to_conf=Path(__file__).parent.parent / "settings/config.json", file_path_name_to_line_conf=None, verbose=True):
+    def __init__(self, file_path_name_to_conf=Path(__file__).parent.parent / "settings/config.json", file_path_name_to_line_conf=None, verbose=False):
         """
         Initializes the Earl class with the given configuration file and sets up the plot.
 
@@ -1943,7 +1943,7 @@ class Earl:
         if not isinstance(subplots_titles_font_size, (list, int)):
             raise TypeError(f"legends_font_size argument is incorrect. It should be a list with elements like [x, y] (x - number of subplot, y - number - size of font for title for x subplot) or one number for all titles fonts")
         if isinstance(subplots_titles_font_size, int):
-            return (f"legend argument is correct", [-1, subplots_titles_font_size])
+            return (f"legend argument is correct", [[-1, subplots_titles_font_size]])
         elif isinstance(subplots_titles_font_size, list):
             for i in range(len(subplots_titles_font_size)):
                 if not isinstance(subplots_titles_font_size[i], list):
@@ -2070,7 +2070,7 @@ class Earl:
         if not isinstance(legends_font_size, (list, int)):
             raise TypeError(f"legends_font_size argument is incorrect." + text_that_explain_structure)
         if isinstance(legends_font_size, int):
-            return (f"legend argument is correct", [-1, legends_font_size])
+            return (f"legend argument is correct", [[-1, legends_font_size]])
         elif isinstance(legends_font_size, list):
             for i in range(len(legends_font_size)):
                 if not isinstance(legends_font_size[i], list):
@@ -2330,7 +2330,7 @@ class Earl:
         if isinstance(axes_round_accuracy, str):
             if not all([axes_round_accuracy[0] == '%' and axes_round_accuracy[1] == '0' and axes_round_accuracy[2] == '.']):
                     raise ValueError(f'axes_round_accuracy argument number should be presented like y - string like "%0.xf", where x shows to which decimal number should be rounded')
-            return (f"axes_round_accuracy argument is correct", [-1, [axes_round_accuracy, axes_round_accuracy]])
+            return (f"axes_round_accuracy argument is correct", [[-1, [axes_round_accuracy, axes_round_accuracy]]])
         elif isinstance(axes_round_accuracy, list):
             for i in range(len(axes_round_accuracy)):
                 if not isinstance(axes_round_accuracy[i], list):
@@ -3042,7 +3042,7 @@ class Earl:
                 subplots_legend_position = 'center right'  # Adjust 'outside' to a valid matplotlib position
             if subplots_legend_position not in valid_positions:
                 raise ValueError(f"Legend position '{subplots_legend_position}' is not recognized. Use one of {valid_positions}")
-            return (f"subplots_legend_position argument is correct", [-1, subplots_legend_position])
+            return (f"subplots_legend_position argument is correct", [[-1, subplots_legend_position]])
         
         elif isinstance(subplots_legend_position, list):
             for i in range(len(subplots_legend_position)):
@@ -3117,7 +3117,7 @@ class Earl:
         if not isinstance(logarithmic_scaling, (list, int)):
             raise TypeError(f"logarithmic_scaling argument is incorrect." + text_that_explain_structure + " or one number (0 / 1) for all axes.")
         if isinstance(logarithmic_scaling, int):
-            return (f"logarithmic_scaling argument is correct", [-1, [logarithmic_scaling, logarithmic_scaling]])
+            return (f"logarithmic_scaling argument is correct", [[-1, [logarithmic_scaling, logarithmic_scaling]]])
         elif isinstance(logarithmic_scaling, list):
             for i in range(len(logarithmic_scaling)):
                 if not isinstance(logarithmic_scaling[i], list):
@@ -3187,7 +3187,7 @@ class Earl:
         if not isinstance(colormap, (list, str, Colormap)):
             raise TypeError(f"colormap argument is incorrect." + text_that_explain_structure)
         if isinstance(colormap, (str, Colormap)):
-            return (f"colormap argument is correct", [-1, colormap])
+            return (f"colormap argument is correct", [[-1, colormap]])
         elif isinstance(colormap, list):
             for i in range(len(colormap)):
                 if not isinstance(colormap[i], list):
@@ -3690,7 +3690,7 @@ class Earl:
                     raise TypeError(f"text element {i} ({text[i]}) should be a list with strings(text as a label for the line).")
             return  (f"text argument is correct", text)
     
-    def __check_text_fontsize(self, text_fontsize):
+    def __check_text_font_size(self, text_fontsize):
         """
         Validate the font size for text labels in plotting.
 
@@ -4570,8 +4570,7 @@ class Earl:
                            "line_width": self.__check_line_width,
                            "text_rotation": self.__check_text_rotation,
                            "text_color": self.__check_color,
-                           "text_fontsize": self.__check_text_fontsize,
-
+                           "text_font_size": self.__check_text_font_size
                            }
         for key, value in kwargs.items():
             try:
