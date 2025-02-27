@@ -83,11 +83,61 @@ if __name__ == "__main__":
     spreadsheet.generate(f"{path}/spreadsheet")
 ```
 
-### Error Calculation
+
+### Error Calculation and data approximation
 Coming soon...
 
 ### Graph plotting
-My part is done here. This is to be written by Arina
+ZAVLAB also can help you with making plots. Here is an example how to make few plots in one place. (for detailed comments see [basic_principles](examples/basic_principles.py), [importing_configs](examples/importing_configs.py) or [all_in](examples/all_in.py)): (here is basic_principles):
+```python
+import numpy as np
+from ZAVLAB.graph_plotting import Earl
+
+# Create an instance of Earl
+graph = Earl()
+
+# Define data
+data_array = [
+    [[np.linspace(1, 10, 10)], [np.linspace(10, 100, 10)]],  # 2D dataset - number 0
+    [[np.linspace(1, 10, 10), np.linspace(1, 10, 10) * 0.05], [np.linspace(20, 103, 10), np.linspace(20, 103, 10) * 0.01]],  # 2D dataset with errors - number 1
+    [np.linspace(-10, 10, 100), np.linspace(-10, 10, 100), np.random.rand(100, 100)],  # 3D dataset - number 2
+    [[np.linspace(1, 10, 10)], [np.linspace(-5, 10, 10)]],  # 2D dataset - number 3
+]
+
+# Plot the data
+graph.plot_graph(
+    data_array=data_array,
+    subplots_distribution=[0, 0, 1, 1], # <= Here we explain to function which how to place data in subplots:
+    #subplots number 0 and 1 will be placed in the first subplot (index 0), subplots 2 and 3 will be placed in the second subplot (index 1)
+    ls=["-", ":", "", "--"],
+    labels=["First 2D Line", "Second 2D Line", "3D Surface", "2D Line on 3D Surface"],
+    rows_cols=[1, 2],
+    figure_size=[12, 6],
+    graph_types=["2D", "2D", "3D", "2D"],
+    colormap=[[1, "YlGn"]],
+    axes_titles=[["X-axis", "Y-axis"], ["X", "Y", "Colorbar"]],
+    axes_scaling = [[1, "divide", [[-10, 10, 11], [-10, 10, 11]]]],
+    marker_size = [10, 10, 10, 10],
+    color=["#FF5733", "#2ECC71", "#000000", "#FF5733",]
+)
+
+# Add a line and annotation
+graph.draw_lines(
+    start_point=[1, 10],
+    end_point=[5, 50],
+    text="Example Line",
+    subplot_pos_line=0,
+)
+
+# Display the plot
+graph.show_plot()
+
+# Save the plot and configuration
+graph.save_plot(name="custom_plot.svg")
+graph.save_config(name="custom_config.json")
+graph.save_config_for_lines(name="custom_config_for_lines.json")
+```
+
 
 ## Contributing
 Contributions are welcome! If you’d like to contribute, please follow these steps:
@@ -104,8 +154,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 
 ## Contact
-
-We're planning to create an e-mail for the project. For now, write to `Issues` section.
+zavlab.dev@yandex.ru
 
 
 ## Acknowledgements

@@ -1,41 +1,16 @@
 {
-  "_comment": "Descriptions for colors, line styles (ls), ... are in confuiguration_doc.md",
+  "_comment": "Descriptions for colors, line styles (ls), ... are in Earl_class_doc.md",
   "color": [
-    "#1B1F3B",
     "#FF5733",
     "#2ECC71",
-    "#8E44AD",
-    "#3498DB",
-    "#D35400",
-    "#16A085",
-    "#C0392B",
-    "#5DADE2",
-    "#900C3F",
-    "#27AE60",
-    "#34495E",
-    "#E74C3C",
-    "#2C3E50",
-    "#58D68D",
-    "#6C3483",
-    "#1ABC9C",
-    "#E67E22",
-    "#2980B9",
-    "#922B21",
-    "#45B39D",
-    "#A569BD",
-    "#154360",
-    "#F39C12",
-    "#2E86C1",
-    "#7D3C98",
-    "#138D75",
-    "#B03A2E",
-    "#2471A3",
-    "#117A65",
-    "#641E16"
+    "#000000",
+    "#FF5733"
   ],
   "ls": [
     "-",
-    ""
+    ":",
+    "",
+    "--"
   ],
   "marker_shape": [
     ".",
@@ -70,15 +45,15 @@
       -1,
       [
         8,
-        8
+        8,
+        10
       ]
     ],
     [
       -1,
       [
         8,
-        8,
-        10
+        8
       ]
     ]
   ],
@@ -131,14 +106,20 @@
     ]
   ],
   "marker_size": [
-    3,
-    3
+    10,
+    10,
+    10,
+    10
   ],
   "line_width": [
+    0.5,
+    0.5,
     0.5,
     0.5
   ],
   "line_alpha": [
+    1,
+    1,
     1,
     1
   ],
@@ -170,23 +151,33 @@
       ],
       "subplots_distribution": [
         0,
-        0
+        0,
+        1,
+        1
       ]
     }
   ],
   "graph_types": [
     "2D",
-    "3D"
+    "2D",
+    "3D",
+    "2D"
   ],
   "axes_scaling": [
     [
-      -1,
-      "stretch",
+      1,
+      "divide",
       [
-        0.9,
-        1.1,
-        0.9,
-        1.1
+        [
+          -10,
+          10,
+          11
+        ],
+        [
+          -10,
+          10,
+          11
+        ]
       ]
     ],
     [
@@ -217,14 +208,15 @@
     ]
   ],
   "labels": [
-    "2D Line",
-    "3D Surface"
+    "First 2D Line",
+    "Second 2D Line",
+    "3D Surface",
+    "2D Line on 3D Surface"
   ],
   "axes_titles": [
     [
       "X-axis",
-      "Y-axis",
-      ""
+      "Y-axis"
     ],
     [
       "X",
@@ -261,7 +253,7 @@
   "colormap": [
     [
       1,
-      "Spectral"
+      "YlGn"
     ]
   ]
 }

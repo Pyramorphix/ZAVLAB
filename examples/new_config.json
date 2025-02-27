@@ -1,5 +1,5 @@
 {
-  "_comment": "Descriptions for colors, line styles (ls), ... are in confuiguration_doc.md",
+  "_comment": "Descriptions for colors, line styles (ls), ... are in Earl_class_doc.md",
   "color": [
     "#1B1F3B",
     "#FF5733",
@@ -58,6 +58,14 @@
       -1,
       [
         8,
+        8,
+        10
+      ]
+    ],
+    [
+      -1,
+      [
+        8,
         8
       ]
     ],
@@ -65,24 +73,14 @@
       -1,
       [
         8,
-        8,
-        10
+        8
       ]
     ],
     [
       -1,
       [
         8,
-        8,
-        10
-      ]
-    ],
-    [
-      -1,
-      [
-        8,
-        8,
-        10
+        8
       ]
     ]
   ],
@@ -333,14 +331,14 @@
     ]
   ],
   "labels": [
-    "xerr, yerr",
-    "only xerr",
-    "only yerr",
-    "no errors",
     "",
-    "data",
-    "approxim",
-    "$y=arctan(x)$"
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
   ],
   "axes_titles": [
     [
