@@ -83,6 +83,7 @@ if __name__ == "__main__":
     spreadsheet.generate(f"{path}/spreadsheet")
 ```
 
+
 ### Error Calculation and data approximation
 Coming soon...
 
@@ -154,6 +155,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Contact
 zavlab.dev@yandex.ru
+
 
 ## Acknowledgements
 
