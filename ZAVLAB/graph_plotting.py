@@ -11,7 +11,7 @@ from pathlib import Path
 This part was made by Arina.
 In this file, all "inspiration" comments must be treated as funny jokes!
 I tried to take into account all the possibilities of breaking class Earl.
-If you do it, then your stupidity level is genious.
+If you do it, then your stupidity level is genius.
 Also in this case DON'T bother ypurself to email us to report an issue. 
 Now, let's go!
 """
