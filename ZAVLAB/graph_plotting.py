@@ -17,7 +17,7 @@ Now, let's go!
 """
 '''
 And don't forget:
-"To make something special you just have to believe that it is special." from Kungfu panda.
+"To make something special you just have to believe that it is special." from Kung Fu panda.
 '''
 
 class Earl:

@@ -1,7 +1,8 @@
 import numpy as np
 import math
 from scipy.optimize import minimize
-
+from lmfit import Parameters, minimize, fit_report
+import types
 """
 This part was made by Arina with help of Stepan Shipilov. 
 For more inforamtion about calculating errors you can visit his github: https://github.com/stive-shipilov
@@ -72,7 +73,9 @@ def mnk(data, use_systematic = False, systematic_eror = None):
     if use_systematic and systematic_eror is not None:
         av_sys_error = np.mean(systematic_eror)
         slope_sig = math.sqrt(av_sys_error**2 + slope_sig**2)
-    return slope, slope_sig
+    b = np.mean(data_y) - slope * np.mean(data_x)
+    b_sig = slope_sig * np.sqrt(np.mean(data_x ** 2))
+    return slope, b, slope_sig, b_sig
 
 
 def chi2_regression_1d(data):
@@ -334,3 +337,35 @@ def xi_square_approximation(func, initial_coeffs, data):
         result_err.append(np.std(datas))
 
     return result_val, result_err
+
+def residualReal(pars, x_data, func_to_calculate_y, data=None):
+    # return the residual, i.e. the fitted model - the experimental data
+
+	model=np.real(func_to_calculate_y(x_data, pars))
+
+	if data is None:
+		return model
+
+	return (model - np.real(data))
+
+def residualBoth(pars, x_data, func_to_calculate_y, data=None):
+    # return the residual, i.e. model - experiment
+	# fit to the real and imaginary parts with equal weighting [could scale one relative to the other to make it less significant]
+
+	model=func_to_calculate_y(x_data, pars)
+	if data is None:
+		return model
+	return ((np.real(model) - np.real(data))**2) + (np.imag(model) - np.imag(data))**2	
+
+def approximate_params(data, fit_params, fitting_function=residualBoth, verbose=False):
+    try:
+        __check_of_data_with_x_y(data)
+        if not isinstance(fitting_function, types.FunctionType):
+            raise ValueError("fitting function should be a function!!! For example you can use residualReal or residualBoth.")
+    except (ValueError, TypeError) as e:
+        print(f"Error is {e}")
+    
+    res =  minimize(fitting_function, fit_params, args=(data[0][0]), kws={'data':data[1][0]})
+    if verbose:
+        print(fit_report(res))
+    
