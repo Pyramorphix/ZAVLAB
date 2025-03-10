@@ -15,6 +15,10 @@ If you do it, then your stupidity level is genious.
 Also in this case DON'T bother yourself to email us to report an issue. 
 Now, let's go!
 """
+'''
+And don't forget:
+"To make something special you just have to believe that it is special." from Kungfu panda.
+'''
 
 class Earl:
     """
