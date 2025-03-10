@@ -357,15 +357,24 @@ def residualBoth(pars, x_data, func_to_calculate_y, data=None):
 		return model
 	return ((np.real(model) - np.real(data))**2) + (np.imag(model) - np.imag(data))**2	
 
-def approximate_params(data, fit_params, fitting_function=residualBoth, verbose=False):
+def linear_model(x, params):
+    k = params["k"]
+    b = params["b"]
+    return x * k + b
+
+def approximate_params(data, fit_params, function_to_calc_output, fitting_function=residualBoth, verbose=False):
     try:
         __check_of_data_with_x_y(data)
         if not isinstance(fitting_function, types.FunctionType):
             raise ValueError("fitting function should be a function!!! For example you can use residualReal or residualBoth.")
+        if not isinstance(fitting_function, types.FunctionType):
+            raise ValueError("output function should be a function!!! For example you can use linear_function.")
+
     except (ValueError, TypeError) as e:
         print(f"Error is {e}")
     
-    res =  minimize(fitting_function, fit_params, args=(data[0][0]), kws={'data':data[1][0]})
+    res =  minimize(fitting_function, fit_params, args=(data[0][0], function_to_calc_output), kws={'data':data[1][0]})
     if verbose:
         print(fit_report(res))
+    return res.params
     
