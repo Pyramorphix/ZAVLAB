@@ -160,4 +160,4 @@ zavlab.dev@yandex.ru
 
 ## Acknowledgements
 
-We highly thank Maxim Paukov for consulting us on scientific subjects.
+We highly thank Maksim Paukov for consulting us on scientific subjects.
