@@ -3,12 +3,24 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, PatternFill, NamedStyle, Alignment, Side, Border
 from copy import copy
 
+from ZAVLAB.database_manager import DatabaseManager
+
 # GLOBAL CONSTANTS (TODO: move to config)
 # ---------------------------------------------------------------------------------------------------
 
-#  ----------------------
-# | Spreadsheet settings |
-#  ----------------------
+
+#  --------------------
+# | SQL table settings |
+#  --------------------
+
+# Default file name
+DEFAULT_SQL_FILENAME = "database"
+
+
+
+#  ----------------------------
+# | Excel spreadsheet settings |
+#  ----------------------------
 
 # Maximum row count in the spreadsheet. Feel free to change if needed
 MAX_ROW_COUNT = 100
@@ -252,8 +264,11 @@ class Field:
     id: int
         Unique ID of a field. Generated automatically in .add_field() method
 
+    description: str
+        Header of a field which is displayed in the spreadsheet
+
     label: str
-        Header of a field
+        Short header of a field which is used in formulas
 
     unit: str
         Measure unit of a value, in the actual spreadsheet goes into label,
@@ -282,6 +297,7 @@ class Field:
     # --------------------------------------------------------------------
     def __init__(
         self,
+        description: srt = '',
         label: str = '',
         field_type: str = '',
         unit: str = "",
@@ -291,6 +307,7 @@ class Field:
         id: int = 0,
     ) -> None:
 
+        self.description: str = description
         self.label: str = label
         self.field_type: str = field_type
         self.unit: str = unit
@@ -765,7 +782,7 @@ class Spreadsheet:
 
         # Remember that IDs start with 1, so the position in the list is ID - 1
         exp_pos = exp_ID - 1
-
+        
         self.experiments[exp_pos].add_field(field, label, unit, field_type, error, formula, value)
     # --------------------------------------------------------------------------------------------
 
@@ -875,8 +892,57 @@ therefore we need to make an individual generator for each type.
 """
 # =====================================================================================================================
 
+class SQLGenerator(Spreadsheet):
+    """
+    Spreadsheet subclass.
+    Generator which assembles .db file from Spreadsheet experiments list
+
+    Attributes
+    ----------
+    Same as for Spreadsheet and:
+    filename: str | None
+        File name for the database without ".db".
+        If None, is set to DEFAULT_SQL_FILENAME
+
+    Methods
+    -------
+    TODO: write
+
+    See Also
+    --------
+    Spreadsheet: the basement for creating a spreadsheet.
+    """
+
+    # ----------------------------------------------------------------------------
+    def __init__(self,
+                 experiments: list[Experiment] | None = None,
+                 filename: str | None = None):
+
+        super().__init__(experiments)
+        self.filename = filename if filename is not None else DEFAULT_SQL_FILENAME
+        self.db = DatabaseManager(self.filename)
+    # ----------------------------------------------------------------------------
+
+
+
+    # -----------------------------------------------------------------------------
+    def save_value(self, exp_id, field_id, row, value, value_type):
+        if value_type == 'value':
+            self.db.save_data_entry(exp_id, field_id, row, value=value)
+        elif value_type == 'error':
+            self.db.save_data_entry(exp_id, field_id, row, error=value)
+    # -----------------------------------------------------------------------------
+
+
+
+
+
 class XLSXGenerator(Spreadsheet):
     """
+    =================
+       DEPRECATED!
+    =================
+
     Spreadsheet subclass.
     Generator which assembles .xlsx file from Spreadsheet experiments list
 
