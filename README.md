@@ -154,9 +154,10 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 
 ## Contact
+Feel free to contact us by email:
 zavlab.dev@yandex.ru
 
 
 ## Acknowledgements
 
-We highly thank Maxim Paukov for consulting us on scientific subjects.
+We highly thank Maksim Paukov for consulting us on scientific subjects.
