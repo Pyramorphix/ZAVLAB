@@ -7,15 +7,6 @@ import matplotlib.ticker as ticker
 from matplotlib.colors import Colormap
 from pathlib import Path
 
-'''
-
-В остальном только косметическое:
-2. В документации на вики не написано про возможность контролировать маленькие деления (axes_small_ticks).
-3. Я бы поменял несколько названий у атрибутов, потому что они логически не вяжутся (у каких-то в начале есть "subplots_", у других нет, некоторые слова где-то в единственном числе, где-то во множественном).
-4. На вики везде, где говорится про нулевой subplot, написано "null". Это чаще означает "пустой", чем "нулевой", поэтому лучше заменить на "zero" или "first".
-
-'''
-
 """
 This part was made by Arina.
 In this file, all "inspiration" comments are just my attempt to make this work a little more lively!
