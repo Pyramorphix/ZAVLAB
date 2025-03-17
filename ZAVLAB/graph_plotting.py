@@ -12,7 +12,7 @@ This part was made by Arina.
 In this file, all "inspiration" comments are just my attempt to make this work a little more lively!
 I tried to take into account all the possibilities of breaking class Earl.
 If you do it, then your stupidity level is genius.
-Also in this case DON'T bother ypurself to email us to report an issue. 
+Also in this case DON'T bother yourself to email us to report an issue. 
 Now, let's go!
 """
 '''
