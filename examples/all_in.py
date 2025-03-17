@@ -55,8 +55,9 @@ example_graph = Earl(verbose=False)
 
 #plot data
 example_graph.plot_graph(data_array=data_array, rows_cols=[2, 2], subplots_distribution=[0, 0, 0, 0, 1, 2, 2, 3],
-                         ls=['-'] * 5 + [''] + ['-'] * 2, logarithmic_scaling=[[0, [1, 1]]], line_width=[1] * 4, marker_size=3, marker_shape=["P"] * 6 + [""] * 2, axes_titles=[["some X title", "some Y title"], ["x", "y", "some cbar title"], [r"$\nu$, Гц", "U, Вт"]], axes_round_accuracy=[[0, ["%0.0f", "%0.0f"]], [1, ["%0.0f", "%0.0f"]], [2, ["%0.2f", "%0.0f"]], [3, ["%0.0f", "%0.2f"]]],
-                         colormap=[[1, "Spectral"]], axes_scaling=[[1, "divide", [[-10, 10, 11], [-10, 10, 11]]], [2, "divide", [[0.88, 1.12, 4], [3, 27, 4]]], [3, "divide", [[-10, 10, 11],[-np.pi / 2 - 0.1, np.pi / 2 + 0.1, 11]]]], graph_types=["2D"] * 4 + ["3D"] + ["2D"] * 2)
+                         line_style=['-'] * 5 + [''] + ['-'] * 2, axes_log_scaling=[[0, [1, 1]]], line_width=[1] * 4, marker_size=3, marker_shape=["P"] * 6 + [""] * 2, axes_title=[["some X title", "some Y title"], ["x", "y", "some cbar title"], [r"$\nu$, Гц", "U, Вт"]], axes_round_accuracy=[[0, ["%0.0f", "%0.0f"]], [1, ["%0.0f", "%0.0f"]], [2, ["%0.2f", "%0.0f"]], [3, ["%0.0f", "%0.2f"]]],
+                         colormap=[[1, "Spectral"]], axes_scaling=[[1, "divide", [[-10, 10, 11], [-10, 10, 11]]], [2, "divide", [[0.88, 1.12, 4], [3, 27, 4]]], [3, "divide", [[-10, 10, 11],[-np.pi / 2 - 0.1, np.pi / 2 + 0.1, 11]]]], 
+                         data_type=["2D"] * 4 + ["3D"] + ["2D"] * 2, axes_fsize=[[0, [6, 4]], [1, [5, 4, 16]], [-1, [12, 12]]])
 #plot lines
 example_graph.draw_lines(start_point=[[1, 3], [0.88, 24.58], [-10, k * -10 + b]], end_point=[[1, 24.58], [1, 24.58], [2, 1.1]], text=[r"$\nu=31.3$Гц", "Q=24.5", "касательная к точке 2"], subplot_pos_line=[2, 2, 3], text_pos=[[False, False], [0.9, 25], [-6, -0.33]], text_rotation=[10, -90, -47])
 
@@ -76,4 +77,4 @@ example_graph.plot_graph(data_array=data_array)
 example_graph.draw_lines()
 
 #here you can see that config that we've generated correctly displays data
-example_graph.show_plot()
+#example_graph.show_plot()
