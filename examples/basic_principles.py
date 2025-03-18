@@ -41,6 +41,6 @@ graph.draw_lines(
 graph.show_plot()
 
 # Save the plot and configuration
-graph.save_plot(name="custom_plot.svg")
+graph.save_plot(name="custom_plot.png")
 graph.save_config(name="custom_config.json")
 graph.save_config_for_lines(name="custom_config_for_lines.json")
