@@ -6,7 +6,7 @@
     "#000000",
     "#FF5733"
   ],
-  "ls": [
+  "line_style": [
     "-",
     ":",
     "",
@@ -40,7 +40,7 @@
     "_",
     ""
   ],
-  "axes_font_size": [
+  "axes_title_fsize": [
     [
       -1,
       [
@@ -57,7 +57,7 @@
       ]
     ]
   ],
-  "subplots_titles_font_size": [
+  "title_fsize": [
     [
       -1,
       10
@@ -67,7 +67,7 @@
       10
     ]
   ],
-  "subplots_titles_text": [
+  "title_text": [
     "a",
     "b",
     "c",
@@ -95,7 +95,7 @@
     "y",
     "z"
   ],
-  "legends_font_size": [
+  "legend_fsize": [
     [
       -1,
       8
@@ -145,7 +145,7 @@
         1,
         2
       ],
-      "figure_size": [
+      "fig_size": [
         12,
         6
       ],
@@ -157,7 +157,7 @@
       ]
     }
   ],
-  "graph_types": [
+  "data_type": [
     "2D",
     "2D",
     "3D",
@@ -191,7 +191,7 @@
       ]
     ]
   ],
-  "axes_number_of_small_ticks": [
+  "axes_small_ticks": [
     [
       -1,
       [
@@ -207,13 +207,13 @@
       ]
     ]
   ],
-  "labels": [
+  "label": [
     "First 2D Line",
     "Second 2D Line",
     "3D Surface",
     "2D Line on 3D Surface"
   ],
-  "axes_titles": [
+  "axes_title": [
     [
       "X-axis",
       "Y-axis"
@@ -224,7 +224,7 @@
       "Colorbar"
     ]
   ],
-  "subplots_legend_position": [
+  "legend_position": [
     [
       -1,
       "best"
@@ -234,7 +234,7 @@
       "best"
     ]
   ],
-  "logarithmic_scaling": [
+  "axes_log_scaling": [
     [
       -1,
       [
@@ -254,6 +254,24 @@
     [
       1,
       "YlGn"
+    ]
+  ],
+  "axes_fsize": [
+    [
+      -1,
+      [
+        14,
+        14,
+        14
+      ]
+    ],
+    [
+      -1,
+      [
+        14,
+        14,
+        14
+      ]
     ]
   ]
 }

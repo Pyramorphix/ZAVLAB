@@ -96,7 +96,7 @@ List of options for some of parameters are presented after the table.
 | **`color`** | data | Colors for curves. Accepts hex codes | list of strings or one string, where strings represent color in hex format. |`color=["#FF5733", "#2ECC71"]` or `color="#FF5733"` |
 | **`marker_shape`** | data | Shape of markers for data points. [Possible options](#marker-shapes-descriptions)| list of strings or one string, with marker shapes options. |`marker_shape=["o", "^"]` or `marker_shape="o"` |
 | **`marker_size`** | data | Size of markers. (Default is 3) | List of int positive numbers or one number, which represents the size  of points (markers) | `marker_size=[1, 2]` or `marker_size=2` |
-| **`labels`** | data |Labels for curves. These appear in the legend. | list of strings or one string, where strings are labels for data in legend. | `labels=["Curve 1", "Curve 2"]` or `labels="Curve 1"` |
+| **`label`** | data |Labels for curves. These appear in the legend. | list of strings or one string, where strings are label for data in legend. | `label=["Curve 1", "Curve 2"]` or `label="Curve 1"` |
 | **`line_style`** | data | Line styles for curves. [Possible options](#line-style-descriptions)| list of strings or one string, with line_style options. |`line_style=["-", "--"]` or `line_style='-'` |
 | **`line_width`** | data | Line width for curves. (Defualt is 0.5) | List of float or int non-negative numbers or one number| `line_width=[2, 0.8]` or `line_width=1.5` |
 | **`line_alpha`** | data | Transparency of the lines (0 is fully transparent, 1 is opaque). (Default is 1)| list of float (int) numbers or one number, where they are from section [0, 1]. | `line_alpha=[1, 0.3]` or `line_alpha=0.5` |
@@ -185,17 +185,17 @@ Adds lines and annotations to the plot.
 |--------------|-----------------|--------------------|-------------|
 | **`start_point`** | Starting coordinates of the line (Default is [0, 0])| list of elements like [x, y], where x(y) is int(float) number, or only one [x, y] list. | `start_point=[[0, 1], [0.5, 0.2]]` or `start_point=[0, 1]`|
 | **`end_point`** | Ending coordinates of the line (Default is [1, 1])| list of elements like [x, y], where x(y) is int(float) number, or only one [x, y] list. | `end_point=[[0, 1], [0.5, 0.2]]` or `end_point=[0, 1]`|
-| **`subplot_pos_line`** | Subplot index where the line should be added (Default is 0).| list of indexes or one index (indexes are int non-negative numbers). | `subplot_pos_line=[1, 0, 2]`, `subplot_pos_line=1`|
+| **`subplot_line`** | Subplot index where the line should be added (Default is 0).| list of indexes or one index (indexes are int non-negative numbers). | `subplot_pos_line=[1, 0, 2]`, `subplot_pos_line=1`|
 | **`line_color`** | Colors for lines. Accepts hex codes. | list of strings or one string, where strings represent color in hex format. |`line_color=["#FF5733", "#2ECC71"]` or `line_color="#FF5733"` |
-| **`line_ls`** | Line styles for line. [Possible options](#line-style-descriptions)| list of strings or one string, with ls options. |`line_ls=["-", "--"]` or `line_ls='-'` |
+| **`line_style`** | Line styles for line. [Possible options](#line-style-descriptions)| list of strings or one string, with ls options. |`line_style=["-", "--"]` or `line_style='-'` |
 | **`line_alpha`** | Transparency of the lines (0 is fully transparent, 1 is opaque). (Default is 1)| list of float (int) numbers or one number, where they are from section [0, 1]. | `line_alpha=[1, 0.3]` or `line_alpha=0.5` |
 | **`line_width`** | Line width for curves. (Defualt is 1) | List of float or int non-negative numbers or one number| `line_width=[2, 0.8]` or `line_width=1.5` |
-| **`labels`** | Labels for curves. These appear in the legend. (Default is "")| list of strings or one string, where strings are labels for data in legend. | `labels=["Curve 1", "Curve 2"]` or `labels="Curve 1"` |
+| **`label`** | Labels for curves. These appear in the legend. (Default is "")| list of strings or one string, where strings are label for data in legend. | `label=["Curve 1", "Curve 2"]` or `label="Curve 1"` |
 | **`text`** | Annotation for lines (Default is "").| list of strings or one string | `text=["line 1", "line 2"]` or `text="line 1"`|
 | **`text_pos`** | Position of the annotation text that will appear in the plot. False argument will calculate position correlated with line. (Default is [false, false])| list of elements like [x, y], where x(y) is int, float or False, or one element like these| `text_pos = [1, 0.2]`, `text_pos = [1, False]`, `text_pos = [False, 0.2]`, `text_pos = [[0.1, 3], [False, False], [False, 1.5]]` |.
 | **`text_rotation`** | Angle that the text will be rotated for. Angles are measured in degree. (Default is 0)| List of angles in degrees (int or float) or one angle. | `text_rotation=[0, 1.5, -45]`, `text_rotation=90`|
 | **`text_color`** | Color of the text annotation. Accepts hex codes. (Default is #000000 - black) | list of strings or one string, where strings are colors only in hex format. | `text_color=["#000000", "#641E16"]`, `text_color="#641E16"` |
-| **`text_font_size`** | Font size for line's annotation. (Default is 8)| list of int or one int, where int numbers are non-negative. | `text_font_size=[9, 8]`, `text_font_size=10` |
+| **`text_fsize`** | Font size for line's annotation. (Default is 8)| list of int or one int, where int numbers are non-negative. | `text_fsize=[9, 8]`, `text_fsize=10` |
 
 #### Example:
 
@@ -204,7 +204,7 @@ graph.draw_lines(
     start_point=[1, 10],
     end_point=[5, 50],
     text="Example Line",
-    subplot_pos_line=0,
+    subplot_line=0,
     text_pos=[3, 30],
     text_rotation=45
 )
@@ -356,7 +356,7 @@ data_array = [
 graph.plot_graph(
     data_array=data_array,
     ls=["-", ""],
-    labels=["2D Line", "3D Surface"],
+    label=["2D Line", "3D Surface"],
     rows_cols=[1, 2],
     figure_size=[12, 6],
     graph_types=["2D", "3D"],

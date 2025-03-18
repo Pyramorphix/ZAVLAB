@@ -54,7 +54,7 @@
     "data_type": ["2D"],
     "axes_scaling":[[-1, "stretch", [0.9, 1.1, 0.9, 1.1]]],
     "axes_small_ticks": [[-1, [5, 5]]],
-    "labels": [""],
+    "label": [""],
     "axes_title": [["X", "Y"]],
     "legend_position": [[-1, "best"]],
     "axes_log_scaling": [[-1, [0, 0]]],
