@@ -2,7 +2,6 @@ import json as js
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-from matplotlib.ticker import FormatStrFormatter
 import matplotlib.ticker as ticker
 from matplotlib.colors import Colormap
 from pathlib import Path
@@ -123,7 +122,7 @@ class Earl:
         self.subplots_settings = []
         self.verbose = verbose
         self.colorbars = []
-        self.__labels_was_printed = False
+        self.__label_was_printed = False
         self.__config_files_changes = [False, False]
 
     def save_plot(self, name="graph.png"):
@@ -191,7 +190,7 @@ class Earl:
         Assuming `data_array` is a valid array of data points and `kwargs` contains additional
         configuration parameters, calling:
         ```python
-        earl.__prepare_input(data_array=[[1, 2, 3], [4, 5, 6]], line_color="red", line_ls="solid")
+        earl.__prepare_input(data_array=[[1, 2, 3], [4, 5, 6]], color="red", line_style="solid")
         ```
         will prepare the input data and configuration for plotting.
 
@@ -237,7 +236,7 @@ class Earl:
         Assuming `data_array` is a valid array of data points and `kwargs` contains additional
         configuration parameters, calling:
         ```python
-        earl.plot_graph(data_array=[[1, 2, 3], [4, 5, 6]], line_color="#101010", line_ls="-")
+        earl.plot_graph(data_array=[[1, 2, 3], [4, 5, 6]], color="#101010", line_style="-")
         ```
         will plot the graph based on the input data and configuration parameters.
 
@@ -281,7 +280,7 @@ class Earl:
         - It configures the axes scaling based on the settings in `self.subplots_settings`.
         - It sets the major and minor ticks properties, including their format and locators.
         - It configures the grid for both major and minor ticks.
-        - It aligns the labels and titles and applies a tight layout to the figure.
+        - It aligns the label and titles and applies a tight layout to the figure.
 
         Example:
         --------
@@ -345,7 +344,7 @@ class Earl:
                 self.ax[y][x].tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
                 self.ax[y][x].xaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_small_ticks"][0]))
             if not self.logscaling[1]:
-                self.ax[y][x].tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black', labelsize=self.subplots_settings[i]["axes_fsize"][1])
+                self.ax[y][x].tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
                 self.ax[y][x].yaxis.set_minor_locator(ticker.AutoMinorLocator(self.subplots_settings[i]["axes_small_ticks"][1]))
             self.ax[y][x].tick_params(axis='x', length=4, width=2, labelsize=self.subplots_settings[i]["axes_fsize"][0], direction ='in')
             self.ax[y][x].tick_params(axis='y', length=4, width=2, labelsize=self.subplots_settings[i]["axes_fsize"][1], direction ='in')
@@ -360,7 +359,7 @@ class Earl:
     
     def __zero_formatter(self, x, pos):
         """
-        Format numerical values for axis labels with zero approximation handling.
+        Format numerical values for axis label with zero approximation handling.
 
         Provides clean numerical formatting by:
         1. Rounding values to a specified decimal precision
@@ -504,7 +503,7 @@ class Earl:
         label = self.curves_settings[index]["label"]
         if label != "":
             if label[0] != '_':
-                self.__labels_was_printed = True
+                self.__label_was_printed = True
         if len(self.curves_settings[index]["data"][0]) == 2 and len(self.curves_settings[index]["data"][1]) == 2:
             xerr_data = self.curves_settings[index]["data"][0][1]
             yerr_data = self.curves_settings[index]["data"][1][1]
@@ -625,7 +624,7 @@ class Earl:
                 print(f"You have an error: {e}")
                 sys.exit(1)
             #set legend properties
-            if self.__labels_was_printed:
+            if self.__label_was_printed:
                 self.ax[y][x].legend(loc=position_legend_position, frameon=False, prop={'size': fontsize_legend_font_size})
 
     def __prepare_axes(self):
@@ -1681,7 +1680,7 @@ class Earl:
             "data_type": ["2D", "3D"],
             "axes_scaling": [[-1, "stretch", [0.9, 1.1, 0.9, 1.1]]],
             "axes_small_ticks": [[-1, [5, 5]]],
-            "labels": ["exp", "scaling"],
+            "label": ["exp", "scaling"],
             "axes_title": [["X-axis", "Y-axis"]],
             "legend_position": [[-1, "best"]],
             "axes_log_scaling": [[-1, [0, 0]]],
@@ -1714,7 +1713,7 @@ class Earl:
             "data_type": self.__check_data_type, 
             "axes_scaling": self.__check_axes_scaling,
             "axes_small_ticks": self.__check_axes_small_ticks, 
-            "labels": self.__check_labels,
+            "label": self.__check_label,
             "axes_title": self.__check_axes_title, 
             "legend_position": self.__check_legend_position,
             "axes_log_scaling": self.__check_axes_log_scaling,
@@ -1933,7 +1932,7 @@ class Earl:
     
     def __check_axes_title_fsize(self, axes_title_fsize):
         """
-        Validate the font size for axes labels in subplots.
+        Validate the font size for axes label in subplots.
 
         Ensures that the font size for axes is either a single integer for all subplots or
         a list specifying font sizes for individual subplots in the format [subplot_number, [x_axis_fontsize, y_axis_fontsize]] or [subplot_number, [x_axis_fontsize, y_axis_fontsize, cbar_axis_fontsize]].
@@ -2012,9 +2011,9 @@ class Earl:
 
     def __check_axes_fsize(self, axes_fsize):
         """
-        Validate the font sizes for numerical labels on subplot axes.
+        Validate the font sizes for numerical label on subplot axes.
 
-        Ensures that the font sizes for numerical labels are either a single integer for all subplots or
+        Ensures that the font sizes for numerical label are either a single integer for all subplots or
         a list specifying sizes for individual subplots in the format [subplot_number, [x_axis_size, y_axis_size]] 
         or [subplot_number, [x_axis_size, y_axis_size, cbar_axis_size]].
 
@@ -2047,7 +2046,7 @@ class Earl:
         Example:
         --------
         Valid configurations:
-        - 14 → Applies size 14 to all numerical labels
+        - 14 → Applies size 14 to all numerical label
         - [[0, [12, 14]]] → Specific sizes for subplot 0
         - [[1, [10, 12, 14]], [-1, [8, 8, 8]]] → Mix of specific and default settings
         - [[-1, [10, 12]]] → Default sizes for all subplots (2-element format)
@@ -2478,9 +2477,9 @@ class Earl:
         
     def __check_axes_round_accuracy(self, axes_round_accuracy):
         """
-        Validate the rounding accuracy for axes labels.
+        Validate the rounding accuracy for axes label.
 
-        Checks if the rounding accuracy for axes labels is provided as either a string
+        Checks if the rounding accuracy for axes label is provided as either a string
         for uniform rounding or a list specifying rounding in individual subplots with the format [subplot_number, [axes_round_accuracy_x_axes, axes_round_accuracy_x_axes]]
 
         Arguments:
@@ -3054,26 +3053,26 @@ class Earl:
                             raise ValueError(f"axes_small_ticks element {i} ({axes_small_ticks[i][1][j]}) should be at least 1." + text_that_explains_structure)   
             return (f"axes_small_ticks argument is correct.", axes_small_ticks)
         
-    def __check_labels(self, labels):
+    def __check_label(self, label):
         """
-        Validate the labels for data series in the plot.
+        Validate the label for data series in the plot.
 
-        Checks if labels are provided as a single string for all data or a list of strings for individual data series.
+        Checks if label are provided as a single string for all data or a list of strings for individual data series.
 
         Arguments:
         ----------
-        labels : str or list of str
-            A string or list of strings representing labels for data series.
+        label : str or list of str
+            A string or list of strings representing label for data series.
 
         Returns:
         -------
         tuple
-            A tuple with a confirmation message and the validated labels.
+            A tuple with a confirmation message and the validated label.
 
         Raises:
         -------
         TypeError
-            If labels is neither a string nor a list of strings.
+            If label is neither a string nor a list of strings.
 
         Notes:
         ------
@@ -3085,28 +3084,28 @@ class Earl:
 
         Example:
         --------
-        Assuming `labels` is:
+        Assuming `label` is:
         - "Main Label" (correct format)
         - ["Label 1", "Label 2"] (correct format)
         - ["Label 1", 123] (incorrect format)
         - 123 (incorrect format)
 
-        This method will validate the provided labels and return a confirmation message along with the validated labels.
+        This method will validate the provided label and return a confirmation message along with the validated label.
 
         Inspiration:
         ------------
         From various music tracks discovered via Spotify.
         """
 
-        if not isinstance(labels, (list, str)):
-            raise TypeError(f"labels should be a list with strings(labels) or one string for all data.")
-        if isinstance(labels, str):
-            return (f"labels argument is correct", [labels])
-        elif isinstance(labels, list):
-            for i in range(len(labels)):
-                if not isinstance(labels[i], str):
-                    raise TypeError(f"labels element {i} ({labels[i]}) should be a list with strings(labels).")
-            return  (f"labels argument is correct", labels)
+        if not isinstance(label, (list, str)):
+            raise TypeError(f"label should be a list with strings(label) or one string for all data.")
+        if isinstance(label, str):
+            return (f"label argument is correct", [label])
+        elif isinstance(label, list):
+            for i in range(len(label)):
+                if not isinstance(label[i], str):
+                    raise TypeError(f"label element {i} ({label[i]}) should be a list with strings(label).")
+            return  (f"label argument is correct", label)
         
     def __check_axes_title(self, axes_title):
         """
@@ -3713,7 +3712,7 @@ class Earl:
                         raise ValueError(f"text_position {i} 1 ({text_position[i][1]}) can be False, int or float." + text_to_explain_structure)                    
             return (f"text_position argument is correct.", text_position)  
 
-    def __check_subplot_pos_line(self, subplot_pos_line):
+    def __check_subplot_line(self, subplot_line):
         """
         Validate the subplot position for lines in plotting.
 
@@ -3722,7 +3721,7 @@ class Earl:
 
         Arguments:
         ----------
-        subplot_pos_line : int or list of int
+        subplot_line : int or list of int
             A single integer or a list of integers representing the subplot index where each line is located.
 
         Returns:
@@ -3733,7 +3732,7 @@ class Earl:
         Raises:
         -------
         TypeError
-            If subplot_pos_line is not an integer or list of integers.
+            If subplot_line is not an integer or list of integers.
         ValueError
             If any subplot position is not a non-negative integer.
 
@@ -3747,7 +3746,7 @@ class Earl:
 
         Example:
         --------
-        Assuming `subplot_pos_line` is:
+        Assuming `subplot_line` is:
         - 0 (correct format)
         - [0, 1, 2] (correct format)
         - [-1] (incorrect format)
@@ -3762,20 +3761,20 @@ class Earl:
         From various music tracks discovered via Spotify.
         """
         
-        if not isinstance(subplot_pos_line, (int, list)):
-            raise TypeError(f'subplot_pos_line argument is incorrect. It should be a list with integer elements which are number of subplot where line is located (starting from 0) or one integer for all lines.')
-        if isinstance(subplot_pos_line, int):
-            if subplot_pos_line >= 0:
-                return (f"subplot_pos_line argument is correct.", [subplot_pos_line])
+        if not isinstance(subplot_line, (int, list)):
+            raise TypeError(f'subplot_line argument is incorrect. It should be a list with integer elements which are number of subplot where line is located (starting from 0) or one integer for all lines.')
+        if isinstance(subplot_line, int):
+            if subplot_line >= 0:
+                return (f"subplot_line argument is correct.", [subplot_line])
             else:
-                raise ValueError(f"subplot_pos_line argument should be more or equal to 0.")
-        elif isinstance(subplot_pos_line, list):
-            for i in range(len(subplot_pos_line)):
-                if not isinstance(subplot_pos_line[i], int):
-                    raise ValueError(f"subplot_pos_line argument {i} ({subplot_pos_line[i]}) should be an integer.")
-                elif subplot_pos_line[i] < 0:
-                    raise ValueError(f"subplot_pos_line argument {i} ({subplot_pos_line[i]}) should be more or equal to 0.")
-            return (f"subplot_pos_line argument is correct.", subplot_pos_line)
+                raise ValueError(f"subplot_line argument should be more or equal to 0.")
+        elif isinstance(subplot_line, list):
+            for i in range(len(subplot_line)):
+                if not isinstance(subplot_line[i], int):
+                    raise ValueError(f"subplot_line argument {i} ({subplot_line[i]}) should be an integer.")
+                elif subplot_line[i] < 0:
+                    raise ValueError(f"subplot_line argument {i} ({subplot_line[i]}) should be more or equal to 0.")
+            return (f"subplot_line argument is correct.", subplot_line)
         
     def __check_text_rotation(self, text_rotatation):
         """
@@ -3839,19 +3838,19 @@ class Earl:
         
     def __check_text(self, text):
         """
-        Validate the text labels for plotting.
+        Validate the text label for plotting.
 
-        Ensures that the text labels are provided as a single string for all data or a list of strings for individual data series.
+        Ensures that the text label are provided as a single string for all data or a list of strings for individual data series.
 
         Arguments:
         ----------
         text : str or list of str
-            A string or list of strings representing the text labels for the data series.
+            A string or list of strings representing the text label for the data series.
 
         Returns:
         -------
         tuple
-            A tuple with a confirmation message and the validated text labels.
+            A tuple with a confirmation message and the validated text label.
 
         Raises:
         -------
@@ -3874,7 +3873,7 @@ class Earl:
         - ["Label 1", 123] (incorrect format)
         - 123 (incorrect format)
 
-        This method will validate the provided text labels and return a confirmation message along with the validated text labels.
+        This method will validate the provided text label and return a confirmation message along with the validated text label.
 
         Inspiration:
         ------------
@@ -3891,9 +3890,9 @@ class Earl:
                     raise TypeError(f"text element {i} ({text[i]}) should be a list with strings(text as a label for the line).")
             return  (f"text argument is correct", text)
     
-    def __check_text_font_size(self, text_fontsize):
+    def __check_text_fsize(self, text_fontsize):
         """
-        Validate the font size for text labels in plotting.
+        Validate the font size for text label in plotting.
 
         Ensures that the text font size is provided as a single integer for all data or
         a list of integers specifying the font size for individual data series.
@@ -3901,7 +3900,7 @@ class Earl:
         Arguments:
         ----------
         text_fontsize : int or list of int
-            An integer or list of integers representing the font size for text labels.
+            An integer or list of integers representing the font size for text label.
 
         Returns:
         -------
@@ -4075,7 +4074,7 @@ class Earl:
         config : dict
             A dictionary containing configuration settings for curves and subplots.
             It is expected to have keys such as "data_type", "color", "line_style", "marker_shape",
-            "marker_size", "labels", "line_width", "line_alpha", and "subplots_settings".
+            "marker_size", "label", "line_width", "line_alpha", and "subplots_settings".
         curves_settings : list
             A list to store dictionaries, where each dictionary holds
             the settings for a single curve. This list is populated by this method.
@@ -4099,7 +4098,7 @@ class Earl:
                 "line_style": ["-", "--", "-."],
                 "marker_shape": ["o", "s", "^"],
                 "marker_size": [5, 7, 9],
-                "labels": ["Curve 1", "Curve 2", "Curve 3"],
+                "label": ["Curve 1", "Curve 2", "Curve 3"],
                 "line_width": [1, 2, 3],
                 "line_alpha": [1.0, 0.8, 0.6],
                 "subplots_settings": [{"rows_cols": [3, 3], "fig_size": [14, 14], "subplots_distribution": [0, 1, 2]}]
@@ -4131,7 +4130,7 @@ class Earl:
                                       "subplot_position": self.config["subplots_settings"][0]["subplots_distribution"][i],
                                       "line_width": self.config["line_width"][i],
                                       "line_alpha": self.config["line_alpha"][i],
-                                      "label": self.config["labels"][i]}
+                                      "label": self.config["label"][i]}
             try:
                 result = self.__check_data_and_graph_type_are_correlated(index)
                 index += 1
@@ -4199,7 +4198,7 @@ class Earl:
         self.__prepare_axes_title_for_subplots(i)
             Prepares the axes titles for the subplot at index `i`.
         self.__find_proper_axes_fsize(i)
-            Prepares the axes labelssizes for the subplot at index `i`.
+            Prepares the axes labelsizes for the subplot at index `i`.
         self.__prepare_axes_fsize_for_subplots(i)
             Prepares the axes titles for the subplot at index `i`.
             
@@ -4302,7 +4301,7 @@ class Earl:
             "title_fsize", "title_text", "legend_fsize",
             "marker_size", "line_width", "line_alpha", "axes_round_accuracy",
             "subplots_settings", "data_type", "axes_scaling", "axes_small_ticks",
-            "labels", "axes_title", "legend_position", "axes_log_scaling", and "axes_fsize".
+            "label", "axes_title", "legend_position", "axes_log_scaling", and "axes_fsize".
 
         Methods:
         -------
@@ -4337,7 +4336,7 @@ class Earl:
         # Marker shape for each data series, defaulting to circle 'o'
         self.config["marker_shape"] = self.__extend_parameters(self.config["marker_shape"], self.quant, config["marker_shape"][0])
         
-        # Font size for axes labels, default uniform size for all subplots
+        # Font size for axes label, default uniform size for all subplots
         self.config["axes_title_fsize"] = self.__extend_parameters(self.config["axes_title_fsize"], self.number_of_subplots, config["axes_title_fsize"][0])
         
         # Font size for subplot titles, default size for all
@@ -4374,7 +4373,7 @@ class Earl:
         self.config["axes_small_ticks"] = self.__extend_parameters(self.config["axes_small_ticks"], self.number_of_subplots, config["axes_small_ticks"][0])
         
         # Labels for data series, empty by default
-        self.config["labels"] = self.__extend_parameters(self.config["labels"], self.quant, config["labels"][0])
+        self.config["label"] = self.__extend_parameters(self.config["label"], self.quant, config["label"][0])
         
         # Titles for axes in each subplot, default to 'X' and 'Y'
         self.config["axes_title"] = self.__extend_parameters(self.config["axes_title"], self.number_of_subplots, config["axes_title"][0])
@@ -4738,7 +4737,7 @@ class Earl:
         --------
         Assuming the configuration file "../settings/config_for_lines.json" contains:
         {
-            "line_ls": ["-", "--", "-.", ":", ""],
+            "line_style": ["-", "--", "-.", ":", ""],
             "line_alpha": [1],
             "line_width": [1],
             ...
@@ -4805,9 +4804,9 @@ class Earl:
         --------
         Assuming `self.verbose` is True and `self.config_for_line` is an empty dictionary, calling:
         ```python
-        self.__prepare_lines_input(line_color="red", line_ls="-", labels=["Label1", "Label2"])
+        self.__prepare_lines_input(color="red", line_style="-", label=["Label1", "Label2"])
         ```
-        will validate and set the `line_color`, `line_ls`, and `labels` in `self.config_for_line`.
+        will validate and set the `color`, `line_style`, and `label` in `self.config_for_line`.
 
         Inspiration:
         ------------
@@ -4815,19 +4814,19 @@ class Earl:
         """
             
         check_functions = {
-                           "line_color": self.__check_color,
-                           "line_ls": self.__check_line_style,
-                           "labels": self.__check_labels,
+                           "color": self.__check_color,
+                           "line_style": self.__check_line_style,
+                           "label": self.__check_label,
                            "text": self.__check_text,
                            "start_point": self.__check_start_point,
                            "end_point": self.__check_end_point,
                            "text_pos": self.__check_text_position,
-                           "subplot_pos_line": self.__check_subplot_pos_line,
+                           "subplot_line": self.__check_subplot_line,
                            "line_alpha": self.__check_line_alpha,
                            "line_width": self.__check_line_width,
                            "text_rotation": self.__check_text_rotation,
                            "text_color": self.__check_color,
-                           "text_font_size": self.__check_text_font_size
+                           "text_fsize": self.__check_text_fsize
                            }
         for key, value in kwargs.items():
             try:
@@ -4900,17 +4899,17 @@ class Earl:
             config = js.load(file)
         quant = len(self.config_for_line["end_point"])
         self.config_for_line["start_point"] = self.__extend_parameters(self.config_for_line["start_point"], quant, config["start_point"][0])
-        self.config_for_line["line_color"] = self.__extend_parameters(self.config_for_line["line_color"], quant, config["line_color"][0])
-        self.config_for_line["line_ls"] = self.__extend_parameters(self.config_for_line["line_ls"], quant, config["line_ls"][0])
-        self.config_for_line["labels"] = self.__extend_parameters(self.config_for_line["labels"], quant, config["labels"][0])
+        self.config_for_line["color"] = self.__extend_parameters(self.config_for_line["color"], quant, config["color"][0])
+        self.config_for_line["line_style"] = self.__extend_parameters(self.config_for_line["line_style"], quant, config["line_style"][0])
+        self.config_for_line["label"] = self.__extend_parameters(self.config_for_line["label"], quant, config["label"][0])
         self.config_for_line["text"] = self.__extend_parameters(self.config_for_line["text"], quant, config["text"][0])
         self.config_for_line["text_pos"] = self.__extend_parameters(self.config_for_line["text_pos"], quant, config["text_pos"][0])
-        self.config_for_line["subplot_pos_line"] = self.__extend_parameters(self.config_for_line["subplot_pos_line"], quant, config["subplot_pos_line"][0])
+        self.config_for_line["subplot_line"] = self.__extend_parameters(self.config_for_line["subplot_line"], quant, config["subplot_line"][0])
         self.config_for_line["line_alpha"] = self.__extend_parameters(self.config_for_line["line_alpha"], quant, config["line_alpha"][0])
         self.config_for_line["line_width"] = self.__extend_parameters(self.config_for_line["line_width"], quant, config["line_width"][0])
         self.config_for_line["text_rotation"] = self.__extend_parameters(self.config_for_line["text_rotation"], quant, config["text_rotation"][0])
         self.config_for_line["text_color"] = self.__extend_parameters(self.config_for_line["text_color"], quant, config["text_color"][0])
-        self.config_for_line["text_font_size"] = self.__extend_parameters(self.config_for_line["text_font_size"], quant, config["text_font_size"][0])
+        self.config_for_line["text_fsize"] = self.__extend_parameters(self.config_for_line["text_fsize"], quant, config["text_fsize"][0])
 
     def __draw_lines_after_conf(self):
         """
@@ -4942,9 +4941,9 @@ class Earl:
         Notes:
         ------
         - The method iterates through the `end_point` parameter to determine the number of lines to draw.
-        - It calculates the subplot position (x, y) based on the `subplot_pos_line` parameter.
+        - It calculates the subplot position (x, y) based on the `subplot_line` parameter.
         - It uses the `plot` method of the matplotlib Axes object to draw the lines with the specified parameters.
-        - If the `subplot_pos_line` index is greater than or equal to the number of subplots, the line is skipped.
+        - If the `subplot_line` index is greater than or equal to the number of subplots, the line is skipped.
 
         Example:
         --------
@@ -4958,14 +4957,14 @@ class Earl:
         """
 
         for i in range(len(self.config_for_line["end_point"])):
-            if self.config_for_line["subplot_pos_line"][i] >= self.number_of_subplots:
+            if self.config_for_line["subplot_line"][i] >= self.number_of_subplots:
                 continue
-            x = (self.config_for_line["subplot_pos_line"][i]) % self.config['subplots_settings'][0]['rows_cols'][1]
-            y = (self.config_for_line["subplot_pos_line"][i]) // self.config['subplots_settings'][0]['rows_cols'][1]
+            x = (self.config_for_line["subplot_line"][i]) % self.config['subplots_settings'][0]['rows_cols'][1]
+            y = (self.config_for_line["subplot_line"][i]) // self.config['subplots_settings'][0]['rows_cols'][1]
             self.ax[y][x].plot([self.config_for_line["start_point"][i][0], self.config_for_line["end_point"][i][0]],
                                 [self.config_for_line["start_point"][i][1], self.config_for_line["end_point"][i][1]],
-                                 color=self.config_for_line["line_color"][i], alpha=self.config_for_line["line_alpha"][i],
-                                 lw=self.config_for_line["line_width"][i], ls=self.config_for_line["line_ls"][i], label=self.config_for_line["labels"][i])
+                                 color=self.config_for_line["color"][i], alpha=self.config_for_line["line_alpha"][i],
+                                 lw=self.config_for_line["line_width"][i], ls=self.config_for_line["line_style"][i], label=self.config_for_line["label"][i])
     
     def __draw_text_efter_conf(self):
         """
@@ -4997,9 +4996,9 @@ class Earl:
         Notes:
         ------
         - The method iterates through the `end_point` parameter to determine the number of text elements to draw.
-        - It calculates the subplot position (x, y) based on the `subplot_pos_line` parameter.
+        - It calculates the subplot position (x, y) based on the `subplot_line` parameter.
         - It uses the `text` method of the matplotlib Axes object to draw the text with the specified parameters.
-        - If the `subplot_pos_line` index is greater than or equal to the number of subplots, the text is skipped.
+        - If the `subplot_line` index is greater than or equal to the number of subplots, the text is skipped.
         - The `__prepare_text_position` method is called to prepare the text position before drawing.
 
         Example:
@@ -5014,14 +5013,14 @@ class Earl:
         """
 
         for i in range(len(self.config_for_line["end_point"])):
-            if self.config_for_line["subplot_pos_line"][i] >= self.number_of_subplots:
+            if self.config_for_line["subplot_line"][i] >= self.number_of_subplots:
                 continue
-            x = (self.config_for_line["subplot_pos_line"][i]) % self.config['subplots_settings'][0]['rows_cols'][1]
-            y = (self.config_for_line["subplot_pos_line"][i]) // self.config['subplots_settings'][0]['rows_cols'][1]
+            x = (self.config_for_line["subplot_line"][i]) % self.config['subplots_settings'][0]['rows_cols'][1]
+            y = (self.config_for_line["subplot_line"][i]) // self.config['subplots_settings'][0]['rows_cols'][1]
             self.__prepare_text_position(i, x, y)
             self.ax[y][x].text(x=self.config_for_line["text_pos"][i][0], y=self.config_for_line["text_pos"][i][1],
                                 rotation=self.config_for_line["text_rotation"][i], s=self.config_for_line["text"][i],
-                                fontsize=self.config_for_line["text_font_size"][i], color=self.config_for_line["text_color"][i])
+                                fontsize=self.config_for_line["text_fsize"][i], color=self.config_for_line["text_color"][i])
     
     def __prepare_text_position(self, index, x, y):
         """
