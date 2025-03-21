@@ -297,7 +297,7 @@ class Field:
     # --------------------------------------------------------------------
     def __init__(
         self,
-        description: srt = '',
+        description: str = '',
         label: str = '',
         field_type: str = '',
         unit: str = "",
