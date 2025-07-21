@@ -1,14 +1,19 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QSplitter, QTableWidget, QLabel, QHeaderView, QMenu, QMessageBox, QInputDialog, QFileDialog, QTableWidgetItem, QMenuBar, QDialog, QDialogButtonBox, QLineEdit, QVBoxLayout, QHBoxLayout
-from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QSplitter, QTableWidget, QLabel,
+                             QHeaderView, QMenu, QMessageBox, QInputDialog, QFileDialog,
+                             QTableWidgetItem, QMenuBar, QDialog, QDialogButtonBox, QLineEdit,
+                               QVBoxLayout, QHBoxLayout, QWidget, QGroupBox, QGridLayout,
+                               QSpinBox, QPushButton)
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence
 import csv
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas   
 import numpy as np
-from graphClasses import PREPARE_DATA, INTERACTIVE_PLOT
+from graphClasses import PREPARE_DATA, INTERACTIVE_PLOT, SubplotEditor
 
 class ZAVLAB(QMainWindow):
     """Основной класс приложения - главное окно"""
+    signals = pyqtSignal(list) 
 
     def __init__(self) -> None:
         super(ZAVLAB, self).__init__()
@@ -24,8 +29,10 @@ class ZAVLAB(QMainWindow):
         self.setupMenuBar()
 
         #plotting info
-        self.plotter = INTERACTIVE_PLOT(self, width=5, height=4, dpi=100)
 
+        self.plotter = SubplotEditor()
+        self.signals.connect(self.plotter.update_column_data)
+        self.plotter.update_column_data([self.table.item(0, col).text() if self.table.item(0, col) else f"Column {col+1}" for col in range(self.table.columnCount())])
         #design
         self.setCentralWidget(self.central_widget)
         self.central_widget.addWidget(self.table)
@@ -47,6 +54,35 @@ class ZAVLAB(QMainWindow):
             }
         """)
 
+    def setPlottingPart(self) -> None:
+        self.config_panel: QWidget = QWidget()
+        self.config_layout: QHBoxLayout = QHBoxLayout()
+        self.config_panel.setLayout(self.config_layout)
+        self.central_widget.setLayout(self.config_panel)
+
+        #make grid
+        self.grid_group: QGroupBox = QGroupBox("Grid Configuration")
+        self.grid_layout: QGridLayout = QGridLayout()
+
+        self.grid_layout.addWidget(QLabel("Rows:"), 0, 0)
+        self.row_spin: QSpinBox = QSpinBox()
+        self.row_spin.setRange(1, 8)
+        self.row_spin.setValue(1)
+        self.grid_layout.addWidget(self.row_spin, 0, 1)
+
+        self.grid_layout.addWidget(QLabel("Cols:"), 0, 2)
+        self.col_spin: QSpinBox = QSpinBox()
+        self.col_spin.setRange(1, 8)
+        self.col_spin.setValue(1)
+        self.grid_layout.addWidget(self.col_spin, 0, 3)
+
+        self.create_grid_btn = QPushButton("Create Grid")
+        self.create_grid_btn.clicked.connect(self.create_grid)
+        self.grid_layout.addWidget(self.create_grid_btn)
+
+        self.grid_group.setLayout(self.grid_layout)
+        self.config_layout.addWidget(self.grid_group)
+
     def setupTable(self) -> None:
         """Инициализация таблицы данных"""
         self.table: QTableWidget = QTableWidget()   
@@ -64,11 +100,13 @@ class ZAVLAB(QMainWindow):
         self.table_headers_v.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table_headers_v.customContextMenuRequested.connect(self.tableDroppedVMenu)
 
+        self.table_headers_h.sectionCountChanged.connect(self.update_headers)
+        self.table_headers_h.geometriesChanged.connect(self.update_headers)
+
     def setupMenuBar(self) -> None:
         """Создание меню приложения"""
         self.menu_bar: QMenuBar = self.menuBar()
         self.help_menu: QMenu = self.menu_bar.addMenu("Справка")
-        self.plot_graph: QMenu = self.menu_bar.addMenu("Построить график")
         self.files: QMenu = self.menu_bar.addMenu("Файл")
 
         #Справка
@@ -95,11 +133,6 @@ class ZAVLAB(QMainWindow):
         load_action.triggered.connect(self._load_data)
         self.files.addAction(load_action)
 
-        #построение графика
-        plot_action: QAction = QAction("Построить график", self)
-        plot_action.setShortcut(QKeySequence("Ctrl+P"))
-        plot_action.triggered.connect(self._prepare_plotting_data)
-        self.plot_graph.addAction(plot_action)
 
     def tableDroppedHMenu(self, pos: QPoint) -> None:
         """Контекстное меню для горизонтальных заголовков (управление столбцами)"""
@@ -417,12 +450,26 @@ class ZAVLAB(QMainWindow):
         labels = [f"{self.table.item(0, x).text() if self.table.item(0, x) else ''}", f"{self.table.item(0, y).text() if self.table.item(0, y) else ''}"]
         self.plotter.plot_data(data, labels)
 
-    def get_data(self, x:int, y:int, lenght : int) -> np.ndarray:
+    def get_column_index(self, column_name:str) -> int:
+        """Find column index by name"""
+        for col in range(self.table.columnCount()):
+            header = self.table.item(0, col)
+            if header and header.text() == column_name:
+                return col
+        return -1
+
+    def get_data(self, x:int|str, y:int|str, lenght : int|None = None) -> np.ndarray:
         """Извлекает данные из таблицы для построения графика"""
         data = [[], []]
         x_flag = True
         y_flag = True
-        for i in range(1, lenght + 1):
+        if type(x) == str:
+            x = self.get_column_index(x)
+        if type(y) == str:
+            y = self.get_column_index(y)
+        if lenght == None:
+            lenght = self.table.rowCount() - 1
+        for i in range(lenght + 1):
             if self.table.item(i, x):
                 item_x = self.table.item(i, x).text()
                 x_flag = True
@@ -447,7 +494,14 @@ class ZAVLAB(QMainWindow):
                 data[0].append(item_x)
                 data[1].append(item_y)
         return np.array(data)
-
+    
+    def update_headers(self) -> None:
+        """Extract headers and emit them as a list"""
+        headers = []
+        for col in range(self.table.columnCount()):
+            header_item = self.table.item(0, col)
+            headers.append(header_item.text() if header_item else f"Column {col+1}")
+        self.signals.emit(headers)
             
 
 if __name__ == "__main__":

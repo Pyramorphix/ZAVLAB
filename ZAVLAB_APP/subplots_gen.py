@@ -1,18 +1,17 @@
-from PyQt6.QtWidgets import (QDialog, QLabel, QLineEdit, 
-                             QDialogButtonBox, QVBoxLayout, QHBoxLayout, 
-                             QFormLayout, QMessageBox, QFrame, 
-                             QGridLayout, QWidget, QSplitter, QGroupBox, QSpinBox, QPushButton,
-                             QComboBox, QTabWidget, QDoubleSpinBox, QCheckBox, QListWidget, QListWidgetItem,
-                             QColorDialog)
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import numpy as np
 import sys
-import matplotlib.ticker as ticker
+import numpy as np
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QPushButton, QComboBox, QGroupBox, QLabel, QSpinBox, QSplitter, 
+    QMessageBox, QSizePolicy, QListWidget, QListWidgetItem, QFrame,
+    QTabWidget, QFormLayout, QDoubleSpinBox, QCheckBox, QColorDialog
+)
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QColor
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 import matplotlib.gridspec as gridspec
+
 
 class SubplotCell(QFrame):
     """Visual representation of a single grid cell"""
@@ -31,6 +30,7 @@ class SubplotCell(QFrame):
         self.subplot_id = subplot_id
         self.setStyleSheet(f"background-color: {color}; border: 1px solid #333333;")
         self.setToolTip(f"Subplot {subplot_id}")
+
 
 class SubplotGrid(QWidget):
     """Visual grid for designing subplot layouts"""
@@ -128,185 +128,12 @@ class SubplotGrid(QWidget):
         self.add_subplot(row, col, row_span, col_span, subplot_id)
 
 
-
-class PREPARE_DATA(QDialog):
-    """Диалоговое окно для ввода данных"""
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Выбрать данные для графика")
-        self.setFixedSize(400, 200)
+class SubplotEditor(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Interactive Subplot Editor")
+        self.setGeometry(100, 100, 1600, 1000)
         
-        # Создаем элементы формы
-        self.explanation = QLabel("Введите номера столбцов,\n которые будут соответсвовать x и y координате.")
-        self.x_axis = QLineEdit()
-        self.y_axis = QLineEdit()
-        self.lenght = QLineEdit()
-        # Создаем кнопки
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        
-        # Размещаем элементы в layout
-        layout = QVBoxLayout()
-        col_x = QHBoxLayout()
-        col_y = QHBoxLayout()
-        lenght = QHBoxLayout()
-
-        col_x.addWidget(QLabel("x-axis:"), 20)
-        col_x.addWidget(self.x_axis, 80)
-        col_y.addWidget(QLabel("y-axis:"), 20)
-        col_y.addWidget(self.y_axis, 80)
-        lenght.addWidget(QLabel("number of data to plot:"), 20)
-        lenght.addWidget(self.lenght, 80)
-        layout.addWidget(self.explanation)
-        layout.addLayout(col_x)
-        layout.addLayout(col_y)
-        layout.addLayout(lenght)
-        layout.addWidget(button_box)       
-        self.setLayout(layout)
-    
-    def get_inputs(self):
-        """Возвращает введенные значения"""
-        return (
-            self.x_axis.text(),
-            self.y_axis.text(),
-            self.lenght.text(),
-        )
-
-class AxisConfigDialog(QDialog):
-    def __init__(self, axis_type, ax, parent=None):
-        super().__init__(parent)
-        self.ax = ax
-        self.axis_type = axis_type
-        self.setWindowTitle(f"Настройка оси {'X' if axis_type == 'x' else 'Y'}")
-        
-        layout = QFormLayout()
-
-        if axis_type == 'x':
-            min_val, max_val = ax.get_xlim()
-            title = ax.get_xlabel()
-        else:
-            min_val, max_val = ax.get_ylim()
-            title = ax.get_ylabel() 
-
-        self.min_edit = QLineEdit()
-        self.min_edit.setText(str(min_val))
-        layout.addRow("Минимум:", self.min_edit)
-        
-        self.max_edit = QLineEdit()
-        self.max_edit.setText(str(max_val))
-        layout.addRow("Максимум:", self.max_edit)
-        
-        self.title_edit = QLineEdit(title)
-        layout.addRow("Заголовок:", self.title_edit)
-
-        self.ticks = QLineEdit()
-        self.ticks.setText("0")
-        layout.addRow("Количество делений на оси:", self.ticks)
-        
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
-                                  QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addRow(buttons)
-        
-        self.setLayout(layout)
-    def accept(self):
-        try:
-            min_val = float(self.min_edit.text())
-            max_val = float(self.max_edit.text())
-            ticks = int(self.ticks.text())
-            title = self.title_edit.text()
-            
-            if min_val >= max_val:
-                QMessageBox.warning(self, "Ошибка", "Миниамальное значение должно быть меньше максимального.")
-                raise ValueError("Минимум должен быть меньше максимума")
-            if ticks < 0:
-                QMessageBox.warning(self, "Ошибка", "Количество делений должно быть больше 0.")
-                raise ValueError("Количество делений должно быть больше 0.")
-            if self.axis_type == 'x':
-                self.ax.xaxis.set_ticks_position("bottom")
-                self.ax.set_xlim(min_val, max_val)
-                self.ax.spines["bottom"].set_position(("data", min_val))
-                self.ax.set(xlim=(min_val, max_val))
-                self.ax.set_xticks(np.linspace(min_val, max_val, ticks))
-                self.ax.set_xlabel(title)
-            else:
-                self.ax.yaxis.set_ticks_position("left")
-                self.ax.set_ylim(min_val, max_val)
-                self.ax.spines["left"].set_position(("data", min_val))
-                self.ax.set(ylim=(min_val, max_val))
-                self.ax.set_yticks(np.linspace(min_val, max_val, ticks))
-                self.ax.set_ylabel(title)
-
-            
-            self.ax.figure.canvas.draw()
-            super().accept()
-        except Exception as e:
-            QMessageBox.warning(self, "Ошибка", "Проверьте, что везде ввели числа. В поле ввода x, y могу быть целые или дробные значения (написаны через точку). В поле ticks должно быть целое положительное число.")
-            print(f"Ошибка: {e}")
-
-class INTERACTIVE_PLOT(FigureCanvas):
-    def __init__(self, parent=None, width=5, height=4, dpi=100, data=[]):
-        self.fig = Figure(figsize=(width, height), dpi=dpi)
-        self.ax = None
-        super().__init__(self.fig)
-        self.setParent(parent)
-
-        self.data = None
-
-        self.mpl_connect("button_press_event", self.on_click)
-        # self.plot_data(data=None,labels=["x", "y"])
-
-    def on_click(self, event):
-        if not event.inaxes:
-            return
-        
-        x, y = event.xdata, event.ydata
-
-        x_min, x_max = self.ax.get_xlim()
-        y_min, y_max = self.ax.get_ylim()
-
-        x_threshold = 0.2 * (x_max - x_min)
-        y_threshold = 0.2 * (y_max - y_min)
-
-        if y is not None and y < y_min + y_threshold:
-            dialog = AxisConfigDialog('x', self.ax, self)
-            dialog.exec()
-            return
-        
-        # Проверяем клик по оси Y (левая часть)
-        if x is not None and x < x_min + x_threshold:
-            dialog = AxisConfigDialog('y', self.ax, self)
-            dialog.exec()
-            return
-    
-    def plot_data(self, data, labels):
-        self.ax = self.figure.subplots()
-        if data is not None:
-            self.data = data
-            self.ax.plot(self.data[0], self.data[1])
-        self.ax.set_xlabel(labels[0])
-        self.ax.set_ylabel(labels[1])
-        self.ax.set_title("Here will be your title.")
-        self.ax.minorticks_on()
-        self.ax.tick_params(axis='x', length=4, width=2, labelsize=14, direction ='in')
-        self.ax.tick_params(axis='y', length=4, width=2, labelsize=14, direction ='in')
-        self.ax.tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
-        self.ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(5))
-        self.ax.tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
-        self.ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(5))
-
-        self.ax.grid(color="#7a7c7d", linewidth=0.3)
-        self.ax.grid(which='minor', color='#7a7c7d', linestyle=':', linewidth=0.2)
-
-        self.draw()
-
-class SubplotEditor(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
         # Sample datasets
         self.datasets = {
             "Sine Wave": np.sin(np.linspace(0, 4 * np.pi, 100)),
@@ -329,8 +156,10 @@ class SubplotEditor(QWidget):
         self.selected_subplot_id = None
         
     def initUI(self):
+        main_widget = QWidget()
         main_layout = QHBoxLayout()
-        self.setLayout(main_layout)
+        main_widget.setLayout(main_layout)
+        self.setCentralWidget(main_widget)
         
         # Create a splitter for resizable panels
         splitter = QSplitter()
@@ -340,21 +169,22 @@ class SubplotEditor(QWidget):
         config_panel = QWidget()
         config_layout = QVBoxLayout()
         config_panel.setLayout(config_layout)
+        splitter.addWidget(config_panel)
         
         # Grid configuration
         grid_group = QGroupBox("Grid Configuration")
         grid_layout = QGridLayout()
         
-        grid_layout.addWidget(QLabel("Rows number:"), 0, 0)
+        grid_layout.addWidget(QLabel("Rows:"), 0, 0)
         self.rows_spin = QSpinBox()
         self.rows_spin.setRange(1, 8)
-        self.rows_spin.setValue(1)
+        self.rows_spin.setValue(3)
         grid_layout.addWidget(self.rows_spin, 0, 1)
         
-        grid_layout.addWidget(QLabel("Columns number:"), 0, 2)
+        grid_layout.addWidget(QLabel("Columns:"), 0, 2)
         self.cols_spin = QSpinBox()
         self.cols_spin.setRange(1, 8)
-        self.cols_spin.setValue(1)
+        self.cols_spin.setValue(3)
         grid_layout.addWidget(self.cols_spin, 0, 3)
         
         self.create_grid_btn = QPushButton("Create Grid")
@@ -379,12 +209,12 @@ class SubplotEditor(QWidget):
         creation_layout = QGridLayout()
         creation_group.setLayout(creation_layout)
         
-        creation_layout.addWidget(QLabel("Row position:"), 0, 0)
+        creation_layout.addWidget(QLabel("Row:"), 0, 0)
         self.row_spin = QSpinBox()
         self.row_spin.setRange(0, 7)
         creation_layout.addWidget(self.row_spin, 0, 1)
         
-        creation_layout.addWidget(QLabel("Column position:"), 0, 2)
+        creation_layout.addWidget(QLabel("Column:"), 0, 2)
         self.col_spin = QSpinBox()
         self.col_spin.setRange(0, 7)
         creation_layout.addWidget(self.col_spin, 0, 3)
@@ -401,22 +231,18 @@ class SubplotEditor(QWidget):
         self.col_span_spin.setValue(1)
         creation_layout.addWidget(self.col_span_spin, 1, 3)
         
-        creation_layout.addWidget(QLabel("Data x:"), 2, 0)
-        self.data_combo_x = QComboBox()
-        self.data_combo_x.addItems(["None"] + list(self.datasets.keys()))
-        creation_layout.addWidget(self.data_combo_x, 2, 1, 1, 3)
-        creation_layout.addWidget(QLabel("Data y:"), 3, 0)
-        self.data_combo_y = QComboBox()
-        self.data_combo_y.addItems(["None"] + list(self.datasets.keys()))
-        creation_layout.addWidget(self.data_combo_y, 3, 1, 1, 3)
+        creation_layout.addWidget(QLabel("Data:"), 2, 0)
+        self.data_combo = QComboBox()
+        self.data_combo.addItems(["None"] + list(self.datasets.keys()))
+        creation_layout.addWidget(self.data_combo, 2, 1, 1, 3)
         
         self.add_subplot_btn = QPushButton("Add Subplot")
         self.add_subplot_btn.clicked.connect(self.add_subplot)
-        creation_layout.addWidget(self.add_subplot_btn, 4, 0, 1, 2)
+        creation_layout.addWidget(self.add_subplot_btn, 3, 0, 1, 2)
         
         self.clear_btn = QPushButton("Clear All")
         self.clear_btn.clicked.connect(self.clear_subplots)
-        creation_layout.addWidget(self.clear_btn, 4, 2, 1, 2)
+        creation_layout.addWidget(self.clear_btn, 3, 2, 1, 2)
         
         config_layout.addWidget(creation_group)
         
@@ -465,14 +291,11 @@ class SubplotEditor(QWidget):
         data_tab = QWidget()
         data_layout = QVBoxLayout(data_tab)
         
-        data_layout.addWidget(QLabel("Data x:"))
-        self.edit_data_combo_x = QComboBox()
-        data_layout.addWidget(self.edit_data_combo_x)
-
-        data_layout.addWidget(QLabel("Data y:"))
-        self.edit_data_combo_y = QComboBox()
-        data_layout.addWidget(self.edit_data_combo_y)
-
+        data_layout.addWidget(QLabel("Data:"))
+        self.edit_data_combo = QComboBox()
+        self.edit_data_combo.addItems(["None"] + list(self.datasets.keys()))
+        data_layout.addWidget(self.edit_data_combo)
+        
         self.update_data_btn = QPushButton("Update Data")
         self.update_data_btn.clicked.connect(self.update_subplot_data)
         data_layout.addWidget(self.update_data_btn)
@@ -515,7 +338,7 @@ class SubplotEditor(QWidget):
         plot_panel = QWidget()
         plot_layout = QVBoxLayout()
         plot_panel.setLayout(plot_layout)
-        
+        splitter.addWidget(plot_panel)
         
         # Subplot list
         self.subplot_list = QListWidget()
@@ -529,21 +352,11 @@ class SubplotEditor(QWidget):
         plot_layout.addWidget(self.canvas)
         
         # Set initial splitter sizes
-        splitter.addWidget(plot_panel)
-        splitter.addWidget(config_panel)
-        # splitter.setSizes([500, 1100])
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([500, 1100])
         
         # Initialize line color
         self.line_color = "#1f77b4"  # Default matplotlib blue
-    
-    def update_column_data(self, headers: list[str]) -> None:
-        self.data_combo_x.clear()
-        self.data_combo_x.addItems(headers)
-        self.data_combo_y.clear()
-        self.data_combo_y.addItems(headers)
-
+        
     def create_grid(self):
         """Create a new grid based on row/column configuration"""
         rows = self.rows_spin.value()
@@ -596,8 +409,7 @@ class SubplotEditor(QWidget):
             col,
             row_span,
             col_span,
-            self.data_combo_x.currentText(),  # Data
-            self.data_combo_y.currentText(),  # Data
+            self.data_combo.currentText(),  # Data
             self.line_color,  # Line color
             1.0,  # Line width
             True   # Show grid
@@ -634,8 +446,8 @@ class SubplotEditor(QWidget):
         self.subplot_list.clear()
         
         for subplot in self.subplots:
-            plot_id, row, col, row_span, col_span, data_x, data_y, _, _, _ = subplot
-            item = QListWidgetItem(f"Subplot {plot_id}: {row},{col} [{row_span}x{col_span}] - {data_x}, {data_y}")
+            plot_id, row, col, row_span, col_span, data, _, _, _ = subplot
+            item = QListWidgetItem(f"Subplot {plot_id}: {row},{col} [{row_span}x{col_span}] - {data}")
             item.setData(Qt.ItemDataRole.UserRole, plot_id)
             self.subplot_list.addItem(item)
     
@@ -657,15 +469,14 @@ class SubplotEditor(QWidget):
         for subplot in self.subplots:
             if subplot[0] == plot_id:
                 # Populate position controls
-                _, row, col, row_span, col_span, data_x, data_y, color, line_width, show_grid = subplot
+                _, row, col, row_span, col_span, data, color, line_width, show_grid = subplot
                 self.edit_row_spin.setValue(row)
                 self.edit_col_spin.setValue(col)
                 self.edit_row_span_spin.setValue(row_span)
                 self.edit_col_span_spin.setValue(col_span)
                 
                 # Populate data controls
-                self.edit_data_combo_x.setCurrentText(data_x)
-                self.edit_data_combo_y.setCurrentText(data_y)
+                self.edit_data_combo.setCurrentText(data)
                 
                 # Populate style controls
                 self.line_width_spin.setValue(line_width)
@@ -682,9 +493,7 @@ class SubplotEditor(QWidget):
         self.edit_col_spin.setValue(0)
         self.edit_row_span_spin.setValue(1)
         self.edit_col_span_spin.setValue(1)
-        self.edit_data_combo_x.setCurrentIndex(0)
-        self.edit_data_combo_y.setCurrentIndex(0)
-
+        self.edit_data_combo.setCurrentIndex(0)
         self.line_width_spin.setValue(1.0)
         self.grid_checkbox.setChecked(True)
         self.line_color = "#1f77b4"
@@ -749,15 +558,12 @@ class SubplotEditor(QWidget):
         if self.selected_subplot_id is None:
             return
             
-        new_data_x = self.edit_data_combo_x.currentText()
-        new_data_y = self.edit_data_combo_y.currentText()
+        new_data = self.edit_data_combo.currentText()
         
         # Update the subplot
         for i, subplot in enumerate(self.subplots):
             if subplot[0] == self.selected_subplot_id:
-                self.subplots[i][5] = new_data_x
-                self.subplots[i][6] = new_data_y
-
+                self.subplots[i][5] = new_data
                 break
         
         self.update_subplot_list()
@@ -780,10 +586,9 @@ class SubplotEditor(QWidget):
         # Update the subplot
         for i, subplot in enumerate(self.subplots):
             if subplot[0] == self.selected_subplot_id:
-                self.subplots[i][7] = new_color
-                self.subplots[i][8] = new_width
-                self.subplots[i][9
-                ] = new_grid
+                self.subplots[i][6] = new_color
+                self.subplots[i][7] = new_width
+                self.subplots[i][8] = new_grid
                 break
     
     # Updated plot_graphs method in the SubplotEditor class
@@ -810,16 +615,16 @@ class SubplotEditor(QWidget):
         
         # Create axes for each subplot
         for subplot in self.subplots:
-            plot_id, s_row, s_col, s_row_span, s_col_span, data_x, data_y, color, line_width, show_grid = subplot
+            plot_id, s_row, s_col, s_row_span, s_col_span, data_name, color, line_width, show_grid = subplot
             
             # Create subplot with specified span
             ax = self.figure.add_subplot(gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
             
             # Plot data if selected
-            if data_x != "None":
-                data = self.window().get_data(data_x, data_y)
-                ax.plot(data[0], data[1], linewidth=line_width, color=color)
-                ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
+            if data_name != "None":
+                data = self.datasets[data_name]
+                ax.plot(data, linewidth=line_width, color=color)
+                ax.set_title(f"Subplot {plot_id}: {data_name}", fontsize=10)
                 if show_grid:
                     ax.grid(True, linestyle='--', alpha=0.7)
             else:
@@ -849,3 +654,10 @@ class SubplotEditor(QWidget):
         
         self.figure.tight_layout()
         self.canvas.draw()
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = SubplotEditor()
+    window.show()
+    sys.exit(app.exec())
