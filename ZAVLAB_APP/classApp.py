@@ -335,6 +335,7 @@ class ZAVLAB(QMainWindow):
         """Очищает таблицу для нового эксперимента"""
         self.table.clear()
         self.statusBar().showMessage("Таблица готова к новому эксперименту", 2000)
+        self.update_headers()
 
 
     def _save_file(self) -> None:
@@ -413,7 +414,7 @@ class ZAVLAB(QMainWindow):
                             item: QTableWidgetItem = QTableWidgetItem(value)
                             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
                             self.table.setItem(row, col, item)
-            
+            self.update_headers()
             self.statusBar().showMessage(f"Файл загружен: {file_name}", 5000)
             QMessageBox.information(self, "Успех", "Данные успешно загружены из CSV!")
         

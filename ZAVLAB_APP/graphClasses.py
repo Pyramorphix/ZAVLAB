@@ -251,10 +251,19 @@ class AxisConfigDialog(QDialog):
 class INTERACTIVE_PLOT(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100, data=[]):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        self.ax = None
+        self.axes = []
+        self.subplots = []
+        self.gs = gridspec.GridSpec(
+            1, 1, 
+            figure=self.fig,
+            width_ratios=[1]*1,
+            height_ratios=[1]*1,
+            wspace=0.5,
+            hspace=0.7
+        )
         super().__init__(self.fig)
         self.setParent(parent)
-
+        self.canvas = FigureCanvas(self.fig)
         self.data = None
 
         self.mpl_connect("button_press_event", self.on_click)
@@ -264,45 +273,110 @@ class INTERACTIVE_PLOT(FigureCanvas):
         if not event.inaxes:
             return
         
-        x, y = event.xdata, event.ydata
-
-        x_min, x_max = self.ax.get_xlim()
-        y_min, y_max = self.ax.get_ylim()
-
-        x_threshold = 0.2 * (x_max - x_min)
-        y_threshold = 0.2 * (y_max - y_min)
-
-        if y is not None and y < y_min + y_threshold:
-            dialog = AxisConfigDialog('x', self.ax, self)
-            dialog.exec()
-            return
-        
-        # Проверяем клик по оси Y (левая часть)
-        if x is not None and x < x_min + x_threshold:
-            dialog = AxisConfigDialog('y', self.ax, self)
-            dialog.exec()
-            return
+        # Определяем, на каком графике произошел клик
+        for i, ax in enumerate(self.axes):
+            if event.inaxes == ax:
+                # Определяем параметры для конкретного графика
+                x_min, x_max = ax.get_xlim()
+                y_min, y_max = ax.get_ylim()
+                tolerance = 0.05  # 5% от диапазона
+                
+                # Клик по оси X (нижняя часть)
+                if event.ydata < y_min + tolerance * (y_max - y_min):
+                    dialog = AxisConfigDialog('x', ax, self)
+                    dialog.exec()
+                    return
+                
+                # Клик по оси Y (левая часть)
+                if event.xdata < x_min + tolerance * (x_max - x_min):
+                    dialog = AxisConfigDialog('y', ax, self)
+                    dialog.exec()
+                    return
     
-    def plot_data(self, data, labels):
-        self.ax = self.figure.subplots()
-        if data is not None:
-            self.data = data
-            self.ax.plot(self.data[0], self.data[1])
-        self.ax.set_xlabel(labels[0])
-        self.ax.set_ylabel(labels[1])
-        self.ax.set_title("Here will be your title.")
-        self.ax.minorticks_on()
-        self.ax.tick_params(axis='x', length=4, width=2, labelsize=14, direction ='in')
-        self.ax.tick_params(axis='y', length=4, width=2, labelsize=14, direction ='in')
-        self.ax.tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
-        self.ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(5))
-        self.ax.tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
-        self.ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(5))
+    def plot_data(self, win, rows_spin, cols_spin):
+        """Generate the plot based on current configuration"""
+        if not self.subplots:
+            QMessageBox.warning(self, "No Subplots", "Please add at least one subplot")
+            return
+        rows = rows_spin
+        cols = cols_spin
+        
+        # Create GridSpec
+        self.gs = gridspec.GridSpec(
+            rows, cols, 
+            figure=self.fig,
+            width_ratios=[1]*cols,
+            height_ratios=[1]*rows,
+            wspace=0.5,
+            hspace=0.7
+        )
+        # Create a grid to track occupied cells
+        occupied = [[False] * cols for _ in range(rows)]
 
-        self.ax.grid(color="#7a7c7d", linewidth=0.3)
-        self.ax.grid(which='minor', color='#7a7c7d', linestyle=':', linewidth=0.2)
+        # Create axes for each subplot
+        for subplot in self.subplots:
+            plot_id, s_row, s_col, s_row_span, s_col_span, *_ = subplot
+            ax = self.fig.add_subplot(self.gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
+            self.axes.append(ax)
+            self.update_one_plot(subplot, win)
+            
+            # Mark occupied cells
+            for r in range(s_row, s_row+s_row_span):
+                for c in range(s_col, s_col+s_col_span):
+                    if r < rows and c < cols:
+                        occupied[r][c] = True
 
+        # Add empty cells
+        for r in range(rows):
+            for c in range(cols):
+                if not occupied[r][c]:
+                    ax = self.fig.add_subplot(self.gs[r, c])
+                    ax.text(0.5, 0.5, "Empty Cell", 
+                            ha='center', va='center', fontsize=10,
+                            transform=ax.transAxes, alpha=0.5)
+                    ax.axis('off')
+        
+        self.fig.tight_layout()
+        self.canvas.draw()
         self.draw()
+    
+    def create_axes(self):
+        for subplot in self.subplots:
+                plot_id, s_row, s_col, s_row_span, s_col_span, data_x, data_y, color, line_width, show_grid = subplot
+                # Create subplot with specified span
+                ax = self.fig.add_subplot(self.gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
+                self.axes.append(ax)
+  
+    
+    def update_one_plot(self, subplot, win):
+        plot_id, s_row, s_col, s_row_span, s_col_span, data_x, data_y, color, line_width, show_grid = subplot
+        # Create subplot with specified span
+        ax = self.axes[plot_id]#self.fig.add_subplot(self.gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
+        ax.clear()
+        # Plot data if selected
+        if data_x != "None" and data_y != "None":
+            data = win.get_data(data_x, data_y)
+            ax.plot(data[0], data[1], linewidth=line_width, color=color)
+            ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
+            ax.set_xlabel(str(data_x[0]))
+            ax.set_ylabel(str(data_y[0]))
+        if show_grid:
+            #ax.grid(True, linestyle='--', alpha=0.7)
+            ax.grid(color="#7a7c7d", linewidth=0.3)
+            ax.grid(which='minor', color='#7a7c7d', linestyle=':', linewidth=0.2)
+        else:
+            ax.text(0.5, 0.5, f"Subplot {plot_id}", 
+                    ha='center', va='center', fontsize=12,
+                    transform=ax.transAxes)
+            ax.set_title(f"Subplot {plot_id}", fontsize=10)
+        ax.minorticks_on()
+        ax.tick_params(axis='x', length=4, width=2, labelsize=14, direction ='in')
+        ax.tick_params(axis='y', length=4, width=2, labelsize=14, direction ='in')
+        ax.tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(5))
+        ax.tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
+        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(5))
+        return ax
 
 class SubplotEditor(QWidget):
     def __init__(self, parent=None):
@@ -403,11 +477,11 @@ class SubplotEditor(QWidget):
         
         creation_layout.addWidget(QLabel("Data x:"), 2, 0)
         self.data_combo_x = QComboBox()
-        self.data_combo_x.addItems(["None"] + list(self.datasets.keys()))
+        self.data_combo_x.addItems(["None"])
         creation_layout.addWidget(self.data_combo_x, 2, 1, 1, 3)
         creation_layout.addWidget(QLabel("Data y:"), 3, 0)
         self.data_combo_y = QComboBox()
-        self.data_combo_y.addItems(["None"] + list(self.datasets.keys()))
+        self.data_combo_y.addItems(["None"])
         creation_layout.addWidget(self.data_combo_y, 3, 1, 1, 3)
         
         self.add_subplot_btn = QPushButton("Add Subplot")
@@ -467,10 +541,12 @@ class SubplotEditor(QWidget):
         
         data_layout.addWidget(QLabel("Data x:"))
         self.edit_data_combo_x = QComboBox()
+        self.edit_data_combo_x.addItems(["None"])
         data_layout.addWidget(self.edit_data_combo_x)
 
         data_layout.addWidget(QLabel("Data y:"))
         self.edit_data_combo_y = QComboBox()
+        self.edit_data_combo_y.addItems(["None"])
         data_layout.addWidget(self.edit_data_combo_y)
 
         self.update_data_btn = QPushButton("Update Data")
@@ -524,9 +600,9 @@ class SubplotEditor(QWidget):
         plot_layout.addWidget(self.subplot_list)
         
         # Matplotlib figure
-        self.figure = Figure(figsize=(10, 8), dpi=100)
-        self.canvas = FigureCanvas(self.figure)
-        plot_layout.addWidget(self.canvas)
+        self.plot_canvas = INTERACTIVE_PLOT()
+        # self.figure = Figure(figsize=(10, 8), dpi=100)
+        plot_layout.addWidget(self.plot_canvas.canvas)
         
         # Set initial splitter sizes
         splitter.addWidget(plot_panel)
@@ -540,16 +616,20 @@ class SubplotEditor(QWidget):
     
     def update_column_data(self, headers: list[str]) -> None:
         self.data_combo_x.clear()
-        self.data_combo_x.addItems(headers)
+        self.data_combo_x.addItems(["None"] + headers)
         self.data_combo_y.clear()
-        self.data_combo_y.addItems(headers)
+        self.data_combo_y.addItems(["None"] + headers)
+        self.edit_data_combo_x.clear()
+        self.edit_data_combo_x.addItems(["None"] + headers)
+        self.edit_data_combo_y.clear()
+        self.edit_data_combo_y.addItems(["None"] + headers)
 
     def create_grid(self):
         """Create a new grid based on row/column configuration"""
         rows = self.rows_spin.value()
         cols = self.cols_spin.value()
         self.grid_display.create_grid(rows, cols)
-        self.subplots = []
+        self.plot_canvas.subplots = []
         self.current_plot_id = 0
         self.update_subplot_list()
         self.clear_selection()
@@ -576,7 +656,7 @@ class SubplotEditor(QWidget):
             return
             
         # Check for overlaps
-        for subplot in self.subplots:
+        for subplot in self.plot_canvas.subplots:
             s_row, s_col, s_row_span, s_col_span, _, _, _ = subplot[1:8]
             
             # Check if rectangles overlap
@@ -590,7 +670,7 @@ class SubplotEditor(QWidget):
         
         # Add subplot
         plot_id = self.current_plot_id
-        self.subplots.append([
+        self.plot_canvas.subplots.append([
             plot_id,
             row,
             col,
@@ -623,7 +703,9 @@ class SubplotEditor(QWidget):
     
     def clear_subplots(self):
         """Clear all subplots"""
-        self.subplots = []
+        self.plot_canvas.subplots = []
+        self.plot_canvas.fig.clear()
+        self.plot_canvas.canvas.draw()
         self.current_plot_id = 0
         self.grid_display.clear_grid()
         self.create_grid()
@@ -633,7 +715,7 @@ class SubplotEditor(QWidget):
         """Update the subplot list widget"""
         self.subplot_list.clear()
         
-        for subplot in self.subplots:
+        for subplot in self.plot_canvas.subplots:
             plot_id, row, col, row_span, col_span, data_x, data_y, _, _, _ = subplot
             item = QListWidgetItem(f"Subplot {plot_id}: {row},{col} [{row_span}x{col_span}] - {data_x}, {data_y}")
             item.setData(Qt.ItemDataRole.UserRole, plot_id)
@@ -654,7 +736,7 @@ class SubplotEditor(QWidget):
         self.editor_group.setEnabled(True)
         
         # Find the subplot
-        for subplot in self.subplots:
+        for subplot in self.plot_canvas.subplots:
             if subplot[0] == plot_id:
                 # Populate position controls
                 _, row, col, row_span, col_span, data_x, data_y, color, line_width, show_grid = subplot
@@ -714,7 +796,7 @@ class SubplotEditor(QWidget):
             return
             
         # Check for overlaps with other subplots
-        for subplot in self.subplots:
+        for subplot in self.plot_canvas.subplots:
             s_id, s_row, s_col, s_row_span, s_col_span, _, _, _, _ = subplot
             if s_id == self.selected_subplot_id:
                 continue
@@ -728,12 +810,12 @@ class SubplotEditor(QWidget):
                 return
         
         # Update the subplot
-        for i, subplot in enumerate(self.subplots):
+        for i, subplot in enumerate(self.plot_canvas.subplots):
             if subplot[0] == self.selected_subplot_id:
-                self.subplots[i][1] = new_row
-                self.subplots[i][2] = new_col
-                self.subplots[i][3] = new_row_span
-                self.subplots[i][4] = new_col_span
+                self.plot_canvas.subplots[i][1] = new_row
+                self.plot_canvas.subplots[i][2] = new_col
+                self.plot_canvas.subplots[i][3] = new_row_span
+                self.plot_canvas.subplots[i][4] = new_col_span
                 
                 # Update visual display
                 self.grid_display.update_subplot(
@@ -753,11 +835,14 @@ class SubplotEditor(QWidget):
         new_data_y = self.edit_data_combo_y.currentText()
         
         # Update the subplot
-        for i, subplot in enumerate(self.subplots):
+        for i, subplot in enumerate(self.plot_canvas.subplots):
             if subplot[0] == self.selected_subplot_id:
-                self.subplots[i][5] = new_data_x
-                self.subplots[i][6] = new_data_y
-
+                self.plot_canvas.subplots[i][5] = new_data_x
+                self.plot_canvas.subplots[i][6] = new_data_y
+                ax = self.plot_canvas.update_one_plot(subplot, self.window())
+                # self.plot_canvas.canvas.blit(ax.bbox)
+                self.plot_canvas.canvas.draw()
+                self.plot_canvas.draw()
                 break
         
         self.update_subplot_list()
@@ -778,74 +863,79 @@ class SubplotEditor(QWidget):
         new_grid = self.grid_checkbox.isChecked()
         
         # Update the subplot
-        for i, subplot in enumerate(self.subplots):
+        for i, subplot in enumerate(self.plot_canvas.subplots):
             if subplot[0] == self.selected_subplot_id:
-                self.subplots[i][7] = new_color
-                self.subplots[i][8] = new_width
-                self.subplots[i][9
-                ] = new_grid
+                self.plot_canvas.subplots[i][7] = new_color
+                self.plot_canvas.subplots[i][8] = new_width
+                self.plot_canvas.subplots[i][9] = new_grid
+                self.plot_canvas.update_one_plot(subplot, self.window())
+                self.plot_canvas.canvas.draw()
+                self.plot_canvas.draw()
                 break
     
     # Updated plot_graphs method in the SubplotEditor class
     def plot_graphs(self):
-        """Generate the plot based on current configuration"""
-        if not self.subplots:
-            QMessageBox.warning(self, "No Subplots", "Please add at least one subplot")
-            return
+        self.plot_canvas.fig.clear()
+        self.plot_canvas.canvas.draw()
+        self.plot_canvas.plot_data(self.window(),  self.rows_spin.value(), self.cols_spin.value())
+        # """Generate the plot based on current configuration"""
+        # if not self.plot_canvas.subplots:
+        #     QMessageBox.warning(self, "No Subplots", "Please add at least one subplot")
+        #     return
             
-        self.figure.clear()
+        # self.plot_canvas.fig.clear()
         
-        rows = self.rows_spin.value()
-        cols = self.cols_spin.value()
+        # rows = self.rows_spin.value()
+        # cols = self.cols_spin.value()
         
-        # Create GridSpec
-        gs = gridspec.GridSpec(
-            rows, cols, 
-            figure=self.figure,
-            width_ratios=[1]*cols,
-            height_ratios=[1]*rows,
-            wspace=0.5,
-            hspace=0.7
-        )
+        # # Create GridSpec
+        # gs = gridspec.GridSpec(
+        #     rows, cols, 
+        #     figure=self.plot_canvas.fig,
+        #     width_ratios=[1]*cols,
+        #     height_ratios=[1]*rows,
+        #     wspace=0.5,
+        #     hspace=0.7
+        # )
         
-        # Create axes for each subplot
-        for subplot in self.subplots:
-            plot_id, s_row, s_col, s_row_span, s_col_span, data_x, data_y, color, line_width, show_grid = subplot
+        # # Create axes for each subplot
+        # for subplot in self.plot_canvas.subplots:
+        #     plot_id, s_row, s_col, s_row_span, s_col_span, data_x, data_y, color, line_width, show_grid = subplot
             
-            # Create subplot with specified span
-            ax = self.figure.add_subplot(gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
+        #     # Create subplot with specified span
+        #     ax = self.plot_canvas.fig.add_subplot(gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
             
-            # Plot data if selected
-            if data_x != "None":
-                data = self.window().get_data(data_x, data_y)
-                ax.plot(data[0], data[1], linewidth=line_width, color=color)
-                ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
-                if show_grid:
-                    ax.grid(True, linestyle='--', alpha=0.7)
-            else:
-                ax.text(0.5, 0.5, f"Subplot {plot_id}", 
-                        ha='center', va='center', fontsize=12,
-                        transform=ax.transAxes)
-                ax.set_title(f"Subplot {plot_id}", fontsize=10)
+        #     # Plot data if selected
+        #     if data_x != "None":
+        #         data = self.window().get_data(data_x, data_y)
+        #         ax.plot(data[0], data[1], linewidth=line_width, color=color)
+        #         ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
+        #         if show_grid:
+        #             ax.grid(True, linestyle='--', alpha=0.7)
+        #     else:
+        #         ax.text(0.5, 0.5, f"Subplot {plot_id}", 
+        #                 ha='center', va='center', fontsize=12,
+        #                 transform=ax.transAxes)
+        #         ax.set_title(f"Subplot {plot_id}", fontsize=10)
         
-        # Add descriptive text for empty grid cells
-        for r in range(rows):
-            for c in range(cols):
-                cell_occupied = False
-                for subplot in self.subplots:
-                    # CORRECTED UNPACKING HERE
-                    plot_id, s_row, s_col, s_row_span, s_col_span, *_ = subplot
-                    if (s_row <= r < s_row + s_row_span and 
-                        s_col <= c < s_col + s_col_span):
-                        cell_occupied = True
-                        break
+        # # Add descriptive text for empty grid cells
+        # for r in range(rows):
+        #     for c in range(cols):
+        #         cell_occupied = False
+        #         for subplot in self.plot_canvas.subplots:
+        #             # CORRECTED UNPACKING HERE
+        #             plot_id, s_row, s_col, s_row_span, s_col_span, *_ = subplot
+        #             if (s_row <= r < s_row + s_row_span and 
+        #                 s_col <= c < s_col + s_col_span):
+        #                 cell_occupied = True
+        #                 break
                 
-                if not cell_occupied:
-                    ax = self.figure.add_subplot(gs[r, c])
-                    ax.text(0.5, 0.5, "Empty Cell", 
-                            ha='center', va='center', fontsize=10,
-                            transform=ax.transAxes, alpha=0.5)
-                    ax.axis('off')
+        #         if not cell_occupied:
+        #             ax = self.plot_canvas.fig.add_subplot(gs[r, c])
+        #             ax.text(0.5, 0.5, "Empty Cell", 
+        #                     ha='center', va='center', fontsize=10,
+        #                     transform=ax.transAxes, alpha=0.5)
+        #             ax.axis('off')
         
-        self.figure.tight_layout()
-        self.canvas.draw()
+        # self.plot_canvas.fig.tight_layout()
+        # self.plot_canvas.canvas.draw()

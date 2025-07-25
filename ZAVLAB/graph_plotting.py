@@ -6,7 +6,7 @@ import matplotlib.ticker as ticker
 from matplotlib.colors import Colormap
 from pathlib import Path
 
-#toDo: почему-то нумерация для subplot сломалась. Потому что если делать (2, 1) для изменения 0ого надо использовать индекс 1
+#toDo: почему-то нумерация для subplot сломалась. Потому что если делать (2, 1) для изменения 0ого надо использовать индекс 1cd 
 
 """
 This part was made by Arina.
