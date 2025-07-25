@@ -6,6 +6,8 @@ import matplotlib.ticker as ticker
 from matplotlib.colors import Colormap
 from pathlib import Path
 
+#toDo: почему-то нумерация для subplot сломалась. Потому что если делать (2, 1) для изменения 0ого надо использовать индекс 1
+
 """
 This part was made by Arina.
 In this file, all "inspiration" comments are just my attempt to make this work a little more lively!
@@ -333,10 +335,10 @@ class Earl:
             except ValueError as e:
                 print(f"Error is {e}")
 
-            self.number_of_accuracy = int(self.subplots_settings[i]["axes_round_accuracy"][0].split('.')[1].split('f')[0])
-            self.ax[y][x].xaxis.set_major_formatter(ticker.FuncFormatter(self.__zero_formatter))
-            self.number_of_accuracy = int(self.subplots_settings[i]["axes_round_accuracy"][1].split('.')[1].split('f')[0])           
-            self.ax[y][x].yaxis.set_major_formatter(ticker.FuncFormatter(self.__zero_formatter))
+            self.number_of_accuracy_x = int(self.subplots_settings[i]["axes_round_accuracy"][0].split('.')[1].split('f')[0])
+            self.ax[y][x].xaxis.set_major_formatter(ticker.FuncFormatter(self.__zero_formatter_x))
+            self.number_of_accuracy_y = int(self.subplots_settings[i]["axes_round_accuracy"][1].split('.')[1].split('f')[0])  
+            self.ax[y][x].yaxis.set_major_formatter(ticker.FuncFormatter(self.__zero_formatter_y))
 
             #set inital ticks properties
             self.ax[y][x].minorticks_on()
@@ -357,7 +359,7 @@ class Earl:
         self.fig.align_titles()
         self.fig.tight_layout()
     
-    def __zero_formatter(self, x, pos):
+    def __zero_formatter_x(self, x, pos):
         """
         Format numerical values for axis label with zero approximation handling.
 
@@ -400,12 +402,62 @@ class Earl:
         nothing
         """
         # Round the value to 2 decimal places first
-        rounded_x = round(x, self.number_of_accuracy)
+        rounded_x = round(x, self.number_of_accuracy_x)
         # Check if the rounded value is effectively zero
         if abs(rounded_x) < 1e-8:
             return "0" 
         else:
-            return f"{x:.{self.number_of_accuracy}f}"
+            return f"{x:.{self.number_of_accuracy_x}f}"
+
+    def __zero_formatter_y(self, y, pos):
+        """
+        Format numerical values for axis label with zero approximation handling.
+
+        Provides clean numerical formatting by:
+        1. Rounding values to a specified decimal precision
+        2. Replacing near-zero values with exact "0" string
+        3. Maintaining standard decimal formatting for other values
+
+        Arguments:
+        ----------
+        x : float
+            The raw numerical value to be formatted
+        pos : int
+            Position parameter (required by matplotlib formatter API, not used here)
+
+        Returns:
+        -------
+        str
+            Formatted string representation of the value:
+            - "0" for values near zero after rounding
+            - Standard decimal format otherwise
+
+        Notes:
+        ------
+        - Uses `self.number_of_accuracy` to determine decimal places
+        - Considers values with absolute magnitude < 1e-8 as effectively zero
+        - Implements rounding before zero-check for accurate representation
+        - Designed for use with matplotlib tick formatting (hence unused pos parameter)
+
+        Example:
+        --------
+        With number_of_accuracy = 2:
+        - 0.00000004 → "0"
+        - 1.23456789 → "1.23"
+        - -0.0000001 → "0"
+        - 3.14159265 → "3.14"
+
+        Inspiration:
+        ------------
+        nothing
+        """
+        # Round the value to 2 decimal places first
+        rounded_y = round(y, self.number_of_accuracy_y)
+        # Check if the rounded value is effectively zero
+        if abs(rounded_y) < 1e-8:
+            return "0" 
+        else:
+            return f"{y:.{self.number_of_accuracy_y}f}"
     
     def __plot_data_on_subplots(self):
         """
