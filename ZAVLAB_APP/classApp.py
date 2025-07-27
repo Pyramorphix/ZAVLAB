@@ -503,7 +503,10 @@ class ZAVLAB(QMainWindow):
             header_item = self.table.item(0, col)
             headers.append(header_item.text() if header_item else f"Column {col+1}")
         self.signals.emit(headers)
-            
+    
+    def get_headers(self):
+        return [self.table.item(0, col).text() if self.table.item(0, col) 
+                else f"Column {col+1}" for col in range(self.table.columnCount())]
 
 if __name__ == "__main__":
     app = QApplication([])

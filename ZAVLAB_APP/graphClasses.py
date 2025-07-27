@@ -14,6 +14,81 @@ import sys
 import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
 
+class DataSeriesDialog(QDialog):
+    def __init__(self, headers, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Data Series Configuration")
+        layout = QVBoxLayout()
+        
+        # Data series list
+        self.series_list = QListWidget()
+        layout.addWidget(QLabel("Data Series:"))
+        layout.addWidget(self.series_list)
+        
+        # Controls
+        btn_layout = QHBoxLayout()
+        self.add_btn = QPushButton("+")
+        self.add_btn.clicked.connect(self.add_series)
+        self.remove_btn = QPushButton("-")
+        self.remove_btn.clicked.connect(self.remove_series)
+        btn_layout.addWidget(self.add_btn)
+        btn_layout.addWidget(self.remove_btn)
+        layout.addLayout(btn_layout)
+        
+        # Data selection
+        self.data_combo_x = QComboBox()
+        self.data_combo_x.addItems(["None"] + headers)
+        self.data_combo_y = QComboBox()
+        self.data_combo_y.addItems(["None"] + headers)
+        
+        # Style controls
+        self.color_btn = QPushButton("Choose Color")
+        self.color_btn.clicked.connect(self.choose_color)
+        self.line_width = QDoubleSpinBox()
+        self.line_width.setRange(0.1, 5.0)
+        self.line_width.setValue(1.0)
+        
+        form = QFormLayout()
+        form.addRow("X Data:", self.data_combo_x)
+        form.addRow("Y Data:", self.data_combo_y)
+        form.addRow("Line Color:", self.color_btn)
+        form.addRow("Line Width:", self.line_width)
+        layout.addLayout(form)
+        
+        # Dialog buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
+                                  QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        
+        self.setLayout(layout)
+        self.line_color = "#1f77b4"
+        self.series = []
+    
+    def choose_color(self):
+        color = QColorDialog.getColor(initial=QColor(self.line_color))
+        if color.isValid():
+            self.line_color = color.name()
+    
+    def add_series(self):
+        series = {
+            'x': self.data_combo_x.currentText(),
+            'y': self.data_combo_y.currentText(),
+            'color': self.line_color,
+            'width': self.line_width.value()
+        }
+        self.series.append(series)
+        self.series_list.addItem(f"{series['x']} vs {series['y']}")
+    
+    def remove_series(self):
+        if self.series_list.currentRow() >= 0:
+            self.series.pop(self.series_list.currentRow())
+            self.series_list.takeItem(self.series_list.currentRow())
+    
+    def get_series(self):
+        return self.series
+
 class SubplotCell(QFrame):
     """Visual representation of a single grid cell"""
     def __init__(self, row, col, parent=None):
@@ -293,13 +368,11 @@ class INTERACTIVE_PLOT(FigureCanvas):
                     dialog.exec()
                     return
     
-    def plot_data(self, win, rows_spin, cols_spin):
+    def plot_data(self, win, rows, cols):
         """Generate the plot based on current configuration"""
         if not self.subplots:
             QMessageBox.warning(self, "No Subplots", "Please add at least one subplot")
             return
-        rows = rows_spin
-        cols = cols_spin
         
         # Create GridSpec
         self.gs = gridspec.GridSpec(
@@ -340,26 +413,22 @@ class INTERACTIVE_PLOT(FigureCanvas):
         self.canvas.draw()
         self.draw()
     
-    def create_axes(self):
-        for subplot in self.subplots:
-                plot_id, s_row, s_col, s_row_span, s_col_span, data_x, data_y, color, line_width, show_grid = subplot
-                # Create subplot with specified span
-                ax = self.fig.add_subplot(self.gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
-                self.axes.append(ax)
-  
-    
     def update_one_plot(self, subplot, win):
-        plot_id, s_row, s_col, s_row_span, s_col_span, data_x, data_y, color, line_width, show_grid = subplot
-        # Create subplot with specified span
-        ax = self.axes[plot_id]#self.fig.add_subplot(self.gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
+        plot_id, s_row, s_col, s_row_span, s_col_span, data_series, show_grid = subplot
+        ax = self.axes[plot_id]
         ax.clear()
-        # Plot data if selected
-        if data_x != "None" and data_y != "None":
-            data = win.get_data(data_x, data_y)
-            ax.plot(data[0], data[1], linewidth=line_width, color=color)
-            ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
-            ax.set_xlabel(str(data_x[0]))
-            ax.set_ylabel(str(data_y[0]))
+    
+        # Plot all series
+        for series in data_series:
+            if series['x'] != "None" and series['y'] != "None":
+                data = win.get_data(series['x'], series['y'])
+                ax.plot(data[0], data[1], 
+                        linewidth=series['width'], 
+                        color=series['color'])
+    
+                ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
+                ax.set_xlabel(str(data[0]))
+                ax.set_ylabel(str(data[1]))
         if show_grid:
             #ax.grid(True, linestyle='--', alpha=0.7)
             ax.grid(color="#7a7c7d", linewidth=0.3)
@@ -484,6 +553,11 @@ class SubplotEditor(QWidget):
         self.data_combo_y.addItems(["None"])
         creation_layout.addWidget(self.data_combo_y, 3, 1, 1, 3)
         
+        self.data_btn = QPushButton("Configure Data Series")
+        self.data_btn.clicked.connect(self.configure_data_series)
+        creation_layout.addWidget(self.data_btn, 5, 0, 1, 4)
+
+        
         self.add_subplot_btn = QPushButton("Add Subplot")
         self.add_subplot_btn.clicked.connect(self.add_subplot)
         creation_layout.addWidget(self.add_subplot_btn, 4, 0, 1, 2)
@@ -548,6 +622,10 @@ class SubplotEditor(QWidget):
         self.edit_data_combo_y = QComboBox()
         self.edit_data_combo_y.addItems(["None"])
         data_layout.addWidget(self.edit_data_combo_y)
+        
+        self.edit_data_btn = QPushButton("Edit Data Series")
+        self.edit_data_btn.clicked.connect(self.edit_data_series)
+        data_layout.addWidget(self.edit_data_btn)
 
         self.update_data_btn = QPushButton("Update Data")
         self.update_data_btn.clicked.connect(self.update_subplot_data)
@@ -601,6 +679,7 @@ class SubplotEditor(QWidget):
         
         # Matplotlib figure
         self.plot_canvas = INTERACTIVE_PLOT()
+        self.plot_canvas.subplots = []
         # self.figure = Figure(figsize=(10, 8), dpi=100)
         plot_layout.addWidget(self.plot_canvas.canvas)
         
@@ -667,7 +746,12 @@ class SubplotEditor(QWidget):
                 QMessageBox.warning(self, "Overlap Detected", 
                                     "This subplot overlaps with an existing one")
                 return
-        
+        data_series = [{
+            "x":self.data_combo_x.currentText(),
+            "y":self.data_combo_y.currentText(),
+            "color":self.line_color, 
+            "width":1.0
+        }]
         # Add subplot
         plot_id = self.current_plot_id
         self.plot_canvas.subplots.append([
@@ -676,10 +760,7 @@ class SubplotEditor(QWidget):
             col,
             row_span,
             col_span,
-            self.data_combo_x.currentText(),  # Data
-            self.data_combo_y.currentText(),  # Data
-            self.line_color,  # Line color
-            1.0,  # Line width
+            data_series,
             True   # Show grid
         ])
         self.current_plot_id += 1
@@ -716,8 +797,11 @@ class SubplotEditor(QWidget):
         self.subplot_list.clear()
         
         for subplot in self.plot_canvas.subplots:
-            plot_id, row, col, row_span, col_span, data_x, data_y, _, _, _ = subplot
-            item = QListWidgetItem(f"Subplot {plot_id}: {row},{col} [{row_span}x{col_span}] - {data_x}, {data_y}")
+            plot_id, row, col, row_span, col_span, data_series, *_ = subplot
+            data_info = ""
+            for data in data_series:
+                data_info += f"\n{data['y']}({data['x']}), line color - {data['color']}, line width - {data['width']}"
+            item = QListWidgetItem(f"Subplot {plot_id}: {row},{col} [{row_span}x{col_span}] - " + data_info)
             item.setData(Qt.ItemDataRole.UserRole, plot_id)
             self.subplot_list.addItem(item)
     
@@ -739,20 +823,20 @@ class SubplotEditor(QWidget):
         for subplot in self.plot_canvas.subplots:
             if subplot[0] == plot_id:
                 # Populate position controls
-                _, row, col, row_span, col_span, data_x, data_y, color, line_width, show_grid = subplot
+                _, row, col, row_span, col_span, data_series, show_grid = subplot
                 self.edit_row_spin.setValue(row)
                 self.edit_col_spin.setValue(col)
                 self.edit_row_span_spin.setValue(row_span)
                 self.edit_col_span_spin.setValue(col_span)
                 
                 # Populate data controls
-                self.edit_data_combo_x.setCurrentText(data_x)
-                self.edit_data_combo_y.setCurrentText(data_y)
+                self.edit_data_combo_x.setCurrentText(data_series[0]["x"])
+                self.edit_data_combo_y.setCurrentText(data_series[0]["y"])
                 
                 # Populate style controls
-                self.line_width_spin.setValue(line_width)
+                self.line_width_spin.setValue(data_series[0]["width"])
                 self.grid_checkbox.setChecked(show_grid)
-                self.line_color = color
+                self.line_color = data_series[0]["color"]
                 break
     
     def clear_selection(self):
@@ -878,64 +962,83 @@ class SubplotEditor(QWidget):
         self.plot_canvas.fig.clear()
         self.plot_canvas.canvas.draw()
         self.plot_canvas.plot_data(self.window(),  self.rows_spin.value(), self.cols_spin.value())
-        # """Generate the plot based on current configuration"""
-        # if not self.plot_canvas.subplots:
-        #     QMessageBox.warning(self, "No Subplots", "Please add at least one subplot")
-        #     return
+        
+    def configure_data_series(self):
+        headers = self.window().get_headers() 
+        dialog = DataSeriesDialog(headers, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             
-        # self.plot_canvas.fig.clear()
+            self.add_data_series_subplot(dialog.get_series())
+
+    def add_data_series_subplot(self, series):
+        """Add a new subplot to the configuration"""
+        row = self.row_spin.value()
+        col = self.col_spin.value()
+        row_span = self.row_span_spin.value()
+        col_span = self.col_span_spin.value()
         
-        # rows = self.rows_spin.value()
-        # cols = self.cols_spin.value()
+        # Check if subplot fits in grid
+        max_rows = self.rows_spin.value()
+        max_cols = self.cols_spin.value()
         
-        # # Create GridSpec
-        # gs = gridspec.GridSpec(
-        #     rows, cols, 
-        #     figure=self.plot_canvas.fig,
-        #     width_ratios=[1]*cols,
-        #     height_ratios=[1]*rows,
-        #     wspace=0.5,
-        #     hspace=0.7
-        # )
-        
-        # # Create axes for each subplot
-        # for subplot in self.plot_canvas.subplots:
-        #     plot_id, s_row, s_col, s_row_span, s_col_span, data_x, data_y, color, line_width, show_grid = subplot
+        if row + row_span > max_rows:
+            QMessageBox.warning(self, "Invalid Position", 
+                                f"Row span exceeds grid height (max row: {max_rows-1})")
+            return
             
-        #     # Create subplot with specified span
-        #     ax = self.plot_canvas.fig.add_subplot(gs[s_row:s_row+s_row_span, s_col:s_col+s_col_span])
+        if col + col_span > max_cols:
+            QMessageBox.warning(self, "Invalid Position", 
+                                f"Column span exceeds grid width (max col: {max_cols-1})")
+            return
             
-        #     # Plot data if selected
-        #     if data_x != "None":
-        #         data = self.window().get_data(data_x, data_y)
-        #         ax.plot(data[0], data[1], linewidth=line_width, color=color)
-        #         ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
-        #         if show_grid:
-        #             ax.grid(True, linestyle='--', alpha=0.7)
-        #     else:
-        #         ax.text(0.5, 0.5, f"Subplot {plot_id}", 
-        #                 ha='center', va='center', fontsize=12,
-        #                 transform=ax.transAxes)
-        #         ax.set_title(f"Subplot {plot_id}", fontsize=10)
+        # Check for overlaps
+        for subplot in self.plot_canvas.subplots:
+            s_row, s_col, s_row_span, s_col_span, *_ = subplot[1:8]
+            
+            # Check if rectangles overlap
+            if self.rectangles_overlap(
+                (row, col, row_span, col_span),
+                (s_row, s_col, s_row_span, s_col_span)
+            ):
+                QMessageBox.warning(self, "Overlap Detected", 
+                                    "This subplot overlaps with an existing one")
+                return
+        plot_id = self.current_plot_id
+        self.plot_canvas.subplots.append([
+            plot_id,
+            row,
+            col,
+            row_span,
+            col_span,
+            series,
+            True   # Show grid
+        ])
+        self.current_plot_id += 1
         
-        # # Add descriptive text for empty grid cells
-        # for r in range(rows):
-        #     for c in range(cols):
-        #         cell_occupied = False
-        #         for subplot in self.plot_canvas.subplots:
-        #             # CORRECTED UNPACKING HERE
-        #             plot_id, s_row, s_col, s_row_span, s_col_span, *_ = subplot
-        #             if (s_row <= r < s_row + s_row_span and 
-        #                 s_col <= c < s_col + s_col_span):
-        #                 cell_occupied = True
-        #                 break
-                
-        #         if not cell_occupied:
-        #             ax = self.plot_canvas.fig.add_subplot(gs[r, c])
-        #             ax.text(0.5, 0.5, "Empty Cell", 
-        #                     ha='center', va='center', fontsize=10,
-        #                     transform=ax.transAxes, alpha=0.5)
-        #             ax.axis('off')
+        # Update visual display
+        self.grid_display.add_subplot(row, col, row_span, col_span, plot_id)
+        self.update_subplot_list()
         
-        # self.plot_canvas.fig.tight_layout()
-        # self.plot_canvas.canvas.draw()
+        # Select the new subplot
+        self.select_subplot(plot_id)
+        
+
+    def edit_data_series(self):
+        if not self.selected_subplot_id:
+            return
+        
+        # Find current series
+        subplot = next((s for s in self.plot_canvas.subplots if s[0] == self.selected_subplot_id), None)
+        if not subplot: return
+        
+        headers = self.window().get_headers()
+        dialog = DataSeriesDialog(headers, self)
+        dialog.series = subplot[5][:]  # Copy existing series
+        for series in dialog.series:
+            dialog.series_list.addItem(f"{series['x']} vs {series['y']}")
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            subplot[5] = dialog.get_series()
+            self.update_subplot_list()
+            self.plot_canvas.update_one_plot(subplot, self.window())
+            self.plot_canvas.canvas.draw()
