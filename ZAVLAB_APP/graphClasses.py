@@ -398,7 +398,6 @@ class INTERACTIVE_PLOT(FigureCanvas):
                 for c in range(s_col, s_col+s_col_span):
                     if r < rows and c < cols:
                         occupied[r][c] = True
-
         # Add empty cells
         for r in range(rows):
             for c in range(cols):
@@ -613,6 +612,11 @@ class SubplotEditor(QWidget):
         data_tab = QWidget()
         data_layout = QVBoxLayout(data_tab)
         
+        self.data_data_spin = QComboBox()
+        self.data_data_spin.addItems(["None"])
+        data_layout.addWidget(QLabel("Data to change:"))
+        data_layout.addWidget(self.data_data_spin)
+ 
         data_layout.addWidget(QLabel("Data x:"))
         self.edit_data_combo_x = QComboBox()
         self.edit_data_combo_x.addItems(["None"])
@@ -636,6 +640,10 @@ class SubplotEditor(QWidget):
         # Styling tab
         style_tab = QWidget()
         style_layout = QFormLayout(style_tab)
+        
+        self.data_styles_spin = QComboBox()
+        self.data_styles_spin.addItems(["None"])
+        style_layout.addRow("Data to change:", self.data_styles_spin)
         
         self.line_width_spin = QDoubleSpinBox()
         self.line_width_spin.setRange(0.1, 10.0)
@@ -736,7 +744,7 @@ class SubplotEditor(QWidget):
             
         # Check for overlaps
         for subplot in self.plot_canvas.subplots:
-            s_row, s_col, s_row_span, s_col_span, _, _, _ = subplot[1:8]
+            s_row, s_col, s_row_span, s_col_span, *_ = subplot[1:8]
             
             # Check if rectangles overlap
             if self.rectangles_overlap(
@@ -828,7 +836,8 @@ class SubplotEditor(QWidget):
                 self.edit_col_spin.setValue(col)
                 self.edit_row_span_spin.setValue(row_span)
                 self.edit_col_span_spin.setValue(col_span)
-                
+                self.data_data_spin.clear()
+                self.data_data_spin.addItems([f"{data['y']}({data['x']})" for data in data_series])
                 # Populate data controls
                 self.edit_data_combo_x.setCurrentText(data_series[0]["x"])
                 self.edit_data_combo_y.setCurrentText(data_series[0]["y"])
@@ -921,8 +930,11 @@ class SubplotEditor(QWidget):
         # Update the subplot
         for i, subplot in enumerate(self.plot_canvas.subplots):
             if subplot[0] == self.selected_subplot_id:
-                self.plot_canvas.subplots[i][5] = new_data_x
-                self.plot_canvas.subplots[i][6] = new_data_y
+                for counter in range(len(self.plot_canvas.subplots[i][5])):
+                    data = self.plot_canvas.subplots[i][5][counter]
+                    if f"{data['y']}({data['x']})" == self.data_data_spin.currentText():
+                        self.plot_canvas.subplots[i][5][counter]["x"] = new_data_x
+                        self.plot_canvas.subplots[i][5][counter]["y"] = new_data_y
                 ax = self.plot_canvas.update_one_plot(subplot, self.window())
                 # self.plot_canvas.canvas.blit(ax.bbox)
                 self.plot_canvas.canvas.draw()
