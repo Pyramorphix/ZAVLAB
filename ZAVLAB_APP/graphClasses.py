@@ -55,6 +55,18 @@ class DataSeriesDialog(QDialog):
         form.addRow("Line Width:", self.line_width)
         layout.addLayout(form)
         
+        #subplot preset
+        layout_x = QHBoxLayout()
+        layout_y = QHBoxLayout()
+        self.x_line_edit = QLineEdit("x")
+        self.y_line_edit = QLineEdit("y") 
+        layout_x.addWidget(QLabel("x axis label:"))
+        layout_x.addWidget(self.x_line_edit)
+        layout_y.addWidget(QLabel("y axis label:"))  
+        layout_y.addWidget(self.y_line_edit)     
+        layout.addLayout(layout_x)
+        layout.addLayout(layout_y)
+        
         # Dialog buttons
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
                                   QDialogButtonBox.StandardButton.Cancel)
@@ -88,6 +100,8 @@ class DataSeriesDialog(QDialog):
     
     def get_series(self):
         return self.series
+    def get_subplot_info(self):
+        return {"x-label": self.x_line_edit.text(), "y-label": self.y_line_edit.text()}
 
 class SubplotCell(QFrame):
     """Visual representation of a single grid cell"""
@@ -413,7 +427,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
         self.draw()
     
     def update_one_plot(self, subplot, win):
-        plot_id, s_row, s_col, s_row_span, s_col_span, data_series, show_grid = subplot
+        plot_id, s_row, s_col, s_row_span, s_col_span, data_series, show_grid, subplot_info = subplot
         ax = self.axes[plot_id]
         ax.clear()
     
@@ -426,8 +440,8 @@ class INTERACTIVE_PLOT(FigureCanvas):
                         color=series['color'])
     
                 ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
-                ax.set_xlabel(str(data[0]))
-                ax.set_ylabel(str(data[1]))
+        ax.set_xlabel(subplot_info["x-label"])
+        ax.set_ylabel(subplot_info["y-label"])
         if show_grid:
             #ax.grid(True, linestyle='--', alpha=0.7)
             ax.grid(color="#7a7c7d", linewidth=0.3)
@@ -659,7 +673,7 @@ class SubplotEditor(QWidget):
         style_layout.addRow(self.grid_checkbox)
         
         self.update_style_btn = QPushButton("Update Style")
-        self.update_style_btn.clicked.connect(self.update_subplot_style)
+        self.update_style_btn.clicked.connect(self.update_data_style)
         style_layout.addRow(self.update_style_btn)
         
         self.editor_tabs.addTab(style_tab, "Style")
@@ -769,7 +783,9 @@ class SubplotEditor(QWidget):
             row_span,
             col_span,
             data_series,
-            True   # Show grid
+            True ,  # Show grid
+            {"x-label":self.data_combo_x.currentText(),
+            "y-label":self.data_combo_y.currentText()}
         ])
         self.current_plot_id += 1
         
@@ -831,13 +847,15 @@ class SubplotEditor(QWidget):
         for subplot in self.plot_canvas.subplots:
             if subplot[0] == plot_id:
                 # Populate position controls
-                _, row, col, row_span, col_span, data_series, show_grid = subplot
+                _, row, col, row_span, col_span, data_series, show_grid, subplot_info = subplot
                 self.edit_row_spin.setValue(row)
                 self.edit_col_spin.setValue(col)
                 self.edit_row_span_spin.setValue(row_span)
                 self.edit_col_span_spin.setValue(col_span)
                 self.data_data_spin.clear()
                 self.data_data_spin.addItems([f"{data['y']}({data['x']})" for data in data_series])
+                self.data_styles_spin.clear()
+                self.data_styles_spin.addItems([f"{data['y']}({data['x']})" for data in data_series])
                 # Populate data controls
                 self.edit_data_combo_x.setCurrentText(data_series[0]["x"])
                 self.edit_data_combo_y.setCurrentText(data_series[0]["y"])
@@ -949,7 +967,7 @@ class SubplotEditor(QWidget):
         if color.isValid():
             self.line_color = color.name()
     
-    def update_subplot_style(self):
+    def update_data_style(self):
         """Update the style properties for a subplot"""
         if self.selected_subplot_id is None:
             return
@@ -961,10 +979,13 @@ class SubplotEditor(QWidget):
         # Update the subplot
         for i, subplot in enumerate(self.plot_canvas.subplots):
             if subplot[0] == self.selected_subplot_id:
-                self.plot_canvas.subplots[i][7] = new_color
-                self.plot_canvas.subplots[i][8] = new_width
-                self.plot_canvas.subplots[i][9] = new_grid
-                self.plot_canvas.update_one_plot(subplot, self.window())
+                for counter in range(len(self.plot_canvas.subplots[i][5])):
+                    data = self.plot_canvas.subplots[i][5][counter]
+                    if f"{data['y']}({data['x']})" == self.data_data_spin.currentText():
+                        self.plot_canvas.subplots[i][5][counter]["color"] = new_color
+                        self.plot_canvas.subplots[i][5][counter]["width"] = new_width
+                self.plot_canvas.subplots[i][6] = new_grid
+                ax = self.plot_canvas.update_one_plot(subplot, self.window())
                 self.plot_canvas.canvas.draw()
                 self.plot_canvas.draw()
                 break
@@ -973,16 +994,16 @@ class SubplotEditor(QWidget):
     def plot_graphs(self):
         self.plot_canvas.fig.clear()
         self.plot_canvas.canvas.draw()
+        self.plot_canvas.axes = []
         self.plot_canvas.plot_data(self.window(),  self.rows_spin.value(), self.cols_spin.value())
         
     def configure_data_series(self):
         headers = self.window().get_headers() 
         dialog = DataSeriesDialog(headers, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            
-            self.add_data_series_subplot(dialog.get_series())
+            self.add_data_series_subplot(dialog.get_series(), dialog.get_subplot_info())
 
-    def add_data_series_subplot(self, series):
+    def add_data_series_subplot(self, series, subplot_info):
         """Add a new subplot to the configuration"""
         row = self.row_spin.value()
         col = self.col_spin.value()
@@ -1023,7 +1044,8 @@ class SubplotEditor(QWidget):
             row_span,
             col_span,
             series,
-            True   # Show grid
+            True,   # Show grid
+            subplot_info
         ])
         self.current_plot_id += 1
         
