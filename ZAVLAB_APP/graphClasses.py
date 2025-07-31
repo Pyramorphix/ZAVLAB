@@ -460,6 +460,96 @@ class INTERACTIVE_PLOT(FigureCanvas):
         ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(5))
         return ax
 
+class subplotPositionDialog(QDialog):
+    def __init__(self, base_info, subs, max_row, max_col, parent=None):
+        super().__init__(parent)
+        self.subs = subs
+        self.max_row = max_row
+        self.max_col = max_col
+        self.id = base_info[4]
+        
+        self.setWindowTitle("Change subplot configuration")
+        layout = QGridLayout()
+        self.setLayout(layout)
+        
+        layout.addWidget(QLabel("Row position:"), 0, 0)
+        self.row_spin = QSpinBox()
+        self.row_spin.setRange(0, 7)
+        self.row_spin.setValue(base_info[0])
+        layout.addWidget(self.row_spin, 0, 1)
+        
+        layout.addWidget(QLabel("Column position:"), 0, 2)
+        self.col_spin = QSpinBox()
+        self.col_spin.setRange(0, 7)
+        self.col_spin.setValue(base_info[1])
+        layout.addWidget(self.col_spin, 0, 3)
+        
+        layout.addWidget(QLabel("Row Span:"), 1, 0)
+        self.row_span_spin = QSpinBox()
+        self.row_span_spin.setRange(1, 8)
+        self.row_span_spin.setValue(base_info[2])
+        layout.addWidget(self.row_span_spin, 1, 1)
+        
+        layout.addWidget(QLabel("Col Span:"), 1, 2)
+        self.col_span_spin = QSpinBox()
+        self.col_span_spin.setRange(1, 8)
+        self.col_span_spin.setValue(base_info[3])
+        layout.addWidget(self.col_span_spin, 1, 3)
+        
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        layout.addWidget(self.button_box, 2, 0, 1, 2)
+        self.button_box.accepted.connect(self.validate_input)
+        self.button_box.rejected.connect(self.reject)
+    
+    def validate_col(self):
+        """ true if invalide col (col_span), false if valide col(col_span)"""
+        return self.row_spin.value() + self.row_span_spin.value() > self.max_row
+    
+    def validate_row(self):
+        """ true if invalide row (row_span), false if valide row(row_span)"""
+        return self.col_spin.value() + self.col_span_spin.value() > self.max_col
+    
+    def rectangles_overlap(self, rect1, rect2):
+        """Check if two rectangles overlap"""
+        r1_row, r1_col, r1_row_span, r1_col_span = rect1
+        r2_row, r2_col, r2_row_span, r2_col_span = rect2
+        
+        return not (r1_col + r1_col_span <= r2_col or 
+                   r1_col >= r2_col + r2_col_span or 
+                   r1_row + r1_row_span <= r2_row or 
+                   r1_row >= r2_row + r2_row_span)
+    
+    def validate_ovelaps(self):
+        for subplot in self.subs:
+            s_id, s_row, s_col, s_row_span, s_col_span, *_ = subplot
+            if s_id == self.id:
+                continue
+            if self.rectangles_overlap(
+                (self.row_spin.value(), self.col_spin.value(), self.row_span_spin.value(), self.col_span_spin.value()),
+                (s_row, s_col, s_row_span, s_col_span)
+            ):
+                return True #overlaps
+        return False #there is now overlaps
+        
+    def validate_input(self):
+        if self.validate_col():
+            QMessageBox.warning(self, "Invalid Position", 
+                                f"Row span exceeds grid height (max row: {self.max_row-1})")
+        elif self.validate_row():
+            QMessageBox.warning(self, "Invalid Position", 
+                                f"Column span exceeds grid width (max col: {self.max_col-1})")
+        elif self.validate_ovelaps():
+            QMessageBox.warning(self, "Overlap Detected", 
+                                "This position overlaps with another subplot")
+        else:
+            self.accept() 
+    
+    def get_data(self):
+        return (self.row_spin.value(), self.row_span_spin.value(), self.col_spin.value(), self.col_span_spin.value())
+
+
 class SubplotEditor(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -529,58 +619,66 @@ class SubplotEditor(QWidget):
         visual_layout.addWidget(self.grid_display)
         
         config_layout.addWidget(self.visual_group)
-        
+
         # Subplot creation controls
         creation_group = QGroupBox("Create New Subplot")
-        creation_layout = QGridLayout()
-        creation_group.setLayout(creation_layout)
+        position_group = QGroupBox("Choose subplot size and position")
+        one_sub_group = QGroupBox("Choose data for subplot")
         
-        creation_layout.addWidget(QLabel("Row position:"), 0, 0)
+        creation_layout = QGridLayout()
+        position_sub_layout = QGridLayout()
+        one_sub_layout = QGridLayout()
+        
+        creation_group.setLayout(creation_layout)
+        position_group.setLayout(position_sub_layout)
+        one_sub_group.setLayout(one_sub_layout)
+        
+        position_sub_layout.addWidget(QLabel("Row position:"), 0, 0)
         self.row_spin = QSpinBox()
         self.row_spin.setRange(0, 7)
-        creation_layout.addWidget(self.row_spin, 0, 1)
+        position_sub_layout.addWidget(self.row_spin, 0, 1)
         
-        creation_layout.addWidget(QLabel("Column position:"), 0, 2)
+        position_sub_layout.addWidget(QLabel("Column position:"), 0, 2)
         self.col_spin = QSpinBox()
         self.col_spin.setRange(0, 7)
-        creation_layout.addWidget(self.col_spin, 0, 3)
+        position_sub_layout.addWidget(self.col_spin, 0, 3)
         
-        creation_layout.addWidget(QLabel("Row Span:"), 1, 0)
+        position_sub_layout.addWidget(QLabel("Row Span:"), 1, 0)
         self.row_span_spin = QSpinBox()
         self.row_span_spin.setRange(1, 8)
         self.row_span_spin.setValue(1)
-        creation_layout.addWidget(self.row_span_spin, 1, 1)
+        position_sub_layout.addWidget(self.row_span_spin, 1, 1)
         
-        creation_layout.addWidget(QLabel("Col Span:"), 1, 2)
+        position_sub_layout.addWidget(QLabel("Col Span:"), 1, 2)
         self.col_span_spin = QSpinBox()
         self.col_span_spin.setRange(1, 8)
         self.col_span_spin.setValue(1)
-        creation_layout.addWidget(self.col_span_spin, 1, 3)
+        position_sub_layout.addWidget(self.col_span_spin, 1, 3)
         
-        creation_layout.addWidget(QLabel("Data x:"), 2, 0)
+        one_sub_layout.addWidget(QLabel("Data x:"), 0, 0)
         self.data_combo_x = QComboBox()
         self.data_combo_x.addItems(["None"])
-        creation_layout.addWidget(self.data_combo_x, 2, 1, 1, 3)
-        creation_layout.addWidget(QLabel("Data y:"), 3, 0)
+        one_sub_layout.addWidget(self.data_combo_x, 0, 1, 1, 3)
+        one_sub_layout.addWidget(QLabel("Data y:"), 1, 0)
         self.data_combo_y = QComboBox()
         self.data_combo_y.addItems(["None"])
-        creation_layout.addWidget(self.data_combo_y, 3, 1, 1, 3)
-        
-        self.data_btn = QPushButton("Configure Data Series")
-        self.data_btn.clicked.connect(self.configure_data_series)
-        creation_layout.addWidget(self.data_btn, 5, 0, 1, 4)
-
+        one_sub_layout.addWidget(self.data_combo_y, 1, 1, 1, 3)
         
         self.add_subplot_btn = QPushButton("Add Subplot")
         self.add_subplot_btn.clicked.connect(self.add_subplot)
-        creation_layout.addWidget(self.add_subplot_btn, 4, 0, 1, 2)
+        one_sub_layout.addWidget(self.add_subplot_btn, 2, 0, 1, 2)
+        
+        self.data_btn = QPushButton("Configure Data Series")
+        self.data_btn.clicked.connect(self.configure_data_series)
+        creation_layout.addWidget(self.data_btn, 1, 0, 1, 4)
         
         self.clear_btn = QPushButton("Clear All")
         self.clear_btn.clicked.connect(self.clear_subplots)
-        creation_layout.addWidget(self.clear_btn, 4, 2, 1, 2)
+        creation_layout.addWidget(self.clear_btn, 2, 0, 1, 4)
         
+        creation_layout.addWidget(position_group, 0, 0, 1, 3)
+        creation_layout.addWidget(one_sub_group, 0, 3, 1, 1)
         config_layout.addWidget(creation_group)
-        
         # Subplot editing controls
         self.editor_group = QGroupBox("Edit Selected Subplot")
         self.editor_group.setEnabled(False)
@@ -734,7 +832,13 @@ class SubplotEditor(QWidget):
         self.current_plot_id = 0
         self.update_subplot_list()
         self.clear_selection()
-        
+    
+    def change_sub_pos(self, base_info, subs, max_row, max_col):
+        input_pos_dialog = subplotPositionDialog(base_info, subs, max_row, max_col)
+        if input_pos_dialog.exec() == QDialog.DialogCode.Accepted:
+                return input_pos_dialog.get_data()
+        return None
+    
     def add_subplot(self):
         """Add a new subplot to the configuration"""
         row = self.row_spin.value()
@@ -767,6 +871,7 @@ class SubplotEditor(QWidget):
             ):
                 QMessageBox.warning(self, "Overlap Detected", 
                                     "This subplot overlaps with an existing one")
+
                 return
         data_series = [{
             "x":self.data_combo_x.currentText(),
@@ -897,18 +1002,25 @@ class SubplotEditor(QWidget):
         max_cols = self.cols_spin.value()
         
         if new_row + new_row_span > max_rows:
-            QMessageBox.warning(self, "Invalid Position", 
-                                f"Row span exceeds grid height (max row: {max_rows-1})")
-            return
-            
+            reply = QMessageBox.question(self, "Invalid Position", f"Row span exceeds grid height (max row: {max_rows-1})" + "Do you want to change row span of your subplot?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                result= self.change_sub_pos(base_info=[new_row, new_col, new_row_span, new_col_span, self.selected_subplot_id], subs=self.plot_canvas.subplots, max_row=max_rows, max_col=max_cols)
+                if result is None:
+                    return
+                else:
+                    new_row, new_row_span, new_col, new_col_span = result
         if new_col + new_col_span > max_cols:
-            QMessageBox.warning(self, "Invalid Position", 
-                                f"Column span exceeds grid width (max col: {max_cols-1})")
-            return
+            reply = QMessageBox.question(self, "Invalid Position", f"Column span exceeds grid width (max col: {max_cols-1})" + "Do you want to change column span of your subplot?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                result = self.change_sub_pos(base_info=[new_row, new_col, new_row_span, new_col_span, self.selected_subplot_id], subs=self.plot_canvas.subplots, max_row=max_rows, max_col=max_cols)
+                if result is None:
+                    return
+                else:
+                    new_row, new_row_span, new_col, new_col_span = result
             
         # Check for overlaps with other subplots
         for subplot in self.plot_canvas.subplots:
-            s_id, s_row, s_col, s_row_span, s_col_span, _, _, _, _ = subplot
+            s_id, s_row, s_col, s_row_span, s_col_span, *_ = subplot
             if s_id == self.selected_subplot_id:
                 continue
                 
@@ -916,9 +1028,13 @@ class SubplotEditor(QWidget):
                 (new_row, new_col, new_row_span, new_col_span),
                 (s_row, s_col, s_row_span, s_col_span)
             ):
-                QMessageBox.warning(self, "Overlap Detected", 
-                                    "This position overlaps with another subplot")
-                return
+                reply = QMessageBox.question(self, "Overlap Detected", "This subplot overlaps with an existing one. \n Do you want to change position of the subplot that you are adding?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                if reply == QMessageBox.StandardButton.Yes:
+                    result = self.change_sub_pos(base_info=[new_row, new_col, new_row_span, new_col_span, self.selected_subplot_id], subs=self.plot_canvas.subplots, max_row=max_rows, max_col=max_cols)
+                    if result is None:
+                        return
+                    else:
+                        new_row, new_row_span, new_col, new_col_span = result
         
         # Update the subplot
         for i, subplot in enumerate(self.plot_canvas.subplots):
@@ -953,10 +1069,11 @@ class SubplotEditor(QWidget):
                     if f"{data['y']}({data['x']})" == self.data_data_spin.currentText():
                         self.plot_canvas.subplots[i][5][counter]["x"] = new_data_x
                         self.plot_canvas.subplots[i][5][counter]["y"] = new_data_y
-                ax = self.plot_canvas.update_one_plot(subplot, self.window())
-                # self.plot_canvas.canvas.blit(ax.bbox)
-                self.plot_canvas.canvas.draw()
-                self.plot_canvas.draw()
+                if self.selected_subplot_id < len(self.plot_canvas.axes):
+                    ax = self.plot_canvas.update_one_plot(subplot, self.window())
+                    # self.plot_canvas.canvas.blit(ax.bbox)
+                    self.plot_canvas.canvas.draw()
+                    self.plot_canvas.draw()
                 break
         
         self.update_subplot_list()
@@ -985,10 +1102,14 @@ class SubplotEditor(QWidget):
                         self.plot_canvas.subplots[i][5][counter]["color"] = new_color
                         self.plot_canvas.subplots[i][5][counter]["width"] = new_width
                 self.plot_canvas.subplots[i][6] = new_grid
-                ax = self.plot_canvas.update_one_plot(subplot, self.window())
-                self.plot_canvas.canvas.draw()
-                self.plot_canvas.draw()
+                
+                if self.selected_subplot_id < len(self.plot_canvas.axes):
+                    ax = self.plot_canvas.update_one_plot(subplot, self.window())
+                    # self.plot_canvas.canvas.blit(ax.bbox)
+                    self.plot_canvas.canvas.draw()
+                    self.plot_canvas.draw()
                 break
+        self.update_subplot_list()
     
     # Updated plot_graphs method in the SubplotEditor class
     def plot_graphs(self):
@@ -1001,7 +1122,8 @@ class SubplotEditor(QWidget):
         headers = self.window().get_headers() 
         dialog = DataSeriesDialog(headers, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.add_data_series_subplot(dialog.get_series(), dialog.get_subplot_info())
+            if dialog.get_series() != []:
+                self.add_data_series_subplot(dialog.get_series(), dialog.get_subplot_info())
 
     def add_data_series_subplot(self, series, subplot_info):
         """Add a new subplot to the configuration"""
@@ -1015,14 +1137,21 @@ class SubplotEditor(QWidget):
         max_cols = self.cols_spin.value()
         
         if row + row_span > max_rows:
-            QMessageBox.warning(self, "Invalid Position", 
-                                f"Row span exceeds grid height (max row: {max_rows-1})")
-            return
-            
+            reply = QMessageBox.question(self, "Invalid Position", f"Row span exceeds grid height (max row: {max_rows-1})" + "Do you want to change row span of your subplot?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                result= self.change_sub_pos(base_info=[row, col, row_span, col_span, self.selected_subplot_id], subs=self.plot_canvas.subplots, max_row=max_rows, max_col=max_cols)
+                if result is None:
+                    return
+                else:
+                    row, row_span, col, col_span = result          
         if col + col_span > max_cols:
-            QMessageBox.warning(self, "Invalid Position", 
-                                f"Column span exceeds grid width (max col: {max_cols-1})")
-            return
+            reply = QMessageBox.question(self, "Invalid Position", f"Column span exceeds grid width (max col: {max_cols-1})" + "Do you want to change column span of your subplot?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                result = self.change_sub_pos(base_info=[row, col, row_span, col_span, self.selected_subplot_id], subs=self.plot_canvas.subplots, max_row=max_rows, max_col=max_cols)
+                if result is None:
+                    return
+                else:
+                    row, row_span, col, col_span = result
             
         # Check for overlaps
         for subplot in self.plot_canvas.subplots:
@@ -1033,9 +1162,14 @@ class SubplotEditor(QWidget):
                 (row, col, row_span, col_span),
                 (s_row, s_col, s_row_span, s_col_span)
             ):
-                QMessageBox.warning(self, "Overlap Detected", 
-                                    "This subplot overlaps with an existing one")
-                return
+                reply = QMessageBox.question(self, "Overlap Detected", "This subplot overlaps with an existing one. \n Do you want to change position of the subplot that you are adding?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                if reply == QMessageBox.StandardButton.Yes:
+                    result = self.change_sub_pos(base_info=[row, col, row_span, col_span, self.selected_subplot_id], subs=self.plot_canvas.subplots, max_row=max_rows, max_col=max_cols)
+                    if result is None:
+                        return
+                    else:
+                        row, row_span, col, col_span = result
+ 
         plot_id = self.current_plot_id
         self.plot_canvas.subplots.append([
             plot_id,
