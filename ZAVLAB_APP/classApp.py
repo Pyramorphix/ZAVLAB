@@ -508,8 +508,3 @@ class ZAVLAB(QMainWindow):
         return [self.table.item(0, col).text() if self.table.item(0, col) 
                 else f"Column {col+1}" for col in range(self.table.columnCount())]
 
-if __name__ == "__main__":
-    app = QApplication([])
-    my_app = ZAVLAB()
-    my_app.show()
-    app.exec()
