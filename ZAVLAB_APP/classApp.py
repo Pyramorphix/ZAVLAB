@@ -9,7 +9,7 @@ import csv
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas   
 import numpy as np
-from graphClasses import PREPARE_DATA, INTERACTIVE_PLOT, SubplotEditor
+from graphClasses import INTERACTIVE_PLOT, SubplotEditor
 
 class ZAVLAB(QMainWindow):
     """Основной класс приложения - главное окно"""
@@ -420,30 +420,6 @@ class ZAVLAB(QMainWindow):
         
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить файл:\n{str(e)}")
-
-    def _prepare_plotting_data(self) -> None:
-        """Открывает диалоговое окно для ввода данных"""
-        dialog: PREPARE_DATA = PREPARE_DATA(self)
-        # Если пользователь нажал OK
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            x, y, lenght = dialog.get_inputs()
-            # Проверяем, что все поля заполнены
-            if (not x.isdigit() or int(x) > self.table.columnCount()) or (not y.isdigit() or int(y) > self.table.columnCount()):
-                QMessageBox.warning(self, "Ошибка", "x, y должны быть целыми числами от 1 до n, где n - количество столбцов.")
-                return
-            elif (not lenght.isdigit() and lenght != ""):
-                QMessageBox.warning(self, "Ошибка", "количество данных должны быть целым числом от 1 до n, где n - количество строк.")
-                return
-            elif lenght.isdigit() and int(lenght) >= self.table.rowCount():
-                QMessageBox.warning(self, "Ошибка", "количество данных должны быть целым числом от 1 до n, где n - количество строк.")
-                return
-            else:
-                if lenght.isdigit():
-                    lenght = int(lenght)
-                else:
-                    lenght = self.table.rowCount()
-
-                self.plot_data(int(x) - 1, int(y) - 1, lenght)
 
     def plot_data(self, x:int, y:int, lenght: int) -> None:
         """Строит график по выбранным данным"""

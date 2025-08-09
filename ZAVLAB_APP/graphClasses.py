@@ -13,95 +13,7 @@ import numpy as np
 import sys
 import matplotlib.ticker as ticker
 import matplotlib.gridspec as gridspec
-
-class DataSeriesDialog(QDialog):
-    def __init__(self, headers, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Data Series Configuration")
-        layout = QVBoxLayout()
-        
-        # Data series list
-        self.series_list = QListWidget()
-        layout.addWidget(QLabel("Data Series:"))
-        layout.addWidget(self.series_list)
-        
-        # Controls
-        btn_layout = QHBoxLayout()
-        self.add_btn = QPushButton("+")
-        self.add_btn.clicked.connect(self.add_series)
-        self.remove_btn = QPushButton("-")
-        self.remove_btn.clicked.connect(self.remove_series)
-        btn_layout.addWidget(self.add_btn)
-        btn_layout.addWidget(self.remove_btn)
-        layout.addLayout(btn_layout)
-        
-        # Data selection
-        self.data_combo_x = QComboBox()
-        self.data_combo_x.addItems(["None"] + headers)
-        self.data_combo_y = QComboBox()
-        self.data_combo_y.addItems(["None"] + headers)
-        
-        # Style controls
-        self.color_btn = QPushButton("Choose Color")
-        self.color_btn.clicked.connect(self.choose_color)
-        self.line_width = QDoubleSpinBox()
-        self.line_width.setRange(0.1, 5.0)
-        self.line_width.setValue(1.0)
-        
-        form = QFormLayout()
-        form.addRow("X Data:", self.data_combo_x)
-        form.addRow("Y Data:", self.data_combo_y)
-        form.addRow("Line Color:", self.color_btn)
-        form.addRow("Line Width:", self.line_width)
-        layout.addLayout(form)
-        
-        #subplot preset
-        layout_x = QHBoxLayout()
-        layout_y = QHBoxLayout()
-        self.x_line_edit = QLineEdit("x")
-        self.y_line_edit = QLineEdit("y") 
-        layout_x.addWidget(QLabel("x axis label:"))
-        layout_x.addWidget(self.x_line_edit)
-        layout_y.addWidget(QLabel("y axis label:"))  
-        layout_y.addWidget(self.y_line_edit)     
-        layout.addLayout(layout_x)
-        layout.addLayout(layout_y)
-        
-        # Dialog buttons
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
-                                  QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-        
-        self.setLayout(layout)
-        self.line_color = "#1f77b4"
-        self.series = []
-    
-    def choose_color(self):
-        color = QColorDialog.getColor(initial=QColor(self.line_color))
-        if color.isValid():
-            self.line_color = color.name()
-    
-    def add_series(self):
-        series = {
-            'x': self.data_combo_x.currentText(),
-            'y': self.data_combo_y.currentText(),
-            'color': self.line_color,
-            'width': self.line_width.value()
-        }
-        self.series.append(series)
-        self.series_list.addItem(f"{series['x']} vs {series['y']}")
-    
-    def remove_series(self):
-        if self.series_list.currentRow() >= 0:
-            self.series.pop(self.series_list.currentRow())
-            self.series_list.takeItem(self.series_list.currentRow())
-    
-    def get_series(self):
-        return self.series
-    def get_subplot_info(self):
-        return {"x-label": self.x_line_edit.text(), "y-label": self.y_line_edit.text()}
+from dialogs import DataSeriesDialog, AxisConfigDialog
 
 class SubplotCell(QFrame):
     """Visual representation of a single grid cell"""
@@ -216,127 +128,6 @@ class SubplotGrid(QWidget):
         # Then add it back with new parameters
         self.add_subplot(row, col, row_span, col_span, subplot_id)
 
-
-
-class PREPARE_DATA(QDialog):
-    """Диалоговое окно для ввода данных"""
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Выбрать данные для графика")
-        self.setFixedSize(400, 200)
-        
-        # Создаем элементы формы
-        self.explanation = QLabel("Введите номера столбцов,\n которые будут соответсвовать x и y координате.")
-        self.x_axis = QLineEdit()
-        self.y_axis = QLineEdit()
-        self.lenght = QLineEdit()
-        # Создаем кнопки
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        
-        # Размещаем элементы в layout
-        layout = QVBoxLayout()
-        col_x = QHBoxLayout()
-        col_y = QHBoxLayout()
-        lenght = QHBoxLayout()
-
-        col_x.addWidget(QLabel("x-axis:"), 20)
-        col_x.addWidget(self.x_axis, 80)
-        col_y.addWidget(QLabel("y-axis:"), 20)
-        col_y.addWidget(self.y_axis, 80)
-        lenght.addWidget(QLabel("number of data to plot:"), 20)
-        lenght.addWidget(self.lenght, 80)
-        layout.addWidget(self.explanation)
-        layout.addLayout(col_x)
-        layout.addLayout(col_y)
-        layout.addLayout(lenght)
-        layout.addWidget(button_box)       
-        self.setLayout(layout)
-    
-    def get_inputs(self):
-        """Возвращает введенные значения"""
-        return (
-            self.x_axis.text(),
-            self.y_axis.text(),
-            self.lenght.text(),
-        )
-
-class AxisConfigDialog(QDialog):
-    def __init__(self, axis_type, ax, parent=None):
-        super().__init__(parent)
-        self.ax = ax
-        self.axis_type = axis_type
-        self.setWindowTitle(f"Настройка оси {'X' if axis_type == 'x' else 'Y'}")
-        
-        layout = QFormLayout()
-
-        if axis_type == 'x':
-            min_val, max_val = ax.get_xlim()
-            title = ax.get_xlabel()
-        else:
-            min_val, max_val = ax.get_ylim()
-            title = ax.get_ylabel() 
-
-        self.min_edit = QLineEdit()
-        self.min_edit.setText(str(min_val))
-        layout.addRow("Минимум:", self.min_edit)
-        
-        self.max_edit = QLineEdit()
-        self.max_edit.setText(str(max_val))
-        layout.addRow("Максимум:", self.max_edit)
-        
-        self.title_edit = QLineEdit(title)
-        layout.addRow("Заголовок:", self.title_edit)
-
-        self.ticks = QLineEdit()
-        self.ticks.setText("0")
-        layout.addRow("Количество делений на оси:", self.ticks)
-        
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
-                                  QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addRow(buttons)
-        
-        self.setLayout(layout)
-    def accept(self):
-        try:
-            min_val = float(self.min_edit.text())
-            max_val = float(self.max_edit.text())
-            ticks = int(self.ticks.text())
-            title = self.title_edit.text()
-            
-            if min_val >= max_val:
-                QMessageBox.warning(self, "Ошибка", "Миниамальное значение должно быть меньше максимального.")
-                raise ValueError("Минимум должен быть меньше максимума")
-            if ticks < 0:
-                QMessageBox.warning(self, "Ошибка", "Количество делений должно быть больше 0.")
-                raise ValueError("Количество делений должно быть больше 0.")
-            if self.axis_type == 'x':
-                self.ax.xaxis.set_ticks_position("bottom")
-                self.ax.set_xlim(min_val, max_val)
-                self.ax.spines["bottom"].set_position(("data", min_val))
-                self.ax.set(xlim=(min_val, max_val))
-                self.ax.set_xticks(np.linspace(min_val, max_val, ticks))
-                self.ax.set_xlabel(title)
-            else:
-                self.ax.yaxis.set_ticks_position("left")
-                self.ax.set_ylim(min_val, max_val)
-                self.ax.spines["left"].set_position(("data", min_val))
-                self.ax.set(ylim=(min_val, max_val))
-                self.ax.set_yticks(np.linspace(min_val, max_val, ticks))
-                self.ax.set_ylabel(title)
-
-            
-            self.ax.figure.canvas.draw()
-            super().accept()
-        except Exception as e:
-            QMessageBox.warning(self, "Ошибка", "Проверьте, что везде ввели числа. В поле ввода x, y могу быть целые или дробные значения (написаны через точку). В поле ticks должно быть целое положительное число.")
-            print(f"Ошибка: {e}")
-
 class INTERACTIVE_PLOT(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100, data=[]):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
@@ -382,7 +173,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
                     dialog.exec()
                     return
     
-    def plot_data(self, win, rows, cols):
+    def plot_all_data(self, win, rows, cols):
         """Generate the plot based on current configuration"""
         if not self.subplots:
             QMessageBox.warning(self, "No Subplots", "Please add at least one subplot")
@@ -439,9 +230,9 @@ class INTERACTIVE_PLOT(FigureCanvas):
                         linewidth=series['width'], 
                         color=series['color'])
     
-                ax.set_title(f"Subplot {plot_id}: {data[0][0]}({data[1][0]})", fontsize=10)
-        ax.set_xlabel(subplot_info["x-label"])
-        ax.set_ylabel(subplot_info["y-label"])
+        ax.set_title(f"Subplot {plot_id}: {data_series[0]['y']}({data_series[0]['x']})", fontsize=10)
+        ax.set_xlabel(data_series[0]["x"])
+        ax.set_ylabel(data_series[0]["y"])
         if show_grid:
             #ax.grid(True, linestyle='--', alpha=0.7)
             ax.grid(color="#7a7c7d", linewidth=0.3)
@@ -553,24 +344,12 @@ class subplotPositionDialog(QDialog):
 class SubplotEditor(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Sample datasets
-        self.datasets = {
-            "Sine Wave": np.sin(np.linspace(0, 4 * np.pi, 100)),
-            "Cosine Wave": np.cos(np.linspace(0, 4 * np.pi, 100)),
-            "Random Walk": np.random.randn(100).cumsum(),
-            "Quadratic": np.square(np.linspace(-2, 2, 100)),
-            "Exponential": np.exp(np.linspace(0, 2, 100)),
-            "Logarithm": np.log(np.linspace(1, 10, 100)),
-            "Sawtooth": np.linspace(0, 1, 100) % 0.2 * 5,
-            "Linear": np.linspace(0, 10, 100),
-            "Square Wave": np.sign(np.sin(np.linspace(0, 4 * np.pi, 100)))
-        }
-        
+
         # Initialize UI
         self.initUI()
         
         # Current subplot configuration
-        self.subplots = []  # [id, row, col, row_span, col_span, data, properties]
+        self.subplots = []  # [id, row, col, row_span, col_span, data_series, show_grid]
         self.current_plot_id = 0
         self.selected_subplot_id = None
         
@@ -814,6 +593,7 @@ class SubplotEditor(QWidget):
         self.line_color = "#1f77b4"  # Default matplotlib blue
     
     def update_column_data(self, headers: list[str]) -> None:
+        "updates all combo boxes that contain headers from the table"
         self.data_combo_x.clear()
         self.data_combo_x.addItems(["None"] + headers)
         self.data_combo_y.clear()
@@ -959,13 +739,15 @@ class SubplotEditor(QWidget):
                 self.edit_col_span_spin.setValue(col_span)
                 self.data_data_spin.clear()
                 self.data_data_spin.addItems([f"{data['y']}({data['x']})" for data in data_series])
-                self.data_styles_spin.clear()
-                self.data_styles_spin.addItems([f"{data['y']}({data['x']})" for data in data_series])
+                self.data_data_spin.setCurrentIndex(0)
                 # Populate data controls
                 self.edit_data_combo_x.setCurrentText(data_series[0]["x"])
                 self.edit_data_combo_y.setCurrentText(data_series[0]["y"])
                 
                 # Populate style controls
+                self.data_styles_spin.clear()
+                self.data_styles_spin.addItems([f"{data['y']}({data['x']})" for data in data_series])
+                self.data_styles_spin.setCurrentIndex(0)
                 self.line_width_spin.setValue(data_series[0]["width"])
                 self.grid_checkbox.setChecked(show_grid)
                 self.line_color = data_series[0]["color"]
@@ -1115,8 +897,7 @@ class SubplotEditor(QWidget):
     def plot_graphs(self):
         self.plot_canvas.fig.clear()
         self.plot_canvas.canvas.draw()
-        self.plot_canvas.axes = []
-        self.plot_canvas.plot_data(self.window(),  self.rows_spin.value(), self.cols_spin.value())
+        self.plot_canvas.plot_all_data(self.window(),  self.rows_spin.value(), self.cols_spin.value())
         
     def configure_data_series(self):
         headers = self.window().get_headers() 
