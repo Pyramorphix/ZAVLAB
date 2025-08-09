@@ -16,38 +16,43 @@ from graphClasses import PREPARE_DATA, SubplotEditor
 
 
 
-class MainWindow(QMainWindow):
-    """Основной класс приложения - главное окно"""
-    signals = pyqtSignal(list) 
+class ZAVLABMainWindow(QMainWindow):
+
+    """TODO: docs"""
+
+    # Constant sector
+    # ----------------------------
+    WINDOW_TITLE: str = "ZAVLAB"
+    WINDOW_WIDTH: int = 1200
+    WINDOW_HEIGHT: int = 800
+    SPLITTER_HANDLE_WIDTH: int = 5
+    # ----------------------------
+
+
+    # Signals
+    # -----------------------------
+    data_updated = pyqtSignal(list) 
+    # -----------------------------
+
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("ZAVLAB")
-        self.resize(1200, 800)
+        self._configure_window()
+        self._initialize_components()
+        self._setup_ui()
+        self._connect_signals()
 
-        #centreal widget
-        self.central_widget: QSplitter = QSplitter(Qt.Orientation.Horizontal)
+        
 
-        #make all widgets
-        self.setupTable()   
-        self.label: QLabel = QLabel("Plot will be here soon!")
-        self.setupMenuBar()
+
 
         #plotting info
 
-        self.plotter = SubplotEditor()
-        self.signals.connect(self.plotter.update_column_data)
+        self.data_updated.connect(self.plotter.update_column_data)
         self.plotter.update_column_data([self.table.item(0, col).text() if self.table.item(0, col) else f"Column {col+1}" for col in range(self.table.columnCount())])
         #design
-        self.setCentralWidget(self.central_widget)
-        self.central_widget.addWidget(self.table)
-        self.central_widget.addWidget(self.plotter)
-        self.central_widget.setStretchFactor(0, 1)
-        self.central_widget.setStretchFactor(1, 3)
 
         #set some properties
-        self.central_widget.setChildrenCollapsible(False)
-        self.central_widget.setHandleWidth(5)
 
         # styles
         self.central_widget.setStyleSheet("""
@@ -58,6 +63,67 @@ class MainWindow(QMainWindow):
                 margin: 0px;
             }
         """)
+
+
+
+    def _configure_window(self) -> None:
+        """Set up basic window properties."""
+
+        self.setWindowTitle(self.WINDOW_TITLE)
+        self.resize(self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
+
+
+    def _initialize_components(self) -> None:
+        """Initialize all application components"""
+
+        # Central widget (splitter)
+        self.central_widget = QSplitter(Qt.Orientation.Horizontal)
+        self.setCentralWidget(self.central_widget)
+
+        # Data-related widgets
+        self.setupTable()  # Initializes self.table
+        self.label = QLabel("Plot will be here soon!")
+        self.setupMenuBar()  # Initializes self.menu_bar
+
+        # Vizualization-related widgets
+        self.plotter = SubplotEditor()
+
+
+    def _setup_ui(self) -> None:
+        """Set up the user interface layout"""
+
+        self._attach_elements()
+        self._configure_main_splitter()
+        self._apply_styles()
+
+
+    def _attach_elements(self) -> None:
+        """Add widgets to main layout"""
+
+        self.central_widget.addWidget(self.table)
+        self.central_widget.addWidget(self.plotter)
+
+
+    def _configure_main_splitter(self) -> None:
+        """Set main splitter properties"""
+
+        # Stretch factors of elements
+        self.central_widget.setStretchFactor(0, 1)  # 1 for data table
+        self.central_widget.setStretchFactor(1, 3)  # 3 for plot area
+        # |  Data  |          Plot          |
+        # |   1    |           3            |
+
+        self.central_widget.setChildrenCollapsible(False)  # Disallow element collapsing
+        self.central_widget.setHandleWidth(self.SPLITTER_HANDLE_WIDTH) 
+
+
+
+
+
+
+
+
+
 
     def setPlottingPart(self) -> None:
         self.config_panel: QWidget = QWidget()
@@ -507,7 +573,7 @@ class MainWindow(QMainWindow):
         for col in range(self.table.columnCount()):
             header_item = self.table.item(0, col)
             headers.append(header_item.text() if header_item else f"Column {col+1}")
-        self.signals.emit(headers)
+        self.data_updated.emit(headers)
     
     def get_headers(self):
         return [self.table.item(0, col).text() if self.table.item(0, col) 
