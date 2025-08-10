@@ -9,7 +9,7 @@ import csv
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas   
 import numpy as np
-from graphClasses import INTERACTIVE_PLOT, SubplotEditor
+from plot_manager import SubplotEditor
 
 class ZAVLAB(QMainWindow):
     """Основной класс приложения - главное окно"""
