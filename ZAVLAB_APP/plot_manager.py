@@ -16,26 +16,57 @@ from dialogs import SubplotPositionDialog, DataSeriesDialog
 from PyQt6.QtCore import Qt
 
 class SubplotCell(QFrame):
-    """Visual representation of a single grid cell"""
-    def __init__(self, row, col, parent=None):
+    """
+    Visual representation of a single grid cell
+    - Shows occupied state with color coding
+    - Displays tooltip with subplot information
+    """
+
+    def __init__(self, row: int, col: int, parent=None) -> None:
+        """
+        Initialize a grid cell.
+        Args:
+            row: Row index in the grid.
+            col: Column index in the grid.
+            parent: Parent widget.
+        """
+
+
         super().__init__(parent)
-        self.row = row
-        self.col = col
+        self.row: int = row
+        self.col: int = col
         self.setFixedSize(40, 40)
         self.setStyleSheet("background-color: #f0f0f0; border: 1px solid #cccccc;")
         self.setToolTip(f"Cell ({row},{col})")
         self.occupied = False
         self.subplot_id = None
 
-    def set_occupied(self, subplot_id, color):
+    def set_occupied(self, subplot_id: int, color: str) -> None:
+        """
+        Mark this cell as occupied by a subplot.
+        Args:
+            subplot_id: ID of the subplot.
+            color: Color to set for the cell background.
+        """
+
         self.occupied = True
         self.subplot_id = subplot_id
         self.setStyleSheet(f"background-color: {color}; border: 1px solid #333333;")
         self.setToolTip(f"Subplot {subplot_id}")
 
 class SubplotGrid(QWidget):
-    """Visual grid for designing subplot layouts"""
+    """
+    Visual grid for designing subplot layouts:
+    - Manages cell grid creation/clearing
+    - Tracks subplot positions and overlaps
+    - Handles visual representation of subplots
+    """
+
+
     def __init__(self, parent=None):
+        """
+        Initialize grid
+        """
         super().__init__(parent)
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(2)
@@ -104,6 +135,7 @@ class SubplotGrid(QWidget):
 
     def remove_subplot(self, subplot_id):
         """Remove a subplot from the grid"""
+
         if subplot_id in self.subplot_widgets:
             # Remove the visual widget
             widget = self.subplot_widgets.pop(subplot_id)
@@ -122,6 +154,7 @@ class SubplotGrid(QWidget):
 
     def update_subplot(self, subplot_id, row, col, row_span, col_span):
         """Update a subplot's position and size"""
+        
         # First remove the old visualization
         self.remove_subplot(subplot_id)
         
@@ -139,6 +172,7 @@ class SubplotEditor(QWidget):
         self.subplots = []  # [id, row, col, row_span, col_span, data_series, show_grid]
         self.current_plot_id = 0
         self.selected_subplot_id = None
+        self.row_col: list[int] = [0, 0]
         
     def initUI(self):
         main_layout = QHBoxLayout()
@@ -392,14 +426,122 @@ class SubplotEditor(QWidget):
 
     def create_grid(self):
         """Create a new grid based on row/column configuration"""
+
+        #get entered row/col value
         rows = self.rows_spin.value()
         cols = self.cols_spin.value()
+
+        # Store current subplots before clearing
+        
+        current_subplots = self.plot_canvas.subplots[:]
         self.grid_display.create_grid(rows, cols)
         self.plot_canvas.subplots = []
         self.current_plot_id = 0
+        
+        # Try to re-add subplots that fit in the new grid
+        non_fitting_subplots = []
+        for subplot in current_subplots:
+            plot_id, row, col, row_span, col_span, data_series, show_grid, subplot_info = subplot
+            if (row + row_span <= rows and col + col_span <= cols):
+                # Subplot fits in new grid, re-add it
+                self.grid_display.add_subplot(row, col, row_span, col_span, plot_id)
+                self.plot_canvas.subplots.append([
+                    plot_id,
+                    row,
+                    col,
+                    row_span,
+                    col_span,
+                    data_series,
+                    show_grid,
+                    subplot_info
+                ])
+                # Update current plot ID to avoid conflicts
+                if plot_id >= self.current_plot_id:
+                    self.current_plot_id = plot_id + 1
+            else:
+                non_fitting_subplots.append(subplot)
+
+        # Handle subplots that don't fit
+        if non_fitting_subplots:
+            self.__handle_non_fitting_subplots__(non_fitting_subplots=non_fitting_subplots, current_subplots=current_subplots)
+
         self.update_subplot_list()
         self.clear_selection()
-    
+
+    def __handle_non_fitting_subplots__(self, non_fitting_subplots: list, current_subplots: list) -> None:
+        """Handle subplots that don't fit after grid resizing."""
+
+        #make and configure MessageBox
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle("Subplots Don't Fit")
+        msg_box.setText(f"Subplots with id " + ", ".join([str(subplot[0]) for subplot in non_fitting_subplots]) + f" {'do not' if len(non_fitting_subplots) else 'does not'} fit in the new grid.")
+        msg_box.setInformativeText("What would you like to do? (You can delete one of the sublots but adjusting others by clicking \"Adjust Positions\" -> \"Cancel\")")
+        
+        #options for user
+        adjust_button = msg_box.addButton("Adjust Positions", QMessageBox.ButtonRole.YesRole)
+        delete_button = msg_box.addButton("Delete Them", QMessageBox.ButtonRole.NoRole)
+        cancel_button = msg_box.addButton("Cancel Resize", QMessageBox.ButtonRole.RejectRole)
+        
+        #wait until one of the options clicked
+        msg_box.exec()
+        
+        clicked = msg_box.clickedButton()
+        
+        if clicked == cancel_button:
+            # Revert to previous grid size
+            self.grid_display.create_grid(self.row_col[0] if self.row_col[0] else 1, 
+                                        self.row_col[1] if self.row_col[1] else 1)
+            # Re-add all original subplots
+            self.plot_canvas.subplots = []
+            for subplot in current_subplots:
+                pid, r, c, rs, cs, ds, sg, si = subplot
+                self.grid_display.add_subplot(r, c, rs, cs, pid)
+                self.plot_canvas.subplots.append(subplot)
+            self.update_subplot_list()
+            self.clear_selection()
+            return
+        elif clicked == delete_button:
+            # Simply don't re-add these subplots
+            self.row_col = [rows, cols]
+            pass
+        elif clicked == adjust_button:
+            # Try to adjust each non-fitting subplot
+            rows = self.rows_spin.value()
+            cols = self.cols_spin.value()
+            for subplot in non_fitting_subplots[:]:  # Use a copy since we may modify the list
+                plot_id, row, col, row_span, col_span, data_series, show_grid, subplot_info = subplot
+                result = self.change_sub_pos(
+                    base_info=[row, col, row_span, col_span, plot_id],
+                    subs=self.plot_canvas.subplots,
+                    max_row=rows,
+                    max_col=cols
+                )
+                if result:
+                    new_row, new_row_span, new_col, new_col_span = result
+                    # Check if adjusted subplot now fits
+                    if new_row + new_row_span <= rows and new_col + new_col_span <= cols:
+                        self.grid_display.add_subplot(new_row, new_col, new_row_span, new_col_span, plot_id)
+                        self.plot_canvas.subplots.append([
+                            plot_id,
+                            new_row,
+                            new_col,
+                            new_row_span,
+                            new_col_span,
+                            data_series,
+                            show_grid,
+                            subplot_info
+                        ])
+                        non_fitting_subplots.remove(subplot)
+                    else:
+                        # Still doesn't fit after adjustment
+                        QMessageBox.warning(self, "Still Doesn't Fit", 
+                                            f"Subplot {plot_id} still doesn't fit after adjustment")
+                else:
+                    # User canceled adjustment
+                    pass
+                self.row_col = [rows, cols]
+
+
     def change_sub_pos(self, base_info, subs, max_row, max_col):
         input_pos_dialog = SubplotPositionDialog(base_info, subs, max_row, max_col)
         if input_pos_dialog.exec() == QDialog.DialogCode.Accepted:
@@ -491,7 +633,6 @@ class SubplotEditor(QWidget):
     def update_subplot_list(self):
         """Update the subplot list widget"""
         self.subplot_list.clear()
-        
         for subplot in self.plot_canvas.subplots:
             plot_id, row, col, row_span, col_span, data_series, *_ = subplot
             data_info = ""

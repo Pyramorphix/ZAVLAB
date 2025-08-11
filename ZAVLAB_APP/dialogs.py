@@ -327,7 +327,7 @@ class SubplotPositionDialog(QDialog):
         """Initialize dialog window for subplot poisitioning dialog."""
 
 
-        self.setWindowTitle("Change subplot configuration")
+        self.setWindowTitle(f"Change subplot {self.id} configuration")
 
     def __init_dialog_ui__(self) -> None:
         """Initialize UI for subplot poisitioning dialog window"""
