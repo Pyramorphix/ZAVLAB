@@ -54,35 +54,6 @@ class ZAVLAB(QMainWindow):
             }
         """)
 
-    def setPlottingPart(self) -> None:
-        self.config_panel: QWidget = QWidget()
-        self.config_layout: QHBoxLayout = QHBoxLayout()
-        self.config_panel.setLayout(self.config_layout)
-        self.central_widget.setLayout(self.config_panel)
-
-        #make grid
-        self.grid_group: QGroupBox = QGroupBox("Grid Configuration")
-        self.grid_layout: QGridLayout = QGridLayout()
-
-        self.grid_layout.addWidget(QLabel("Rows:"), 0, 0)
-        self.row_spin: QSpinBox = QSpinBox()
-        self.row_spin.setRange(1, 8)
-        self.row_spin.setValue(1)
-        self.grid_layout.addWidget(self.row_spin, 0, 1)
-
-        self.grid_layout.addWidget(QLabel("Cols:"), 0, 2)
-        self.col_spin: QSpinBox = QSpinBox()
-        self.col_spin.setRange(1, 8)
-        self.col_spin.setValue(1)
-        self.grid_layout.addWidget(self.col_spin, 0, 3)
-
-        self.create_grid_btn = QPushButton("Create Grid")
-        self.create_grid_btn.clicked.connect(self.create_grid)
-        self.grid_layout.addWidget(self.create_grid_btn)
-
-        self.grid_group.setLayout(self.grid_layout)
-        self.config_layout.addWidget(self.grid_group)
-
     def setupTable(self) -> None:
         """Инициализация таблицы данных"""
         self.table: QTableWidget = QTableWidget()   
@@ -483,6 +454,13 @@ class ZAVLAB(QMainWindow):
     def get_headers(self):
         return [self.table.item(0, col).text() if self.table.item(0, col) 
                 else f"Column {col+1}" for col in range(self.table.columnCount())]
+    
+    def get_data_from_column(self, column_index:int)->list[float]:
+        pass
+    
+    def get_min_max_value(self):
+        headers = self.get_headers()
+        self.get_data
 
 if __name__ == "__main__":
     app = QApplication([])

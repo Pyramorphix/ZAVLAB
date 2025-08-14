@@ -22,24 +22,24 @@ class DataSeriesDialog(QDialog):
     """
 
 
-    def __init__(self, headers: list[str], parent=None) -> None:
+    def __init__(self, headers: list[str], max_id:int=0, parent=None) -> None:
         """
         Initialize data series dialog
         
         Args:
-            headers: List of available column headers
+            headers: List of available column 
             parent: Parent Qt widget
         """
 
         super().__init__(parent)
         self.__init_dialog_window__()
-        self.__init_dialog_ui__(headers=headers)
+        self.__init_dialog_ui__(headers=headers, max_id=max_id)
 
     def __init_dialog_window__(self) -> None:
         """Initialize Dialog window for configuring data series."""
         self.setWindowTitle("Data Series Configuration")
 
-    def __init_dialog_ui__(self, headers: list[str]) -> None:
+    def __init_dialog_ui__(self, headers: list[str], max_id:int = 0) -> None:
         """Initialize UI for data series dialog window"""
 
 
@@ -71,8 +71,12 @@ class DataSeriesDialog(QDialog):
         self.color_btn: QPushButton = QPushButton("Choose Color")
         self.color_btn.clicked.connect(self.__choose_color__)
         self.line_width: QDoubleSpinBox = QDoubleSpinBox()
-        self.line_width.setRange(0.1, 5.0)
+        self.line_width.setMinimum(0)
         self.line_width.setValue(1.0)
+        self.line_style_spin = QComboBox()
+        self.line_style_spin.addItems(["Nothing", "- (solid)", ": (solid)", "-- (dashed)", "-. (dashdot)"])
+        self.line_style_spin.setCurrentIndex(0)
+
         
         #design window
         form: QFormLayout = QFormLayout()
@@ -80,6 +84,7 @@ class DataSeriesDialog(QDialog):
         form.addRow("Y Data:", self.data_combo_y)
         form.addRow("Line Color:", self.color_btn)
         form.addRow("Line Width:", self.line_width)
+        form.addRow("Line style:", self.line_style_spin)
         layout.addLayout(form)
 
         #subplot preset
@@ -107,6 +112,39 @@ class DataSeriesDialog(QDialog):
         #plot variables
         self.line_color: str = "#1f77b4"
         self.series: list[dict] = []
+        self.current_data_index = max_id
+        self.standart_colors = ["#1B1F3B",
+        "#FF5733",
+        "#2ECC71",
+        "#8E44AD",
+        "#3498DB",
+        "#D35400",
+        "#16A085",
+        "#C0392B",
+        "#5DADE2",
+        "#900C3F",
+        "#27AE60",
+        "#34495E",
+        "#E74C3C",
+        "#2C3E50",
+        "#58D68D",
+        "#6C3483",
+        "#1ABC9C",
+        "#E67E22",
+        "#2980B9",
+        "#922B21",
+        "#45B39D",
+        "#A569BD",
+        "#154360",
+        "#F39C12",
+        "#2E86C1",
+        "#7D3C98",
+        "#138D75",
+        "#B03A2E",
+        "#2471A3",
+        "#117A65",
+        "#641E16"
+        ]
 
     def __choose_color__(self) -> None:
         """
@@ -123,14 +161,23 @@ class DataSeriesDialog(QDialog):
         """"
         Add new data series with all correlated information about data to self.series
         """
-
-
+        ls = self.line_style_spin.currentText()
+        if ls == "Nothing":
+            ls = ""
         series: dict = {
+            'id': self.current_data_index,
             'x': self.data_combo_x.currentText(),
             'y': self.data_combo_y.currentText(),
-            'color': self.line_color,
-            'width': self.line_width.value()
+            'color': self.standart_colors[self.current_data_index],
+            'width': self.line_width.value(),
+            'label': f"{self.data_combo_y.currentText()}({self.data_combo_x.currentText()})",
+            "ls": ls,
+            "alpha": 1.0,
+            "marker": "o",
+            "marker size": 3
         }
+        self.color = self.standart_colors[self.current_data_index]
+        self.current_data_index += 1
         self.series.append(series)
         self.series_list.addItem(f"{series['x']} vs {series['y']}")
     
@@ -151,14 +198,35 @@ class DataSeriesDialog(QDialog):
 
         return self.series
 
-    def get_subplot_info(self) -> dict:
+    def get_axes_info(self) -> dict:
         """
         Return subplot information
         """
 
 
-        return {"x-label": self.x_line_edit.text(), "y-label": self.y_line_edit.text()}
+        return {"x-label": self.x_line_edit.text(),
+                "x min": 0,
+                "x max": 1,
+                "x ticks": 10,
+                "x small ticks": 5,
+                "x label fs": 14,
+                "x scale": 0,
+                "x number of accuracy": 1,
+                "y-label":self.data_combo_y.currentText(),
+                "y min": 0,
+                "y max": 1,
+                "y ticks": 10,
+                "y small ticks": 5,
+                "y label fs": 14,
+                "y scale": 0,
+                "y number of accuracy": 1,
+                "show grid": True}
+    
+    def get_title_info(self) -> dict:
+        return {"title": f"{self.data_combo_y.currentText()}({self.data_combo_x.currentText()})",
+                "title fs": 14}
 
+    
     
 class AxisConfigDialog(QDialog):
     """
@@ -263,10 +331,10 @@ class AxisConfigDialog(QDialog):
             
             #x-axis configuration
             if self.axis_type == 'x':
-                self.ax.yaxis.set_ticks_position("left")
-                self.ax.set_xlim(min_val, max_val)
-                self.ax.spines["left"].set_position(("data", min_val))
-                self.ax.set(xlim=(min_val, max_val))
+                self.ax.yaxis.set_ticks_position("left")#
+                self.ax.set_xlim(min_val, max_val)#
+                self.ax.spines["left"].set_position(("data", min_val))#
+                self.ax.set(xlim=(min_val, max_val))#
                 self.ax.set_xticks(np.linspace(min_val, max_val, ticks))
                 self.ax.set_xlabel(title)
             
