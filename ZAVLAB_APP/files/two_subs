@@ -1,0 +1,127 @@
+{
+    "grid": {
+        "rows": 2,
+        "cols": 1
+    },
+    "subplots": [
+        {
+            "id": 0,
+            "position": {
+                "row": 0,
+                "col": 0,
+                "row_span": 1,
+                "col_span": 1
+            },
+            "data_series": [
+                {
+                    "id": 0,
+                    "x": "x",
+                    "xerr": "xerr",
+                    "y": "y",
+                    "yerr": "None",
+                    "color": "#1f77b4",
+                    "width": 1.0,
+                    "label": "y(x)",
+                    "ls": "",
+                    "alpha": 1.0,
+                    "marker": "o",
+                    "marker size": 3
+                }
+            ],
+            "axes_info": {
+                "x-label": "x",
+                "x min": 0.6,
+                "x max": 9.4,
+                "x ticks": 10,
+                "x small ticks": 5,
+                "x label fs": 14,
+                "x scale": 0,
+                "x number of accuracy": 2,
+                "y-label": "y",
+                "y min": 1.6,
+                "y max": 10.4,
+                "y ticks": 10,
+                "y small ticks": 5,
+                "y label fs": 14,
+                "y scale": 0,
+                "y number of accuracy": 2,
+                "show grid": true
+            },
+            "title_info": {
+                "title": "a",
+                "title fs": 14
+            },
+            "legend_info": {
+                "legend position": "best",
+                "legend fs": 14
+            }
+        },
+        {
+            "id": 1,
+            "position": {
+                "row": 1,
+                "col": 0,
+                "row_span": 1,
+                "col_span": 1
+            },
+            "data_series": [
+                {
+                    "id": 0,
+                    "x": "x",
+                    "xerr": "xerr",
+                    "y": "y",
+                    "yerr": "yerr",
+                    "color": "#1B1F3B",
+                    "width": 1.0,
+                    "label": "y(x)",
+                    "ls": "",
+                    "alpha": 1.0,
+                    "marker": "o",
+                    "marker size": 3
+                },
+                {
+                    "id": 1,
+                    "x": "y",
+                    "xerr": "xerr",
+                    "y": "y",
+                    "yerr": "yerr",
+                    "color": "#FF5733",
+                    "width": 1.0,
+                    "label": "y(y)",
+                    "ls": "",
+                    "alpha": 1.0,
+                    "marker": "o",
+                    "marker size": 3
+                }
+            ],
+            "axes_info": {
+                "x-label": "x",
+                "x min": 0.0,
+                "x max": 11.0,
+                "x ticks": 7,
+                "x small ticks": 5,
+                "x label fs": 14,
+                "x scale": 0,
+                "x number of accuracy": 0,
+                "y-label": "y",
+                "y min": 0.0,
+                "y max": 11.0,
+                "y ticks": 7,
+                "y small ticks": 5,
+                "y label fs": 14,
+                "y scale": 0,
+                "y number of accuracy": 0,
+                "show grid": true
+            },
+            "title_info": {
+                "title": "y(y)",
+                "title fs": 14
+            },
+            "legend_info": {
+                "legend position": "best",
+                "legend fs": 14
+            }
+        }
+    ],
+    "current_id": 2
+}

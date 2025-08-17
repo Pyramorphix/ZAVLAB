@@ -6,10 +6,11 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QSplitter, QTableWidget,
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence
 import csv
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas   
 import numpy as np
 from plot_manager import SubplotEditor
+import json
+import os
 
 class ZAVLAB(QMainWindow):
     """Основной класс приложения - главное окно"""
@@ -18,7 +19,7 @@ class ZAVLAB(QMainWindow):
     def __init__(self) -> None:
         super(ZAVLAB, self).__init__()
         self.setWindowTitle("ZAVLAB")
-        self.resize(1200, 800)
+        self.resize(400, 400)
 
         #centreal widget
         self.central_widget: QSplitter = QSplitter(Qt.Orientation.Horizontal)
@@ -104,6 +105,111 @@ class ZAVLAB(QMainWindow):
         load_action.triggered.connect(self._load_data)
         self.files.addAction(load_action)
 
+        # save plots settings
+        save_plot_settings = QAction("Save plots settings", self)
+        save_action.setShortcut(QKeySequence("Ctrl+S+P"))
+        save_plot_settings.triggered.connect(self._save_plot_settings)
+        self.files.addAction(save_plot_settings)
+
+        # Import plots settings
+        load_plot_settings = QAction("Import plots settings", self)
+        save_action.setShortcut(QKeySequence("Ctrl+I"))
+        load_plot_settings.triggered.connect(self._load_plot_settings)
+        self.files.addAction(load_plot_settings)
+
+        # Save plots images
+        save_plot_image = QAction("Save plots image", self)
+        save_action.setShortcut(QKeySequence("Ctrl+S+I"))
+        save_plot_image.triggered.connect(self._save_plot_image)
+        self.files.addAction(save_plot_image)
+
+    def _save_plot_settings(self) -> None:
+        """"Saves the graph configuration to a JSON file"""
+
+
+        file_name, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save plots settings",
+            "",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        
+        if not file_name:
+            return
+        try:
+            # Get state from SubplotEditor
+            state = self.plotter.get_state()
+
+            # File type
+            ext = os.path.splitext(file_name)[1].lower()
+            if not ext:
+                file_name += ".json"
+                ext = ".json"
+
+            with open(file_name, 'w', encoding='utf-8') as f:
+                json.dump(state, f, indent=4)
+            
+            self.statusBar().showMessage(f"Plots settings are saved: {file_name}", 5000)
+            QMessageBox.information(self, "Success", "Plots settings have been successfully exported!")
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Couldn't save settings:\n{str(e)}")
+
+    def _load_plot_settings(self) -> None:
+        """Loads the graph configuration from a JSON file"""
+
+
+        file_name, _ = QFileDialog.getOpenFileName(
+            self,
+            "Download Plot Settings",
+            "",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        
+        if not file_name:
+            return
+        try:
+            with open(file_name, 'r', encoding='utf-8') as f:
+                state = json.load(f)
+            
+            # Восстанавливаем состояние
+            self.plotter.set_state(state)
+            
+            self.statusBar().showMessage(f"Chart settings are loaded: {file_name}", 5000)
+            QMessageBox.information(self, "Success", "Chart settings have been uploaded successfully!")
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load settings:\n{str(e)}")
+
+    def _save_plot_image(self) -> None:
+        """Saves the current graph as an image"""
+
+
+        file_name, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save the graph image",
+            "",
+            "PNG (*.png);;JPEG (*.jpg);;SVG (*.svg);;PDF (*.pdf);;All Files (*)"
+        )
+        
+        if not file_name:
+            return
+        
+        try:
+            # Определяем формат по расширению
+            ext = os.path.splitext(file_name)[1].lower()
+            if not ext:
+                file_name += ".png"
+                ext = ".png"
+            
+            # Сохраняем изображение
+            self.plotter.plot_canvas.fig.savefig(file_name, dpi=300)
+            
+            self.statusBar().showMessage(f"The graph is saved: {file_name}", 5000)
+            QMessageBox.information(self, "Success", "The graph has been successfully exported!")
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"The graph could not be saved:\n{str(e)}")
 
     def tableDroppedHMenu(self, pos: QPoint) -> None:
         """Контекстное меню для горизонтальных заголовков (управление столбцами)"""
@@ -157,49 +263,59 @@ class ZAVLAB(QMainWindow):
         """Показывает диалоговое окно 'О программе' с подробной справкой"""
         QMessageBox.information(
             self,
-            "О программе",
-            "Программа ZAVLAB - инструмент для анализа экспериментальных данных\n\n"
+            "About ZAVLAB",
+        "ZAVLAB - Scientific Data Analysis and Visualization Tool\n\n"
         
-        "Основные возможности:\n"
-        "1. Управление данными:\n"
-        "   - Добавление/удаление строк и столбцов через контекстное меню (ПКМ на заголовках)\n"
-        "   - Редактирование данных напрямую в таблице\n"
-        "   - Импорт/экспорт данных в формате CSV\n\n"
+        "Core Functionality:\n"
+        "1. Data Management:\n"
+        "   - Import/export CSV datasets\n"
+        "   - Dynamic table editing with context menu controls\n"
+        "   - Add/remove rows and columns with multi-selection support\n\n"
         
-        "2. Построение графиков:\n"
-        "   - Выбор столбцов для осей X и Y\n"
-        "   - Указание количества точек для построения\n"
-        "   - Автоматическое обновление графика при изменении данных\n"
-        "   - Интерактивная настройка осей графика\n\n"
+        "2. Advanced Plotting System:\n"
+        "   - Multi-panel subplot layouts (up to 8x8 grid)\n"
+        "   - Customizable subplot positioning and sizing\n"
+        "   - Multiple data series per subplot\n"
+        "   - Error bar support for both X and Y axes\n"
+        "   - Interactive axis configuration through plot clicks\n\n"
         
-        "3. Интерактивные возможности графика:\n"
-        "   - Клик в нижней части графика (вблизи оси X) открывает настройки оси X\n"
-        "   - Клик в левой части графика (вблизи оси Y) открывает настройки оси Y\n"
-        "   - В настройках можно изменить:\n"
-        "        * Минимальное и максимальное значение оси\n"
-        "        * Количество делений (тиков) на оси\n"
-        "        * Заголовок оси\n\n"
+        "3. Plot Customization:\n"
+        "   - Line styles, colors, widths, and transparency\n"
+        "   - Marker types and sizing\n"
+        "   - Axis titles, ranges, and scaling (linear/log)\n"
+        "   - Grid customization with major/minor ticks\n"
+        "   - Legend positioning and font controls\n\n"
         
-        "4. Горячие клавиши:\n"
-        "   Ctrl+N - Новый эксперимент\n"
-        "   Ctrl+O - Загрузить данные из CSV\n"
-        "   Ctrl+Shift+S - Сохранить данные в CSV\n"
-        "   Ctrl+P - Построить график\n\n"
+        "4. Project Management:\n"
+        "   - Save/load plot configurations (JSON format)\n"
+        "   - Export high-quality images (PNG, JPEG, SVG, PDF)\n"
+        "   - Preserve data-table relationships\n\n"
         
-        "Инструкция по использованию:\n"
-        "1. Введите данные в таблицу или загрузите из CSV-файла\n"
-        "2. Настройте структуру таблицы (добавьте нужные столбцы и строки)\n"
-        "3. Выберите 'Построить график' в меню\n"
-        "4. Укажите номера столбцов для осей X и Y\n"
-        "5. При необходимости укажите количество точек для отображения\n"
-        "6. График автоматически построится в правой части окна\n"
-        "7. Для настройки осей кликните вблизи соответствующей оси\n\n"
+        "5. Interactive Features:\n"
+        "   - Click near axes to configure settings\n"
+        "   - Real-time plot updates on data changes\n"
+        "   - Dynamic axis range validation\n"
+        "   - Smart default values based on dataset\n\n"
         
-        "Примечания:\n"
-        "- Первая строка таблицы интерпретируется как заголовки столбцов\n"
-        "- Для построения графика используются только числовые данные\n"
-        "- Ячейки, не заполненные числами (целыми или дробными, написанными через точку), игнорируются при построении графика\n"
-        "- В настройках осей минимум должен быть меньше максимума, иначе настройка не применится"
+        "Keyboard Shortcuts:\n"
+        "   Ctrl+N - New experiment\n"
+        "   Ctrl+O - Load CSV data\n"
+        "   Ctrl+Shift+S - Save data to CSV\n"
+        "   Ctrl+S+P - Save plot settings\n"
+        "   Ctrl+S+I - Export plot image\n\n"
+        
+        "Usage Workflow:\n"
+        "1. Load data (File → Load Experiment)\n"
+        "2. Configure plot grid dimensions (Rows/Columns)\n"
+        "3. Add subplots with data assignments\n"
+        "4. Customize plots using the 4 configuration tabs\n"
+        "5. Export results (images/data/configurations)\n\n"
+        
+        "Technical Notes:\n"
+        "- First row is treated as column headers\n"
+        "- Only numeric data is plotted (non-numeric cells ignored)\n"
+        "- Logarithmic scales auto-adjust negative/zero values\n"
+        "- Axis limits must satisfy min < max to apply changes"
         )
     
     def addMultipleColumnsLeft(self, position: int) -> None:
@@ -408,6 +524,7 @@ class ZAVLAB(QMainWindow):
 
     def get_data(self, x:int|str, y:int|str, lenght : int|None = None) -> np.ndarray:
         """Извлекает данные из таблицы для построения графика"""
+
         data = [[], []]
         x_flag = True
         y_flag = True
@@ -415,6 +532,56 @@ class ZAVLAB(QMainWindow):
             x = self.get_column_index(x)
         if type(y) == str:
             y = self.get_column_index(y)
+        if x == -1 or y == -1:
+            return np.array(data)
+        if lenght == None:
+            lenght = self.table.rowCount() - 1
+        for i in range(lenght + 1):
+            if self.table.item(i, x):
+                item_x = self.table.item(i, x).text()
+                x_flag = True
+            else:
+                item_x = 0
+                x_flag = False
+            try:
+                item_x = float(item_x)
+                x_flag = True
+            except ValueError:
+                item_x = 0
+                x_flag = False
+            if self.table.item(i, y):
+                item_y = self.table.item(i, y).text()
+                y_flag = True
+            else:
+                item_y = 0
+                y_flag = False
+            try:
+                item_y = float(item_y)
+                y_flag = True
+            except ValueError:
+                item_y = 0
+                y_flag = False 
+            if x_flag and y_flag:
+                data[0].append(item_x)
+                data[1].append(item_y)
+        return np.array(data)
+    
+    def get_error_data(self, x:int|str, xerr:int|str, y:int|str, yerr:int|str, lenght : int|None = None) -> np.ndarray:
+        """Extract data with errors"""
+
+        data = [[], [], [], []]
+        x_flag = True
+        y_flag = True
+        if type(x) == str:
+            x = self.get_column_index(x)
+        if type(y) == str:
+            y = self.get_column_index(y)
+        if type(xerr) == str:
+            xerr = self.get_column_index(xerr)
+        if type(yerr) == str:
+            yerr = self.get_column_index(yerr)
+        if x == -1 or y == -1:
+            return np.array(data)
         if lenght == None:
             lenght = self.table.rowCount() - 1
         for i in range(lenght + 1):
@@ -426,7 +593,7 @@ class ZAVLAB(QMainWindow):
             try:
                 item_x = float(item_x)
                 x_flag = True
-            except:
+            except ValueError:
                 x_flag = False
             if self.table.item(i, y):
                 item_y = self.table.item(i, y).text()
@@ -436,13 +603,31 @@ class ZAVLAB(QMainWindow):
             try:
                 item_y = float(item_y)
                 y_flag = True
-            except:
+            except ValueError:
                 y_flag = False 
             if x_flag and y_flag:
                 data[0].append(item_x)
-                data[1].append(item_y)
+                data[2].append(item_y)
+                if xerr != -1 and self.table.item(i, xerr):
+                    item_xerr = self.table.item(i, xerr).text()
+                    try:
+                        item_xerr = float(item_xerr)
+                    except ValueError:
+                        item_xerr = 0
+                else:
+                    item_xerr = 0
+                if yerr != -1 and self.table.item(i, yerr):
+                    item_yerr = self.table.item(i, yerr).text()
+                    try:
+                        item_yerr = float(item_yerr)
+                    except ValueError:
+                        item_yerr = 0 
+                else:
+                    item_yerr = 0
+                data[1].append(item_xerr)
+                data[3].append(item_yerr)     
         return np.array(data)
-    
+
     def update_headers(self) -> None:
         """Extract headers and emit them as a list"""
         headers = []
@@ -455,12 +640,33 @@ class ZAVLAB(QMainWindow):
         return [self.table.item(0, col).text() if self.table.item(0, col) 
                 else f"Column {col+1}" for col in range(self.table.columnCount())]
     
-    def get_data_from_column(self, column_index:int)->list[float]:
-        pass
-    
+    def get_min_max_from_column(self, x:int|str, lenght:None|int = None)->list[float]:
+        data = []
+        if type(x) == str:
+            x = self.get_column_index(x)
+        if lenght == None:
+            lenght = self.table.rowCount() - 1
+        for i in range(lenght + 1):
+            if self.table.item(i, x):
+                item_x = self.table.item(i, x).text()   
+                try:
+                    item_x = float(item_x)
+                    data.append(item_x)
+                except ValueError:
+                    pass
+        data = np.array(data)
+        if data.size == 0:
+            return [0.0, 1.0]
+        if np.min(data) == np.max(data):
+            return [np.min(data), np.max(data) * 2]
+        return [np.min(data), np.max(data)]
+
     def get_min_max_value(self):
         headers = self.get_headers()
-        self.get_data
+        min_max = []
+        for head in headers:
+            min_max.append(self.get_min_max_from_column(head))
+        return min_max
 
 if __name__ == "__main__":
     app = QApplication([])

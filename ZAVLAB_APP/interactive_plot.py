@@ -12,6 +12,22 @@ from PyQt6.QtWidgets import QMessageBox
 import matplotlib.ticker as ticker
 from matplotlib.axes import Axes
 import numpy as np
+import matplotlib as plt
+
+#Check if LaTeX is availability
+try:
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif",
+        "text.latex.preamble": 
+            r"\usepackage[T2A]{fontenc}" 
+            r"\usepackage[utf8]{inputenc}"
+            r"\usepackage[russian]{babel}"
+            r"\usepackage{amsmath}"
+    })
+except:
+    plt.rcParams['mathtext.fontset'] = 'cm' 
+
 
 class INTERACTIVE_PLOT(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100, data=[]):
@@ -108,15 +124,16 @@ class INTERACTIVE_PLOT(FigureCanvas):
         self.draw()
     
     def update_one_plot(self, subplot, win):
-        plot_id, s_row, s_col, s_row_span, s_col_span, data_series, axes_info, title_info, legend_info = subplot
+        plot_id, s_row, s_col, s_row_span, s_col_span, data_series, axes_info, title_info, legend_info, lines = subplot
         ax: Axes = self.axes[plot_id]
         ax.clear()
     
         # Plot all series
         for series in data_series:
             if series['x'] != "None" and series['y'] != "None":
-                data = win.get_data(series['x'], series['y'])
-                ax.plot(data[0], data[1], 
+                if series['xerr'] != "None" or series['yerr'] != "None":
+                    data = win.get_error_data(x=series['x'], y=series['y'], xerr=series['xerr'], yerr=series['yerr'])
+                    ax.errorbar(x=data[0], y=data[2],xerr=data[1], yerr=data[3],
                         linewidth=series['width'], 
                         color=series['color'],
                         label=series['label'], 
@@ -124,6 +141,16 @@ class INTERACTIVE_PLOT(FigureCanvas):
                         alpha=series["alpha"],
                         marker=series["marker"],
                         markersize=series["marker size"])
+                else:
+                    data = win.get_data(series['x'], series['y'])
+                    ax.plot(data[0], data[1], 
+                            linewidth=series['width'], 
+                            color=series['color'],
+                            label=series['label'], 
+                            ls=series["ls"],
+                            alpha=series["alpha"],
+                            marker=series["marker"],
+                            markersize=series["marker size"])
     
         ax.set_title(title_info["title"], fontsize=title_info["title fs"])
         if axes_info["show grid"]:
@@ -134,32 +161,51 @@ class INTERACTIVE_PLOT(FigureCanvas):
             # ax.text(0.5, 0.5, f"Subplot {plot_id}", 
             #         ha='center', va='center', fontsize=12,
             #         transform=ax.transAxes)
+            ax.grid(visible=False)
             pass
 
         ax.minorticks_on()
         
+
+        #local functions for rounding labels
+        def zero_formatter_x(x, pos, acc=axes_info["x number of accuracy"]):
+            rounded_x = round(x, acc)
+            if abs(rounded_x) < 1e-8:
+                return "0" 
+            else:
+                return f"{x:.{acc}f}"
+    
+        def zero_formatter_y(y, pos, acc=axes_info["y number of accuracy"]):
+            rounded_y = round(y, acc)
+            if abs(rounded_y) < 1e-8:
+                return "0" 
+            else:
+                return f"{y:.{acc}f}"
+            
         #set x axis
         ax.set_xlabel(axes_info["x-label"], loc="center", fontsize=axes_info["x label fs"])
-        self.number_of_accuracy_x = axes_info["x number of accuracy"]
-        ax.xaxis.set_major_formatter(ticker.FuncFormatter(self.__zero_formatter_x))
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(zero_formatter_x))
         ax.xaxis.set_ticks_position("bottom")
         ax.tick_params(axis='x', length=4, width=2, labelsize=axes_info["x label fs"], direction ='in')
         if not axes_info["x scale"]:
             ax.tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
             ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(axes_info["x small ticks"]))
+        else:
+            ax.set_xscale("log")
         ax.set_xlim(axes_info["x min"], axes_info["x max"])
         ax.spines["left"].set_position(("data", axes_info["x min"]))
         ax.set_xticks(np.linspace(axes_info["x min"], axes_info["x max"], axes_info["x ticks"]))
 
         #set y axis
         ax.set_ylabel(axes_info["y-label"], loc="center", fontsize=axes_info["y label fs"])
-        self.number_of_accuracy_y = axes_info["y number of accuracy"]
-        ax.yaxis.set_major_formatter(ticker.FuncFormatter(self.__zero_formatter_y))
+        ax.yaxis.set_major_formatter(ticker.FuncFormatter(zero_formatter_y))        
         ax.yaxis.set_ticks_position("left")
         ax.tick_params(axis='y', length=4, width=2, labelsize=axes_info["y label fs"], direction ='in')
         if not axes_info["y scale"]:
             ax.tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
             ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(axes_info["y small ticks"]))
+        else:
+            ax.set_yscale("log")
         ax.set_ylim(axes_info["y min"], axes_info["y max"])
         ax.spines["bottom"].set_position(("data", axes_info["y min"]))
         ax.set_yticks(np.linspace(axes_info["y min"], axes_info["y max"], axes_info["y ticks"]))
@@ -167,105 +213,132 @@ class INTERACTIVE_PLOT(FigureCanvas):
         #set legend
         ax.legend(loc=legend_info["legend position"], frameon=False, prop={"size": legend_info["legend fs"]})
 
+        #draw lines
+        for line in lines:
+            self.draw_line(line, ax)
 
         return ax
 
-    def __zero_formatter_x(self, x, pos):
-        """
-        Format numerical values for axis label with zero approximation handling.
+    def draw_line(self, params, ax=None):
+        """Draws a line on the graph"""
+        if not ax:
+            ax = self.figure.gca()
+        
+        # Calculate the coordinates depending on the type
+        if params['type'] == 0:  # Two points
+            x = [params['x1'], params['x2']]
+            y = [params['y1'], params['y2']]
+        elif params['type'] == 1:  # equation
+            x_min, x_max = ax.get_xlim()
+            x = [x_min, x_max]
+            y = [params['k'] * x_min + params['b'], params['k'] * x_max + params['b']]
+        else:  # point and angle
+            rad = params['angle']
+            k = np.tan(rad)
+            x_range = ax.get_xlim()[1] - ax.get_xlim()[0]
+            length = x_range * 0.5
+            dx = length * np.cos(rad)
+            dy = length * np.sin(rad)
+            x = [params['px'] - dx, params['px'] + dx]
+            y = [params['py'] - dy, params['py'] + dy]
+        
+        # draw line
+        line = ax.plot(x, y, 
+                color=params['color'], 
+                linewidth=params['width'], 
+                linestyle=params['style'])
+        
+        # add labels to lines
+        print(params)
+        if 'label' in params and params['label']:
+            self.add_line_label(ax, line, params)
 
-        Provides clean numerical formatting by:
-        1. Rounding values to a specified decimal precision
-        2. Replacing near-zero values with exact "0" string
-        3. Maintaining standard decimal formatting for other values
+        self.canvas.draw()
+        self.draw()
 
-        Arguments:
-        ----------
-        x : float
-            The raw numerical value to be formatted
-        pos : int
-            Position parameter (required by matplotlib formatter API, not used here)
+    def add_line_label(self, ax, line, params):
+        """Add label to line."""
 
-        Returns:
-        -------
-        str
-            Formatted string representation of the value:
-            - "0" for values near zero after rounding
-            - Standard decimal format otherwise
-
-        Notes:
-        ------
-        - Uses `self.number_of_accuracy` to determine decimal places
-        - Considers values with absolute magnitude < 1e-8 as effectively zero
-        - Implements rounding before zero-check for accurate representation
-        - Designed for use with matplotlib tick formatting (hence unused pos parameter)
-
-        Example:
-        --------
-        With number_of_accuracy = 2:
-        - 0.00000004 → "0"
-        - 1.23456789 → "1.23"
-        - -0.0000001 → "0"
-        - 3.14159265 → "3.14"
-
-        Inspiration:
-        ------------
-        nothing
-        """
-        # Round the value to 2 decimal places first
-        rounded_x = round(x, self.number_of_accuracy_x)
-        # Check if the rounded value is effectively zero
-        if abs(rounded_x) < 1e-8:
-            return "0" 
-        else:
-            return f"{x:.{self.number_of_accuracy_x}f}"
-
-    def __zero_formatter_y(self, y, pos):
-        """
-        Format numerical values for axis label with zero approximation handling.
-
-        Provides clean numerical formatting by:
-        1. Rounding values to a specified decimal precision
-        2. Replacing near-zero values with exact "0" string
-        3. Maintaining standard decimal formatting for other values
-
-        Arguments:
-        ----------
-        x : float
-            The raw numerical value to be formatted
-        pos : int
-            Position parameter (required by matplotlib formatter API, not used here)
-
-        Returns:
-        -------
-        str
-            Formatted string representation of the value:
-            - "0" for values near zero after rounding
-            - Standard decimal format otherwise
-
-        Notes:
-        ------
-        - Uses `self.number_of_accuracy` to determine decimal places
-        - Considers values with absolute magnitude < 1e-8 as effectively zero
-        - Implements rounding before zero-check for accurate representation
-        - Designed for use with matplotlib tick formatting (hence unused pos parameter)
-
-        Example:
-        --------
-        With number_of_accuracy = 2:
-        - 0.00000004 → "0"
-        - 1.23456789 → "1.23"
-        - -0.0000001 → "0"
-        - 3.14159265 → "3.14"
-
-        Inspiration:
-        ------------
-        nothing
-        """
-        # Round the value to 2 decimal places first
-        rounded_y = round(y, self.number_of_accuracy_y)
-        # Check if the rounded value is effectively zero
-        if abs(rounded_y) < 1e-8:
-            return "0" 
-        else:
-            return f"{y:.{self.number_of_accuracy_y}f}"
+        # Define label position
+        position = params.get('label_position', 'Above the middle of the line')
+        fontsize = params.get('label_font_size', 10)
+        
+        # choordinates of start, end and middle of the line
+        x0, y0 = params['x1'], params['y1']
+        x1, y1 = params['x2'], params['y2']
+        x_mid = (x0 + x1) / 2
+        y_mid = (y0 + y1) / 2
+        
+        # shift for label
+        offset_y = 0
+        offset_x = 0
+        
+        # define choordinates for label
+        if position == "Above the beginning of the line":
+            x, y = x0, y0
+            ha = 'center'
+            va = 'bottom'
+            y += offset_y
+        elif position == "Above the middle of the line":
+            x, y = x_mid, y_mid
+            ha = 'center'
+            va = 'bottom'
+            y += offset_y
+        elif position == "Above the end of the line":
+            x, y = x1, y1
+            ha = 'center'
+            va = 'bottom'
+            y += offset_y
+        elif position == "Under the beginning of the line":
+            x, y = x0, y0
+            ha = 'center'
+            va = 'top'
+            y -= offset_y
+        elif position == "Under the middle of the line":
+            x, y = x_mid, y_mid
+            ha = 'center'
+            va = 'top'
+            y -= offset_y
+        elif position == "Under the end of the line":
+            x, y = x1, y1
+            ha = 'center'
+            va = 'top'
+            y -= offset_y
+        elif position == "To the left of the beginning":
+            x, y = x0, y0
+            ha = 'right'
+            va = 'center'
+            x -= offset_y
+        elif position == "To the left of the middle":
+            x, y = x_mid, y_mid
+            ha = 'right'
+            va = 'center'
+            x -= offset_x
+        elif position == "To the left of the end":
+            x, y = x1, y1
+            ha = 'right'
+            va = 'center'
+            x -= offset_x
+        elif position == "To the right of the beginning":
+            x, y = x0, y0
+            ha = 'left'
+            va = 'center'
+            x += offset_x
+        elif position == "To the right of the middle":
+            x, y = x_mid, y_mid
+            ha = 'left'
+            va = 'center'
+            x += offset_x
+        else:  # "To the right of the end"
+            x, y = x1, y1
+            ha = 'left'
+            va = 'center'
+            x += offset_x
+        print(x, y, params['label'])
+        # add label
+        ax.text(x, y, params['label'], 
+                fontsize=fontsize, 
+                color=params['color'],
+                horizontalalignment=ha,
+                verticalalignment=va,
+                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))

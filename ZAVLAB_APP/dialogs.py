@@ -64,8 +64,12 @@ class DataSeriesDialog(QDialog):
         # Data selection
         self.data_combo_x: QComboBox = QComboBox()
         self.data_combo_x.addItems(["None"] + headers)
+        self.data_combo_xerr: QComboBox = QComboBox()
+        self.data_combo_xerr.addItems(["None"] + headers)
         self.data_combo_y: QComboBox = QComboBox()
         self.data_combo_y.addItems(["None"] + headers)
+        self.data_combo_yerr: QComboBox = QComboBox()
+        self.data_combo_yerr.addItems(["None"] + headers)
         
         # Style controls
         self.color_btn: QPushButton = QPushButton("Choose Color")
@@ -81,7 +85,9 @@ class DataSeriesDialog(QDialog):
         #design window
         form: QFormLayout = QFormLayout()
         form.addRow("X Data:", self.data_combo_x)
+        form.addRow("X Error:", self.data_combo_xerr)
         form.addRow("Y Data:", self.data_combo_y)
+        form.addRow("Y Error:", self.data_combo_yerr)
         form.addRow("Line Color:", self.color_btn)
         form.addRow("Line Width:", self.line_width)
         form.addRow("Line style:", self.line_style_spin)
@@ -167,7 +173,9 @@ class DataSeriesDialog(QDialog):
         series: dict = {
             'id': self.current_data_index,
             'x': self.data_combo_x.currentText(),
+            'xerr': self.data_combo_xerr.currentText(),
             'y': self.data_combo_y.currentText(),
+            'yerr': self.data_combo_yerr.currentText(),
             'color': self.standart_colors[self.current_data_index],
             'width': self.line_width.value(),
             'label': f"{self.data_combo_y.currentText()}({self.data_combo_x.currentText()})",
