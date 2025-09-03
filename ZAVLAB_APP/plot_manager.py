@@ -5,15 +5,16 @@ Manages all plotting operations including:
 - Plot generation
 - Axis configuration
 """
+
+
 from PyQt6.QtWidgets import (QFrame, QWidget, QGridLayout, QLabel, QHBoxLayout,
                              QSplitter, QVBoxLayout, QSpinBox, QGroupBox, QPushButton,
-                             QComboBox, QTableWidget, QTabWidget, QFormLayout,
-                             QDoubleSpinBox, QCheckBox, QListWidget, QDialog, QMessageBox,
-                             QListWidgetItem, QColorDialog, QLineEdit, QTreeWidget,
-                             QTreeWidgetItem, QStackedWidget, QTableWidgetItem, QHeaderView, QScrollArea)
+                             QComboBox, QTabWidget, QListWidget, QDialog, QMessageBox,
+                             QListWidgetItem, QTableWidgetItem)
 from PyQt6.QtGui import QColor
 from interactive_plot import INTERACTIVE_PLOT
 from dialogs import SubplotPositionDialog, DataSeriesDialog
+from subplotsEditors import SubplotStyleTab, DataStyleTab, LineStyleTab, PositioningChoosingDataTab
 from PyQt6.QtCore import Qt
 import numpy as np
 
@@ -198,8 +199,7 @@ class SubplotEditor(QWidget):
     - Plot generation controls
     """
 
-
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         """Intialize subplotEditor"""
 
         super().__init__(parent)
@@ -212,7 +212,6 @@ class SubplotEditor(QWidget):
 
         # Initialize line color
         self.line_color = "#1f77b4"  # Default matplotlib blue
-
 
         # Initialize UI
         self.__initUI__()
@@ -256,7 +255,6 @@ class SubplotEditor(QWidget):
     
     def __init_CreationControl__(self, config_layout: QVBoxLayout) -> None:
         """Initialize form for subplot position and size configuration."""
-
 
         creation_group: QGroupBox = QGroupBox("Create New Subplot")
         position_group: QGroupBox = QGroupBox("Choose subplot size and position")
@@ -337,515 +335,43 @@ class SubplotEditor(QWidget):
         editor_layout: QVBoxLayout = QVBoxLayout()
         self.editor_group.setLayout(editor_layout)
 
-        # Tab widget for different editing options
+        ## Tab widget for different editing options
         self.editor_tabs: QTabWidget = QTabWidget()
-        self.__init_position_tab__()
-        self.__init_data_tab__()
-        self.__init_style_tab__()
-        self.__init_subplot_style_tab__()
-        self.__init_lines_tab__()
-    
+
+        #positioning, resizing, and choosing data tab
+        self.position_size_data_tab = PositioningChoosingDataTab()
+        self.editor_tabs.addTab(self.position_size_data_tab, "Pos., size, and data")
+        self.position_size_data_tab.pos_data_signal.connect(lambda sig: self.__work_with_sub_data_signals__(sig))
+
+        #data style tab
+        self.data_style_tab = DataStyleTab()
+        self.editor_tabs.addTab(self.data_style_tab, "Data style")
+        self.data_style_tab.data_style_signal.connect(lambda sig: self.__update_data_style__(sig))
+
+        #subplot style tab
+        self.subplot_style_tab = SubplotStyleTab()
+        self.subplot_style_tab.sub_style_signal.connect(self.__update_sub_style__)
+        self.editor_tabs.addTab(self.subplot_style_tab, "Subplot style")
+
+        #line style tab
+        self.lines_tab = LineStyleTab()
+        self.lines_tab.line_style_signal.connect(lambda msg: self.__work_with_lines_signals__(msg))
+        self.editor_tabs.addTab(self.lines_tab, "Lines")
+
+        #Combo Box for choosing which subplot will be changed
         subplot_to_change_layout = QHBoxLayout()
         self.subplot_spin = QComboBox()
         self.subplot_spin.addItems(["None"])
         self.subplot_spin.currentTextChanged.connect(self.get_sub_id_select)
         
+        #add all widgets to layout
         subplot_to_change_layout.addWidget(QLabel("Subplot to change:"))
         subplot_to_change_layout.addWidget(self.subplot_spin)
         editor_layout.addLayout(subplot_to_change_layout)
         editor_layout.addWidget(self.editor_tabs)
         config_layout.addWidget(self.editor_group)
 
-    def __init_position_tab__(self) -> None:
-        """Initialize tab for changing position and size of a subplot."""
-
-
-        position_tab: QWidget = QWidget()
-        position_layout: QGridLayout = QGridLayout(position_tab)
-
-        position_layout.addWidget(QLabel("Row:"), 1, 0)
-        self.edit_row_spin: QSpinBox = QSpinBox()
-        self.edit_row_spin.setRange(0, 7)
-        position_layout.addWidget(self.edit_row_spin, 1, 1)
-        
-        position_layout.addWidget(QLabel("Column:"), 1, 2)
-        self.edit_col_spin: QSpinBox = QSpinBox()
-        self.edit_col_spin.setRange(0, 7)
-        position_layout.addWidget(self.edit_col_spin, 1, 3)
-        
-        position_layout.addWidget(QLabel("Row Span:"), 2, 0)
-        self.edit_row_span_spin: QSpinBox = QSpinBox()
-        self.edit_row_span_spin.setRange(1, 8)
-        self.edit_row_span_spin.setValue(1)
-        position_layout.addWidget(self.edit_row_span_spin, 2, 1)
-        
-        position_layout.addWidget(QLabel("Col Span:"), 2, 2)
-        self.edit_col_span_spin: QSpinBox = QSpinBox()
-        self.edit_col_span_spin.setRange(1, 8)
-        self.edit_col_span_spin.setValue(1)
-        position_layout.addWidget(self.edit_col_span_spin, 2, 3)
-        
-        self.update_position_btn: QPushButton = QPushButton("Update Position/Size")
-        self.update_position_btn.clicked.connect(self.update_subplot_position)
-        position_layout.addWidget(self.update_position_btn, 3, 0, 1, 4)
-        
-        self.editor_tabs.addTab(position_tab, "Position")
-    
-    def __init_data_tab__(self) -> None:
-        """Initialize tab foor changing data sets"""
-        
-
-        data_tab: QWidget = QWidget()
-        data_layout: QVBoxLayout = QVBoxLayout(data_tab)
-        
-        self.data_data_spin: QComboBox = QComboBox()
-        self.data_data_spin.addItems(["None"])
-        data_layout.addWidget(QLabel("Data to change:"))
-        data_layout.addWidget(self.data_data_spin)
- 
-        data_layout.addWidget(QLabel("X Data:"))
-        self.edit_data_combo_x: QComboBox = QComboBox()
-        self.edit_data_combo_x.addItems(["None"])
-        data_layout.addWidget(self.edit_data_combo_x)
-
-        data_layout.addWidget(QLabel("X Error:"))
-        self.edit_data_combo_xerr: QComboBox = QComboBox()
-        self.edit_data_combo_xerr.addItems(["None"])
-        data_layout.addWidget(self.edit_data_combo_xerr)
-
-        data_layout.addWidget(QLabel("Y Data:"))
-        self.edit_data_combo_y = QComboBox()
-        self.edit_data_combo_y.addItems(["None"])
-        data_layout.addWidget(self.edit_data_combo_y)
-
-        data_layout.addWidget(QLabel("Y Error:"))
-        self.edit_data_combo_yerr = QComboBox()
-        self.edit_data_combo_yerr.addItems(["None"])
-        data_layout.addWidget(self.edit_data_combo_yerr)
-        
-        self.edit_data_btn = QPushButton("Edit Data Series")
-        self.edit_data_btn.clicked.connect(self.edit_data_series)
-        data_layout.addWidget(self.edit_data_btn)
-
-        self.update_data_btn = QPushButton("Update Data")
-        self.update_data_btn.clicked.connect(self.update_subplot_data)
-        data_layout.addWidget(self.update_data_btn)
-        
-        self.editor_tabs.addTab(data_tab, "Data")
-    
-    def __init_style_tab__(self) -> None:
-        """Initialize tab for styling data in subplots."""
-
-
-        # Styling tab
-        style_tab = QWidget()
-        style_layout = QFormLayout(style_tab)
-        
-        self.data_styles_spin = QComboBox()
-        self.data_styles_spin.addItems(["None"])
-        self.data_styles_spin.currentTextChanged.connect(self.data_styles_changed)
-        style_layout.addRow("Data to change:", self.data_styles_spin)
-        
-        self.line_label = QLineEdit()
-        self.line_label.setText("y(x)")
-        self.line_label.setPlaceholderText("Enter line label...")
-        style_layout.addRow("Line Label:", self.line_label)
-
-        self.line_width_spin = QDoubleSpinBox()
-        self.line_width_spin.setMinimum(0)
-        # self.line_width_spin.setRange(0.1, 10.0)
-        self.line_width_spin.setValue(1.0)
-        style_layout.addRow("Line Width:", self.line_width_spin)
-        
-        color_layout = QHBoxLayout()
-        self.line_color_btn = QPushButton("Choose Color")
-        self.line_color_btn.clicked.connect(self.choose_line_color)
-        self.color_preview = QFrame()
-        self.color_preview.setFixedSize(24, 24)
-        self.color_preview.setStyleSheet(f"background-color: {self.line_color}; border: 1px solid #888; border-radius: 3px;")
-        self.color_preview.setProperty("color", self.line_color)
-
-        color_layout.addWidget(QLabel("Line Color:"))
-        color_layout.addWidget(self.color_preview)
-        color_layout.addWidget(self.line_color_btn)
-        style_layout.addRow(color_layout)
-        
-        self.line_style_spin = QComboBox()
-        self.line_style_spin.addItems(["Nothing", "- (solid)", ": (solid)", "-- (dashed)", "-. (dashdot)"])
-        self.line_style_spin.setCurrentIndex(0)
-        style_layout.addRow("Line style:", self.line_style_spin)
-        
-        self.line_transparancy = QDoubleSpinBox()
-        self.line_transparancy.setRange(0.0, 1.0)
-        self.line_transparancy.setValue(1.0)
-        self.line_transparancy.setSingleStep(0.01)
-        self.line_transparancy.setDecimals(2)
-        style_layout.addRow("Line transparancy:", self.line_transparancy)
-
-        self.dotes_marker_shape = QComboBox()
-        self.dotes_marker_shape.addItems(["o", "", ".", ",", "v", "^", "<", ">", "1", "2", "3", "4", "8", "s", "p", "P", "*", "h", "H", "+", "x", "D", "d", "|", "_"])
-        self.dotes_marker_shape.setCurrentIndex(0)
-        style_layout.addRow("Marker shape:", self.dotes_marker_shape)
-
-        self.dotes_marker_size = QSpinBox()
-        self.dotes_marker_size.setMinimum(0)
-        self.dotes_marker_size.setValue(3)
-        style_layout.addRow("Marker size:", self.dotes_marker_size)
-
-
-        self.update_style_btn = QPushButton("Update Data Style")
-        self.update_style_btn.clicked.connect(self.__update_data_style__)
-        style_layout.addRow(self.update_style_btn)
-        
-        self.editor_tabs.addTab(style_tab, "Data style")
-
-    def __init_subplot_style_tab__(self) -> None:
-        """Initialize UI for subplots styling tab."""
-
-        #prapare tab
-        sub_style_tab = QWidget()
-        sub_style_layout = QVBoxLayout(sub_style_tab)
-        self.editor_tabs.addTab(sub_style_tab, "Sublot style")
-
-        self.settings_tree = QTreeWidget()
-        self.settings_tree.setHeaderLabels(["Parameters", "Values"])
-        self.settings_tree.setAlternatingRowColors(True)
-        #create all tab widgets
-        #axis settings
-        self.__add_axes_group__()
-
-        #subplot settings
-        self.__add_subplot_main_settings_group()
-
-        sub_style_layout.addWidget(self.settings_tree)
-
-        self.update_sub_style_btn = QPushButton("Update Subplot Style")
-        self.update_sub_style_btn.clicked.connect(self.__update_sub_style__)
-        sub_style_layout.addWidget(self.update_sub_style_btn)
-
-    def __add_axes_group__(self):
-        """Add a tree group for axes settings."""
-        group_main = QTreeWidgetItem(self.settings_tree, ["Axes"])
-        group_x = QTreeWidgetItem(group_main, ["X axis"])
-        group_y = QTreeWidgetItem(group_main, ["Y axis"])
-
-        params = [
-            ("X Axis Title", "text", "X"),
-            ("X labels font size", "int", 14, 0),
-            ("X Min", "float", 0.0),
-            ("X Max", "float", 1.0),
-            ("X ticks number", "int", 1, 0),
-            ("X small ticks number", "int", 1, 0),
-            ("X number of accuracy", "int", 1),
-            ("X scale", "combo", "Linear", ["Linear", "Logarithmic"]),
-
-            ("Y Axis Title", "text", "Y"),
-            ("Y labels font size", "int", 14, 0),
-            ("Y Min", "float", 0.0),
-            ("Y Max", "float", 1.0),
-            ("Y ticks number", "int", 1, 0),
-            ("Y small ticks number", "int", 1, 0),
-            ("Y number of accuracy", "int", 1),
-            ("Y scale", "combo", "Linear", ["Linear", "Logarithmic"]),            
-        ]
-
-        self.x_title = None
-        self.x_min = None
-        self.x_max = None
-        self.x_ticks = None
-        self.x_small_ticks = None
-        self.x_labels_fs = None
-        self.x_scale = None
-        self.x_number_of_ac = None
-
-        self.y_title = None
-        self.y_min = None
-        self.y_max = None
-        self.y_ticks = None
-        self.y_small_ticks = None
-        self.y_labels_fs = None
-        self.y_scale = None
-        self.y_number_of_ac = None
-
-        for name, ptype, default, *args in params:
-            if name[0] == "X":
-                editor = self.__add_parameter__(group_x, name, ptype, default, *args)
-            else:
-                editor = self.__add_parameter__(group_y, name, ptype, default, *args)
-
-            # Save references to important editors
-            if name == "X Axis Title":
-                self.x_title: QLineEdit = editor
-                self.x_title.setPlaceholderText("Enter label or formula (Example: $\\frac{a}{b}$)")
-                self.x_title.setToolTip(
-                                        "Use LaTeX syntax for formulas:\n"
-                                        "• Fractions: \\frac{numerator}{denominator}\n"
-                                        "• Degrees: x^2\n"
-                                        "• Greek letters: \\alpha, \\beta\n"
-                                        "• Roots: \\sqrt{x}\n"
-                                        "Be sure to conclude formulas in $...$"
-                                    )
-            elif name == "X Min":
-                self.x_min: QDoubleSpinBox = editor
-                self.x_min.valueChanged.connect(self.validate_x_limits)
-            elif name == "X Max":
-                self.x_max: QDoubleSpinBox = editor
-                self.x_max.valueChanged.connect(self.validate_x_limits)
-            elif name == "X ticks number":
-                self.x_ticks: QSpinBox = editor
-            elif name == "X small ticks number":
-                self.x_small_ticks: QSpinBox = editor
-                self.x_small_ticks.setRange(0, 1000)
-            elif name == "X labels font size":
-                self.x_labels_fs: QSpinBox = editor
-            elif name == "X scale":
-                self.x_scale: QComboBox = editor
-                self.x_scale.currentTextChanged.connect(self.update_some_xAxis_states)
-            elif name == "X number of accuracy":
-                self.x_number_of_ac: QSpinBox = editor
-                self.x_number_of_ac.setMinimum(-100)
-                self.x_number_of_ac.valueChanged.connect(self.update_range)
-
-            elif name == "Y Axis Title":
-                self.y_title: QLineEdit = editor
-                self.y_title.setPlaceholderText("Enter label or formula (Example: $\\frac{a}{b}$)")
-                self.y_title.setToolTip(
-                                        "Use LaTeX syntax for formulas:\n"
-                                        "• Fractions: \\frac{numerator}{denominator}\n"
-                                        "• Degrees: x^2\n"
-                                        "• Greek letters: \\alpha, \\beta\n"
-                                        "• Roots: \\sqrt{x}\n"
-                                        "Be sure to conclude formulas in $...$"
-                                    )
-            elif name == "Y Min":
-                self.y_min: QDoubleSpinBox = editor
-                self.y_min.valueChanged.connect(self.validate_y_limits)
-            elif name == "Y Max":
-                self.y_max: QDoubleSpinBox = editor
-                self.y_max.valueChanged.connect(self.validate_y_limits)
-            elif name == "Y ticks number":
-                self.y_ticks: QSpinBox = editor
-            elif name == "Y small ticks number":
-                self.y_small_ticks: QSpinBox = editor
-                self.y_small_ticks.setRange(0, 1000)
-            elif name == "Y labels font size":
-                self.y_labels_fs: QSpinBox = editor
-            elif name == "Y scale":
-                self.y_scale: QComboBox = editor
-                self.y_scale.currentTextChanged.connect(self.update_some_yAxis_states)
-            elif name == "Y number of accuracy":
-                self.y_number_of_ac: QSpinBox = editor
-                self.y_number_of_ac.setMinimum(-100)
-                self.y_number_of_ac.valueChanged.connect(self.update_range)
-
-    def update_range(self) -> None:
-        """Updates limits for axis"""
-        axes_info = {"x min": self.x_min.value(), "x max": self.x_max.value(), "x number of accuracy": self.x_number_of_ac.value(),
-                     "y min": self.y_min.value(), "y max": self.y_max.value(), "y number of accuracy": self.y_number_of_ac.value()}
-        self.__set_new_axes_ranges__(axes_info)
-
-    def __add_subplot_main_settings_group(self) -> None:
-        """Add main settings for subplot group."""
-
-
-        group: QTreeWidgetItem = QTreeWidgetItem(self.settings_tree, ["Subplot main settings"])
-        title_group: QTreeWidgetItem = QTreeWidgetItem(group, ["Title"])
-        legend_group: QTreeWidgetItem = QTreeWidgetItem(group, ["Legend"])
-
-        params = [
-            ("Subplot Title", "text", "a"),
-            ("Subplot title font size", "int", 14, 0),
-            ("Legend position", "combo", "best", ['best', 'upper right', 'upper left', 'lower left', 'lower right', 'right', 'center left', 'center right', 'lower center', 'upper center', 'center']),
-            ("Legend font size", "int", 14, 0)
-        ]
-
-        self.subplot_title = None
-        self.subplot_title_fs = None
-        self.legend_position = None
-        self.legend_fs = None
-
-        for name, ptype, default, *args in params[:2]:
-            editor = self.__add_parameter__(title_group, name, ptype, default, *args)
-            if name == "Subplot Title":
-                self.subplot_title: QLineEdit = editor
-                self.subplot_title.setPlaceholderText("Enter label or formula (Example: $\\frac{a}{b}$)")
-                self.subplot_title.setToolTip(
-                                        "Use LaTeX syntax for formulas:\n"
-                                        "• Fractions: \\frac{numerator}{denominator}\n"
-                                        "• Degrees: x^2\n"
-                                        "• Greek letters: \\alpha, \\beta\n"
-                                        "• Roots: \\sqrt{x}\n"
-                                        "Be sure to conclude formulas in $...$"
-                                    )
-            elif name == "Subplot title font size":
-                self.subplot_title_fs: QSpinBox = editor
-
-        for name, ptype, default, *args in params[2:]:
-            editor = self.__add_parameter__(legend_group, name, ptype, default, *args)
-            if name == "Legend position":
-                self.legend_position: QComboBox = editor
-            elif name == "Legend font size":
-                self.legend_fs: QSpinBox = editor
-
-        #grid preset
-        grid_group:QTreeWidgetItem = QTreeWidgetItem(group, ["Grid"])
-        self.grid_checkbox = QCheckBox("Show Grid")
-        self.grid_checkbox.setChecked(True)
-        self.settings_tree.setItemWidget(grid_group, 1, self.grid_checkbox)
-
-    def validate_x_limits(self) -> None:
-        """Ensure X Min < X Max"""
-
-
-        if not self.x_min or not self.x_max:
-            return
-            
-        x_min: float = self.x_min.value()
-        x_max: float = self.x_max.value()
-        
-        if x_min >= x_max:
-            # Adjust min/max to maintain valid range
-            if self.x_min.hasFocus():
-                # If user is editing min, adjust max
-                self.x_max.setValue(x_min + 0.1)
-            else:
-                # If user is editing max, adjust min
-                self.x_min.setValue(x_max - 0.1)
-                
-            # Highlight problematic fields
-            self.highlight_invalid(self.x_min)
-            self.highlight_invalid(self.x_max)
-        else:
-            # Reset highlighting if valid
-            self.reset_highlight(self.x_min)
-            self.reset_highlight(self.x_max)
-
-    def validate_y_limits(self) -> None:
-        """Ensure Y Min < Y Max"""
-
-
-        if not self.y_min or not self.y_max:
-            return
-            
-        y_min: float = self.y_min.value()
-        y_max: float = self.y_max.value()
-        
-        if y_min >= y_max:
-            # Adjust min/max to maintain valid range
-            if self.y_min.hasFocus():
-                # If user is editing min, adjust max
-                self.y_max.setValue(y_min + 0.1)
-            else:
-                # If user is editing max, adjust min
-                self.y_min.setValue(y_max - 0.1)
-                
-            # Highlight problematic fields
-            self.highlight_invalid(self.y_min)
-            self.highlight_invalid(self.y_max)
-        else:
-            # Reset highlighting if valid
-            self.reset_highlight(self.y_min)
-            self.reset_highlight(self.y_max)
-
-    def highlight_invalid(self, editor):
-        """Highlight editor with red border to indicate invalid value"""
-
-
-        if isinstance(editor, (QDoubleSpinBox, QSpinBox)):
-            editor.setStyleSheet("border: 1px solid red;")
-        elif isinstance(editor, QLineEdit):
-            editor.setStyleSheet("QLineEdit { border: 1px solid red; }")
-
-    def reset_highlight(self, editor):
-        """Reset editor's style to default"""
-
-
-        if isinstance(editor, (QDoubleSpinBox, QSpinBox)):
-            editor.setStyleSheet("")
-        elif isinstance(editor, QLineEdit):
-            editor.setStyleSheet("QLineEdit { border: none; }")
-
-    def update_some_xAxis_states(self) -> None:
-        """Change states of some axis parameters if axis scaling is changed."""
-        if self.x_min.value() <= 0 and self.x_max.value() > 0:
-            self.x_min.setValue(self.x_max.value() / 100)
-        elif self.x_min.value() < 0 and self.x_max.value() <= 0:
-            self.x_min.setValue(1)
-            self.x_max.setValue(10)
-    
-    def update_some_yAxis_states(self) -> None:
-        """Change states of some axis parameters if axis scaling is changed."""
-        if self.y_min.value() <= 0 and self.y_max.value() > 0:
-            self.y_min.setValue(self.y_max.value() / 100)
-        elif self.y_min.value() < 0 and self.y_max.value() <= 0:
-            self.y_min.setValue(1)
-            self.y_max.setValue(10)
-
-    def __add_parameter__(self, parent, name, ptype, default, *args):
-        """Add a parameter to the group and return the editor widget"""
-
-
-        param_item = QTreeWidgetItem(parent, [name])
-        editor = None
-        
-        # Create editor based on parameter type
-        if ptype == "float":
-            editor = QDoubleSpinBox()
-            editor.setValue(default)
-            # Set reasonable default range if not provided
-            min_val = args[0] if len(args) > 0 else -1000000.0
-            max_val = args[1] if len(args) > 1 else 1000000.0
-            editor.setRange(min_val, max_val)
-            editor.setSingleStep(0.1)
-            editor.setDecimals(4)
-            editor.setStyleSheet("""
-                QDoubleSpinBox:focus {
-                    border: 1px solid #4CAF50;
-                }
-            """)
-        elif ptype == "int":
-            editor = QSpinBox()
-            editor.setValue(default)
-            # Set reasonable default range if not provided
-            min_val = args[0] if (len(args) > 0 and args[0] >=0) else 0
-            max_val = args[1] if len(args) > 1 else 1000000
-            editor.setRange(min_val, max_val)
-            if len(args) > 2:  # Suffix (unit)
-                editor.setSuffix(f" {args[2]}")
-            editor.setStyleSheet("""
-                QSpinBox:focus {
-                    border: 1px solid #4CAF50;
-                }
-            """)
-        elif ptype == "combo":
-            editor = QComboBox()
-            # If the next argument is a list, use it, else use all remaining args
-            if args and isinstance(args[0], list):
-                editor.addItems(args[0])
-            else:
-                editor.addItems(args)
-            editor.setCurrentText(default)
-            editor.setStyleSheet("""
-                QComboBox:focus {
-                    border: 1px solid #4CAF50;
-                }
-            """)
-        elif ptype == "text":
-            editor = QLineEdit()
-            editor.setText(default)
-            editor.setPlaceholderText("Enter text...")
-            editor.setStyleSheet("""
-                QLineEdit:focus {
-                    border: 1px solid #4CAF50;
-                }
-            """)
-        
-        if editor:
-            self.settings_tree.setItemWidget(param_item, 1, editor)
-            return editor
-        return None
-    
-    def __initUI__(self):
+    def __initUI__(self) -> None:
         """Initialize UI for subplot Editor window"""
 
         #main layout      
@@ -901,10 +427,8 @@ class SubplotEditor(QWidget):
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
         
-    
     def update_column_data(self, headers: list[str]) -> None:
         "updates all combo boxes that contain headers from the table"
-
 
         self.data_combo_x.clear()
         self.data_combo_x.addItems(["None"] + headers)
@@ -915,16 +439,9 @@ class SubplotEditor(QWidget):
         self.data_combo_yerr.clear()
         self.data_combo_yerr.addItems(["None"] + headers)
         
-        self.edit_data_combo_x.clear()
-        self.edit_data_combo_x.addItems(["None"] + headers)
-        self.edit_data_combo_xerr.clear()
-        self.edit_data_combo_xerr.addItems(["None"] + headers)
-        self.edit_data_combo_y.clear()
-        self.edit_data_combo_y.addItems(["None"] + headers)
-        self.edit_data_combo_yerr.clear()
-        self.edit_data_combo_yerr.addItems(["None"] + headers)
+        self.position_size_data_tab.update_headers_column_data(headers=headers)
 
-    def __create_grid__(self):
+    def __create_grid__(self) -> None:
         """Create a new grid based on row/column configuration"""
 
         #get entered row/col value
@@ -941,22 +458,11 @@ class SubplotEditor(QWidget):
         # Try to re-add subplots that fit in the new grid
         non_fitting_subplots = []
         for subplot in current_subplots:
-            plot_id, row, col, row_span, col_span, data_series, axes_info, title_info, legend_info, line_info = subplot
+            plot_id, row, col, row_span, col_span, data_series, sub_info, line_info = subplot
             if (row + row_span <= rows and col + col_span <= cols):
                 # Subplot fits in new grid, re-add it
                 self.grid_display.__add_subplot__(row, col, row_span, col_span, plot_id)
-                self.plot_canvas.subplots.append([
-                    plot_id,
-                    row,
-                    col,
-                    row_span,
-                    col_span,
-                    data_series,
-                    axes_info,
-                    title_info,
-                    legend_info,
-                    line_info
-                ])
+                self.__append_subplot__(plot_id, row, col, row_span, col_span, data_series, sub_info, line_info)
                 # Update current plot ID to avoid conflicts
                 if plot_id >= self.current_plot_id:
                     self.current_plot_id = plot_id + 1
@@ -1023,18 +529,8 @@ class SubplotEditor(QWidget):
                     # Check if adjusted subplot now fits
                     if new_row + new_row_span <= rows and new_col + new_col_span <= cols:
                         self.grid_display.__add_subplot__(new_row, new_col, new_row_span, new_col_span, plot_id)
-                        self.plot_canvas.subplots.append([
-                            plot_id,
-                            new_row,
-                            new_col,
-                            new_row_span,
-                            new_col_span,
-                            data_series,
-                            axes_info,
-                            title_info,
-                            legend_info,
-                            line_info
-                        ])
+                        self.__append_subplot__(plot_id, row, col, row_span, col_span, data_series, sub_info, line_info)
+
                         non_fitting_subplots.remove(subplot)
                     else:
                         # Still doesn't fit after adjustment
@@ -1045,16 +541,16 @@ class SubplotEditor(QWidget):
                     pass
                 self.row_col = [rows, cols]
 
+    def __change_sub_pos__(self, base_info: list[int], subs: list, max_row: int, max_col: int) -> None:
+        """Call SubplotPositionDialog to change subplot position."""
 
-    def __change_sub_pos__(self, base_info, subs, max_row, max_col):
         input_pos_dialog = SubplotPositionDialog(base_info, subs, max_row, max_col)
         if input_pos_dialog.exec() == QDialog.DialogCode.Accepted:
                 return input_pos_dialog.get_data()
         return None
     
-    def __add_subplot__(self):
+    def __add_subplot__(self) -> None:
         """Add a new subplot to the configuration"""
-
 
         row = self.row_spin.value()
         col = self.col_spin.value()
@@ -1105,21 +601,14 @@ class SubplotEditor(QWidget):
         }]
         # Add subplot
         plot_id = self.current_plot_id
-        self.plot_canvas.subplots.append([
-            plot_id,
-            row,
-            col,
-            row_span,
-            col_span,
-            data_series,
-            {"x-label":self.data_combo_x.currentText(),
+        axes_info = {"x-label":self.data_combo_x.currentText(),
              "x min": 0,
              "x max": 1,
              "x ticks": 10,
              "x small ticks": 5,
              "x label fs": 14,
              "x scale": 0,
-             "x number of accuracy": 1,
+             "x round accuracy": 1,
              "y-label":self.data_combo_y.currentText(),
              "y min": 0,
              "y max": 1,
@@ -1127,29 +616,28 @@ class SubplotEditor(QWidget):
              "y small ticks": 5,
              "y label fs": 14,
              "y scale": 0,
-             "y number of accuracy": 1,
-             "show grid": True},
-             {"title": "a",
-             "title fs": 14},
-             {"legend position": "best",
-              "legend fs": 14},
-              []
-        ])
+             "y round accuracy": 1}
+        title_info = {"title": "a",
+             "title fs": 14}
+        legend_info = {"legend position": "best",
+              "legend fs": 14}
+        grid_info = {"show grid": True}
+        sub_info = {"axes": axes_info, "title": title_info, "legend": legend_info, "grid": grid_info}
+        self.__append_subplot__(plot_id, row, col, row_span, col_span, data_series, sub_info, [])
 
 
         #min max value for series
         min_max_x = self.window().get_min_max_from_column(self.data_combo_x.currentText())
         min_max_y = self.window().get_min_max_from_column(self.data_combo_y.currentText())
         shift = [(min_max_x[1] - min_max_x[0]) / 20, (min_max_y[1] - min_max_y[0]) / 20]
-        self.plot_canvas.subplots[-1][6]["x min"] = min_max_x[0] - shift[0]
-        self.plot_canvas.subplots[-1][6]["x max"] = min_max_x[1] + shift[0]
-        self.plot_canvas.subplots[-1][6]["y min"] = min_max_y[0] - shift[0]
-        self.plot_canvas.subplots[-1][6]["y max"] = min_max_y[1] + shift[1]
-        self.plot_canvas.subplots[-1][6]["x number of accuracy"] = max([self.find_first_nonzero_digit(min_max_x[0] - shift[0]),
+        self.plot_canvas.subplots[-1][6]["axes"]["x min"] = min_max_x[0] - shift[0]
+        self.plot_canvas.subplots[-1][6]["axes"]["x max"] = min_max_x[1] + shift[0]
+        self.plot_canvas.subplots[-1][6]["axes"]["y min"] = min_max_y[0] - shift[0]
+        self.plot_canvas.subplots[-1][6]["axes"]["y max"] = min_max_y[1] + shift[1]
+        self.plot_canvas.subplots[-1][6]["axes"]["x round accuracy"] = max([self.find_first_nonzero_digit(min_max_x[0] - shift[0]),
                                                                         self.find_first_nonzero_digit(min_max_x[1] + shift[0])]) + 1
-        self.plot_canvas.subplots[-1][6]["y number of accuracy"] = max([self.find_first_nonzero_digit(min_max_y[0] - shift[1]), 
+        self.plot_canvas.subplots[-1][6]["axes"]["y round accuracy"] = max([self.find_first_nonzero_digit(min_max_y[0] - shift[1]), 
                                                                         self.find_first_nonzero_digit(min_max_x[1] + shift[1])]) + 1
-
         self.current_plot_id += 1
         
         # Update visual display
@@ -1162,13 +650,20 @@ class SubplotEditor(QWidget):
         # Select the new subplot
         self.select_subplot(plot_id)
     
-    def get_sub_id_select(self):
+    def get_sub_id_select(self) -> None:
+        """Define selected subplot id and load subplot's properties."""
+
         if self.subplot_spin.currentText().split():
             sub_id = int(self.subplot_spin.currentText().split()[-1])
             self.select_subplot(sub_id)
 
-    def rectangles_overlap(self, rect1, rect2):
-        """Check if two rectangles overlap"""
+    def rectangles_overlap(self, rect1: tuple[int], rect2: tuple[int]) -> bool:
+        """Check if two rectangles overlap. 
+        Return:
+            False if they don't overlap
+            True if they overlap.
+        """
+
         r1_row, r1_col, r1_row_span, r1_col_span = rect1
         r2_row, r2_col, r2_row_span, r2_col_span = rect2
         
@@ -1177,8 +672,9 @@ class SubplotEditor(QWidget):
                    r1_row + r1_row_span <= r2_row or 
                    r1_row >= r2_row + r2_row_span)
     
-    def clear_subplots(self):
+    def clear_subplots(self) -> None:
         """Clear all subplots"""
+
         self.plot_canvas.subplots = []
         self.plot_canvas.fig.clear()
         self.plot_canvas.canvas.draw()
@@ -1187,8 +683,9 @@ class SubplotEditor(QWidget):
         self.__create_grid__()
         self.clear_selection()
     
-    def update_subplot_list(self):
+    def update_subplot_list(self) -> None:
         """Update the subplot list widget"""
+
         self.subplot_list.clear()
         for subplot in self.plot_canvas.subplots:
             plot_id, row, col, row_span, col_span, data_series, *_ = subplot
@@ -1199,8 +696,9 @@ class SubplotEditor(QWidget):
             item.setData(Qt.ItemDataRole.UserRole, plot_id)
             self.subplot_list.addItem(item)
     
-    def subplot_selected(self):
+    def subplot_selected(self) -> None:
         """Handle subplot selection from the list"""
+
         selected_items = self.subplot_list.selectedItems()
         if selected_items:
             plot_id = selected_items[0].data(Qt.ItemDataRole.UserRole)
@@ -1208,8 +706,9 @@ class SubplotEditor(QWidget):
         else:
             self.clear_selection()
     
-    def select_subplot(self, plot_id):
+    def select_subplot(self, plot_id) -> None:
         """Select a subplot and load its properties into the editor"""
+
         self.selected_subplot_id = plot_id
         self.editor_group.setEnabled(True)
         
@@ -1220,8 +719,9 @@ class SubplotEditor(QWidget):
         for subplot in self.plot_canvas.subplots:
             if subplot[0] == plot_id:
                 # Populate position controls
-                _, row, col, row_span, col_span, data_series, axes_info, title_info, legend_info, line_info = subplot
-                
+                _, row, col, row_span, col_span, data_series, sub_info, line_info = subplot
+                axes_info = sub_info["axes"]
+
                 #min max value for series
                 extremums = np.zeros((4, len(data_series)))
                 for index, ser in enumerate(data_series):
@@ -1233,127 +733,61 @@ class SubplotEditor(QWidget):
                 axes_info["x max"] = np.max(extremums[1]) + shift[0]
                 axes_info["y min"] = np.min(extremums[2]) - shift[1]
                 axes_info["y max"] = np.max(extremums[3]) + shift[1]
-                axes_info["x number of accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[0]) - shift[0]),
+                axes_info["x round accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[0]) - shift[0]),
                                                             self.find_first_nonzero_digit(np.max(extremums[1]) + shift[0])]) + 1
-                axes_info["y number of accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[2]) - shift[1]),
+                axes_info["y round accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[2]) - shift[1]),
                                                             self.find_first_nonzero_digit(np.max(extremums[3]) + shift[1])]) + 1
                 
-                self.edit_row_spin.setValue(row)
-                self.edit_col_spin.setValue(col)
-                self.edit_row_span_spin.setValue(row_span)
-                self.edit_col_span_spin.setValue(col_span)
-                self.data_data_spin.clear()
-                self.data_data_spin.addItems([f"{data['y']}({data['x']}) - {data['id']}" for data in data_series])
-                self.data_data_spin.setCurrentIndex(0)
-                # Populate data controls
-                self.edit_data_combo_x.setCurrentText(data_series[0]["x"])
-                self.edit_data_combo_y.setCurrentText(data_series[0]["y"])
-                self.edit_data_combo_xerr.setCurrentText(data_series[0]["xerr"])
-                self.edit_data_combo_yerr.setCurrentText(data_series[0]["yerr"])
-                
+                # Populate position, size and data (data series) controls
+                self.position_size_data_tab.populate_control(row=row, col=col, row_span=row_span, col_span=col_span, data_series=data_series)
+
                 # Populate style controls
-                self.data_styles_spin.clear()
-                self.data_styles_spin.addItems([f"{data['y']}({data['x']}) - {data['id']}" for data in data_series])
-                self.data_styles_spin.setCurrentIndex(0)
-                self.line_label.setText(f"{data_series[0]['y']}({data_series[0]['x']})")
-                self.line_width_spin.setValue(data_series[0]["width"])
-                self.line_color = data_series[0]["color"]
-                self.color_preview.setStyleSheet(f"background-color: {self.line_color}; border: 1px solid #888; border-radius: 3px;")
-                self.color_preview.setProperty("color", self.line_color) 
-                self.line_style_spin.setCurrentText(data_series[0]["ls"])
-                self.line_transparancy.setValue(data_series[0]["alpha"])
-                self.dotes_marker_shape.setCurrentText(data_series[0]["marker"])
-                self.dotes_marker_size.setValue(data_series[0]["marker size"])
-                
+                self.data_style_tab.__populate_controls__(data_series=data_series)
+
                 #populate subplot control
-                #Axes
-                #x axis
-                self.x_title.setText(axes_info["x-label"])
-                self.x_labels_fs.setValue(axes_info["x label fs"])
-                self.x_min.setValue(axes_info["x min"])
-                self.x_max.setValue(axes_info["x max"])
-                self.x_ticks.setValue(axes_info["x ticks"])
-                self.x_small_ticks.setValue(axes_info["x small ticks"])
-                self.x_scale.setCurrentIndex(axes_info["x scale"])
-                self.x_number_of_ac.setValue(axes_info["x number of accuracy"])
-
-
-                #y axis
-                self.y_title.setText(axes_info["y-label"])
-                self.y_labels_fs.setValue(axes_info["y label fs"])
-                self.y_min.setValue(axes_info["y min"])
-                self.y_max.setValue(axes_info["y max"])
-                self.y_ticks.setValue(axes_info["y ticks"])
-                self.y_small_ticks.setValue(axes_info["y small ticks"])
-                self.y_scale.setCurrentIndex(axes_info["y scale"])
-                self.y_number_of_ac.setValue(axes_info["y number of accuracy"])
-                
-                self.__set_new_axes_ranges__(axes_info)
-
-                #Subplot main settings
-                #Title
-                self.subplot_title.setText(title_info["title"])
-                self.subplot_title_fs.setValue(title_info["title fs"])
-
-                #Legend
-                self.legend_position.setCurrentText(legend_info["legend position"])
-                self.legend_fs.setValue(legend_info["legend fs"])
-                
-                #grid   
-                self.grid_checkbox.setChecked(axes_info["show grid"])
-
-
+                self.subplot_style_tab.populate_control(sub_info=sub_info)
+            
                 #populate line control
-                self.update_lines_table()
-
+                self.__update_lines_table__()
+                self.__add_subplot_lines(line_info=line_info)
                 break
+    
+    def __add_subplot_lines(self, line_info) -> None:
+        for line in line_info:
+            self.lines_tab.update_lines_labels(line)
 
-    def __update_data_headers_spin__(self, data_series) -> None:
+    def __update_data_headers_spin__(self, data_series: dict) -> None:
         """updates all lists with data sets from subplot"""
 
-        index = self.data_data_spin.currentIndex()
-        self.data_data_spin.clear()
-        self.data_data_spin.addItems([f"{data['y']}({data['x']}) - {data['id']}" for data in data_series])
-        self.data_data_spin.setCurrentIndex(index)
-        self.data_styles_spin.clear()
-        self.data_styles_spin.addItems([f"{data['y']}({data['x']}) - {data['id']}" for data in data_series])
-        self.data_styles_spin.setCurrentIndex(index)
-        self.line_label.setText(f"{data_series[index]['y']}({data_series[index]['x']})")
+        index = self.position_size_data_tab.data_data_spin.currentIndex()
+        self.position_size_data_tab.data_data_spin.clear()
+        self.position_size_data_tab.data_data_spin.addItems([f"{data['y']}({data['x']}) - {data['id']}" for data in data_series])
+        self.position_size_data_tab.data_data_spin.setCurrentIndex(index)
+        self.data_style_tab.__update_data_headers_spin__(data_series=data_series, index=index)
 
-
-    def clear_selection(self):
+    def clear_selection(self) -> None:
         """Clear the current selection"""
+
         self.selected_subplot_id = None
         self.subplot_list.clearSelection()
         self.editor_group.setEnabled(False)
-        self.edit_row_spin.setValue(0)
-        self.edit_col_spin.setValue(0)
-        self.edit_row_span_spin.setValue(1)
-        self.edit_col_span_spin.setValue(1)
-        self.edit_data_combo_x.setCurrentIndex(0)
-        self.edit_data_combo_y.setCurrentIndex(0)
-        self.edit_data_combo_xerr.setCurrentIndex(0)
-        self.edit_data_combo_yerr.setCurrentIndex(0)
 
-        self.line_width_spin.setValue(1.0)
-        self.grid_checkbox.setChecked(True)
-        self.line_color = "#1f77b4"
-        self.color_preview.setStyleSheet(f"background-color: {self.line_color}; border: 1px solid #888; border-radius: 3px;")
-        self.color_preview.setProperty("color", self.line_color)
-        self.line_style_spin.setCurrentText("Nothing")
-        self.line_transparancy.setValue(1.0)
-        self.dotes_marker_shape.setCurrentText('o')
-        self.dotes_marker_size.setValue(3)
+        self.position_size_data_tab.clear_selection()
 
-    def update_subplot_position(self):
+        self.data_style_tab.clear_selection()
+
+        self.subplot_style_tab.clear_selection()
+
+    def __update_subplot_position__(self) -> None:
         """Update the position and size of a subplot"""
+
         if self.selected_subplot_id is None:
             return
-            
-        new_row = self.edit_row_spin.value()
-        new_col = self.edit_col_spin.value()
-        new_row_span = self.edit_row_span_spin.value()
-        new_col_span = self.edit_col_span_spin.value()
+
+        new_row = self.position_size_data_tab.edit_row_spin.value()
+        new_col = self.position_size_data_tab.edit_col_spin.value()
+        new_row_span = self.position_size_data_tab.edit_row_span_spin.value()
+        new_col_span = self.position_size_data_tab.edit_col_span_spin.value()
         
         # Check if subplot fits in grid
         max_rows = self.rows_spin.value()
@@ -1411,15 +845,16 @@ class SubplotEditor(QWidget):
         
         self.update_subplot_list()
     
-    def update_subplot_data(self):
+    def __update_subplot_data__(self) -> None:
         """Update the data for a subplot"""
+
         if self.selected_subplot_id is None:
             return
             
-        new_data_x = self.edit_data_combo_x.currentText()
-        new_data_y = self.edit_data_combo_y.currentText()
-        new_data_xerr = self.edit_data_combo_xerr.currentText()
-        new_data_yerr = self.edit_data_combo_yerr.currentText()
+        new_data_x = self.position_size_data_tab.edit_data_combo_x.currentText()
+        new_data_y = self.position_size_data_tab.edit_data_combo_y.currentText()
+        new_data_xerr = self.position_size_data_tab.edit_data_combo_xerr.currentText()
+        new_data_yerr = self.position_size_data_tab.edit_data_combo_yerr.currentText()
         
         
         # Update the subplot
@@ -1427,12 +862,12 @@ class SubplotEditor(QWidget):
             if subplot[0] == self.selected_subplot_id:
                 for counter in range(len(self.plot_canvas.subplots[i][5])):
                     data = self.plot_canvas.subplots[i][5][counter]
-                    if str(data['id']) == self.data_data_spin.currentText().split('-')[-1].lstrip().rstrip():
+                    if str(data['id']) == self.position_size_data_tab.data_data_spin.currentText().split('-')[-1].lstrip().rstrip():
                         self.plot_canvas.subplots[i][5][counter]["x"] = new_data_x
                         self.plot_canvas.subplots[i][5][counter]["y"] = new_data_y
                         self.plot_canvas.subplots[i][5][counter]["xerr"] = new_data_xerr
                         self.plot_canvas.subplots[i][5][counter]["yerr"] = new_data_yerr
-                if self.selected_subplot_id < len(self.plot_canvas.axes):
+                if self.selected_subplot_id in self.plot_canvas.axes:
                     ax = self.plot_canvas.update_one_plot(subplot, self.window())
                     # self.plot_canvas.canvas.blit(ax.bbox)
                     self.plot_canvas.canvas.draw()
@@ -1443,74 +878,19 @@ class SubplotEditor(QWidget):
             
         self.update_subplot_list()
     
-    def choose_line_color(self):
-        """Open color dialog to choose line color"""
-        color = QColorDialog.getColor(initial=QColor(self.line_color))
-        if color.isValid():
-            self.line_color = color.name()
-            self.color_preview.setStyleSheet(f"background-color: {self.line_color}; border: 0px solid #888; border-radius: 3px;")
-            self.color_preview.setProperty("color", self.line_color)
-    
-    def __update_sub_style__(self):
+    def __update_sub_style__(self) -> None:
         """Update  style properties for the subplot"""
 
         if self.selected_subplot_id is None:
             return
         
         #read all data
-        x_label: str = self.x_title.text()
-        x_min:float = self.x_min.value()
-        x_max: float = self.x_max.value()
-        x_ticks: int = self.x_ticks.value()
-        x_small_ticks: int = self.x_small_ticks.value()
-        x_label_fs: int = self.x_labels_fs.value()
-        x_scale: int = self.x_scale.currentIndex() #0 - linear, 1 - log
-        x_number_of_accuracy: int = self.x_number_of_ac.value()
-
-        y_label: str = self.y_title.text()
-        y_min = self.y_min.value()
-        y_max = self.y_max.value()
-        y_ticks: int = self.y_ticks.value()
-        y_small_ticks: int = self.y_small_ticks.value()
-        y_label_fs: int = self.y_labels_fs.value()
-        y_scale: int = self.y_scale.currentIndex()
-        y_number_of_accuracy: int = self.y_number_of_ac.value()
-
-        #title
-        title: str = self.subplot_title.text()
-        title_fs: int = self.subplot_title_fs.value()
-
-        #legend
-        legend_pos: str = self.legend_position.currentText()
-        legend_fs: int = self.legend_fs.value()
-
+        self.subplot_style_tab.current_subplot = self.subplot_style_tab.get_sub_style_info()
+       
         for i, subplot in enumerate(self.plot_canvas.subplots):
             if subplot[0] == self.selected_subplot_id:
-                self.plot_canvas.subplots[i][6]["x-label"] = x_label
-                self.plot_canvas.subplots[i][6]["x min"] = x_min
-                self.plot_canvas.subplots[i][6]["x max"] = x_max
-                self.plot_canvas.subplots[i][6]["x ticks"] = x_ticks
-                self.plot_canvas.subplots[i][6]["x small ticks"] = x_small_ticks
-                self.plot_canvas.subplots[i][6]["x label fs"] = x_label_fs
-                self.plot_canvas.subplots[i][6]["x scale"] = x_scale
-                self.plot_canvas.subplots[i][6]["x number of accuracy"] = x_number_of_accuracy
-
-                self.plot_canvas.subplots[i][6]["y-label"] = y_label
-                self.plot_canvas.subplots[i][6]["y min"] = y_min
-                self.plot_canvas.subplots[i][6]["y max"] = y_max
-                self.plot_canvas.subplots[i][6]["y ticks"] = y_ticks
-                self.plot_canvas.subplots[i][6]["y small ticks"] = y_small_ticks
-                self.plot_canvas.subplots[i][6]["y label fs"] = y_label_fs
-                self.plot_canvas.subplots[i][6]["y scale"] = y_scale
-                self.plot_canvas.subplots[i][6]["y number of accuracy"] = y_number_of_accuracy
-
-                self.plot_canvas.subplots[i][7]["title"] = title
-                self.plot_canvas.subplots[i][7]["title fs"] = title_fs
-
-                self.plot_canvas.subplots[i][8]["legend position"] = legend_pos
-                self.plot_canvas.subplots[i][8]["legend fs"] = legend_fs
-
-                if self.selected_subplot_id < len(self.plot_canvas.axes):
+                self.plot_canvas.subplots[i][6] = self.subplot_style_tab.current_subplot
+                if self.selected_subplot_id in self.plot_canvas.axes:
                     ax = self.plot_canvas.update_one_plot(subplot, self.window())
                     # self.plot_canvas.canvas.blit(ax.bbox)
                     self.plot_canvas.canvas.draw()
@@ -1518,39 +898,29 @@ class SubplotEditor(QWidget):
                 self.update_subplot_list()
                 break
 
-    def __update_data_style__(self):
+    def __update_data_style__(self, index:str) -> None:
         """Update style properties for the subplot data"""
+
         if self.selected_subplot_id is None:
             return
             
-        new_color = self.line_color
-        new_width = self.line_width_spin.value()
-        new_grid = self.grid_checkbox.isChecked()
-        new_label = self.line_label.text()
-        new_ls = self.line_style_spin.currentText().split()[0]
-        new_alpha = self.line_transparancy.value()
-        new_marker = self.dotes_marker_shape.currentText()
-        new_marker_size = self.dotes_marker_size.value()
+        self.data_style_tab.current_data_style = self.data_style_tab.get_data_style_info()
 
-        if new_ls == "Nothing":
-            new_ls = ""
         # Update the subplot
         for i, subplot in enumerate(self.plot_canvas.subplots):
             if subplot[0] == self.selected_subplot_id:
                 for counter in range(len(self.plot_canvas.subplots[i][5])):
                     data = self.plot_canvas.subplots[i][5][counter]
-                    if str(data['id']) == self.data_styles_spin.currentText().split('-')[-1].lstrip().rstrip():
-                        self.plot_canvas.subplots[i][5][counter]["color"] = new_color
-                        self.plot_canvas.subplots[i][5][counter]["width"] = new_width
-                        self.plot_canvas.subplots[i][5][counter]["label"] = new_label
-                        self.plot_canvas.subplots[i][5][counter]["ls"] = new_ls
-                        self.plot_canvas.subplots[i][5][counter]["alpha"] = new_alpha
-                        self.plot_canvas.subplots[i][5][counter]["marker"] = new_marker
-                        self.plot_canvas.subplots[i][5][counter]["marker size"] = new_marker_size
-
-                self.plot_canvas.subplots[i][6]["show grid"] = new_grid
-                
-                if self.selected_subplot_id < len(self.plot_canvas.axes):
+                    if str(data['id']) == index:
+                        self.plot_canvas.subplots[i][5][counter]["color"] = self.data_style_tab.current_data_style["color"]
+                        self.plot_canvas.subplots[i][5][counter]["width"] = self.data_style_tab.current_data_style["color"]
+                        self.plot_canvas.subplots[i][5][counter]["label"] = self.data_style_tab.current_data_style["color"]
+                        self.plot_canvas.subplots[i][5][counter]["ls"] = self.data_style_tab.current_data_style["color"]
+                        self.plot_canvas.subplots[i][5][counter]["alpha"] = self.data_style_tab.current_data_style["color"]
+                        self.plot_canvas.subplots[i][5][counter]["marker"] = self.data_style_tab.current_data_style["color"]
+                        self.plot_canvas.subplots[i][5][counter]["marker size"] = self.data_style_tab.current_data_style["color"]
+                                
+                if self.selected_subplot_id in self.plot_canvas.axes:
                     ax = self.plot_canvas.update_one_plot(subplot, self.window())
                     # self.plot_canvas.canvas.blit(ax.bbox)
                     self.plot_canvas.canvas.draw()
@@ -1558,21 +928,21 @@ class SubplotEditor(QWidget):
                 break
         self.update_subplot_list()
     
-    # Updated plot_graphs method in the SubplotEditor class
-    def plot_graphs(self):
+    def plot_graphs(self) -> None:
+        """plot all subplots"""
+
         self.plot_canvas.canvas.draw()
         self.plot_canvas.plot_all_data(self.window(),  self.rows_spin.value(), self.cols_spin.value())
         
-    def configure_data_series(self):
+    def configure_data_series(self) -> None:
         headers = self.window().get_headers() 
         dialog = DataSeriesDialog(headers=headers, parent=self, max_id=0)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             if dialog.get_series() != []:
                 self.add_data_series_subplot(dialog.get_series(), dialog.get_axes_info(), dialog.get_title_info())
 
-    def add_data_series_subplot(self, series, axes_info, title_info):
+    def add_data_series_subplot(self, series: list[dict], axes_info: dict, title_info: dict) -> None:
         """Add a new subplot to the configuration"""
-
 
         row = self.row_spin.value()
         col = self.col_spin.value()
@@ -1618,18 +988,8 @@ class SubplotEditor(QWidget):
                         row, row_span, col, col_span = result
  
         plot_id = self.current_plot_id
-        self.plot_canvas.subplots.append([
-            plot_id,
-            row,
-            col,
-            row_span,
-            col_span,
-            series,
-            axes_info,
-            title_info,
-            {"legend position": "best", "legend fs": 14},
-            []
-        ])
+        sub_info = {"axes": axes_info, "title": title_info, "legend": {"legend position": "best", "legend fs": 14}, "grid": {"show grid": True}}
+        self.__append_subplot__(plot_id, row, col, row_span, col_span, series, sub_info, [])
 
         #min max value for series
         extremums = np.zeros((4, len(series)))
@@ -1642,9 +1002,9 @@ class SubplotEditor(QWidget):
         axes_info["x max"] = np.max(extremums[1]) + shift[0]
         axes_info["y min"] = np.min(extremums[2]) - shift[1]
         axes_info["y max"] = np.max(extremums[3]) + shift[1]
-        axes_info["x number of accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[0]) - shift[0]),
+        axes_info["x round accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[0]) - shift[0]),
                                                  self.find_first_nonzero_digit(np.max(extremums[1]) + shift[0])]) + 1
-        axes_info["y number of accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[2]) - shift[1]), 
+        axes_info["y round accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[2]) - shift[1]), 
                                                  self.find_first_nonzero_digit(np.max(extremums[3]) + shift[1])]) + 1
         self.current_plot_id += 1
         
@@ -1659,8 +1019,9 @@ class SubplotEditor(QWidget):
         # Select the new subplot
         self.select_subplot(plot_id)
         
+    def __edit_data_series__(self):
+        """Edit subplot data series by calling Data Series Dialog."""
 
-    def edit_data_series(self):
         if self.selected_subplot_id == None:
             return
         
@@ -1679,34 +1040,14 @@ class SubplotEditor(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             subplot[5] = dialog.get_series()
             self.update_subplot_list()
-            if self.selected_subplot_id < len(self.plot_canvas.axes):
+            if self.selected_subplot_id in self.plot_canvas.axes:
                     ax = self.plot_canvas.update_one_plot(subplot, self.window())
                     # self.plot_canvas.canvas.blit(ax.bbox)
                     self.plot_canvas.canvas.draw()
                     self.plot_canvas.draw()
 
-    def data_styles_changed(self) -> None:
-        if not self.data_styles_spin.currentText():
-            return
-        self.line_label.setText(self.data_styles_spin.currentText().split('-')[0][:-1])
-        data_id = int(self.data_styles_spin.currentText().split('-')[1])
-        for subplot in self.plot_canvas.subplots:
-            if subplot[0] == self.selected_subplot_id:
-                _, row, col, row_span, col_span, data_series, *other_info = subplot
-                for series in data_series:
-                    if series['id'] == data_id:
-                        self.line_color = series["color"]
-                        self.line_width_spin.setValue(series["width"])
-                        self.color_preview.setStyleSheet(f"background-color: {self.line_color}; border: 1px solid #888; border-radius: 3px;")
-                        self.color_preview.setProperty("color", self.line_color)
-                        self.line_style_spin.setCurrentText(series["ls"])
-                        self.line_transparancy.setValue(series["alpha"])
-                        self.dotes_marker_shape.setCurrentText(series["marker"])
-                        self.dotes_marker_size.setValue(series["marker size"])
-
     def find_first_nonzero_digit(self, number:int) -> int:
         """Return order of the first non zero digit."""
-
 
         order = 0
         number = str(np.abs(number)).split(".")
@@ -1724,56 +1065,8 @@ class SubplotEditor(QWidget):
         elif number[0] in ["1", "2", "3", "4", "5", "6", "7", "8", "9"]:
             return 1
     
-    def __set_new_axes_ranges__(self, axes_info) -> None:
-        if np.sign(axes_info["x min"]) == 1:
-            x_min = -axes_info["x min"] * 10
-        elif np.sign(axes_info["x min"]) == -1:
-            x_min = axes_info["x min"] * 10
-        else:
-            x_min = -axes_info["x max"] * 10
-
-        if np.sign(axes_info["x max"]) == 1:
-            x_max = axes_info["x max"] * 10
-        elif np.sign(axes_info["x max"]) == -1:
-            x_max = -axes_info["x max"] * 10 
-        else:
-            x_max = axes_info["x min"] * (-10)
-        
-        if np.sign(axes_info["y min"]) == 1:
-            y_min = axes_info["y min"] * (-10)
-        elif np.sign(axes_info["y min"]) == -1:
-            y_min = axes_info["y min"] * 10
-        else:
-            y_min = -axes_info["y max"] * 10
-
-        if np.sign(axes_info["y max"]) == 1:
-            y_max = axes_info["y max"] * 10
-        elif np.sign(axes_info["y max"]) == -1:
-            y_max = axes_info["y max"] * (-10)
-        else:
-            y_max = axes_info["y min"] * (-10)
-        self.x_min.setRange(x_min, x_max)
-        self.x_min.setSingleStep(10 ** (-1 * axes_info["x number of accuracy"]))
-        if axes_info["x number of accuracy"] > -1:
-            self.x_min.setDecimals(axes_info["x number of accuracy"])
-        self.x_max.setRange(x_min, x_max)
-        self.x_max.setSingleStep(10 ** (-1 * axes_info["x number of accuracy"]))
-        if axes_info["x number of accuracy"] > -1:
-            self.x_max.setDecimals(axes_info["x number of accuracy"])
-
-        self.y_min.setRange(y_min, y_max)
-        self.y_min.setSingleStep(10 ** (-1 * axes_info["y number of accuracy"]))
-        if axes_info["y number of accuracy"] > -1:
-            self.y_min.setDecimals(axes_info["y number of accuracy"])
-        self.y_max.setRange(y_min, y_max)
-        self.y_max.setSingleStep(10 ** (-1 * axes_info["y number of accuracy"]))
-        if axes_info["y number of accuracy"] > -1:
-            self.y_max.setDecimals(axes_info["y number of accuracy"])
-
-
     def get_state(self) -> dict:
-        """Returns the current state to save"""
-
+        """Returns the current state to save."""
 
         return {
             'grid': {
@@ -1790,10 +1083,8 @@ class SubplotEditor(QWidget):
                         'col_span': sub[4]
                     },
                     'data_series': sub[5],
-                    'axes_info': sub[6],
-                    'title_info': sub[7],
-                    'legend_info': sub[8],
-                    'lines': sub[9] if len(sub) > 9 else []
+                    'sub_info': sub[6],
+                    'lines': sub[7] if len(sub) > 7 else []
                 }
                 for sub in self.plot_canvas.subplots
             ],
@@ -1801,8 +1092,7 @@ class SubplotEditor(QWidget):
         }
 
     def set_state(self, state: dict) -> None:
-        """Restores the state from the configuration"""
-
+        """Restores the state from the configuration."""
 
         # clear current data
         self.clear_subplots()
@@ -1821,9 +1111,7 @@ class SubplotEditor(QWidget):
                 sub['position']['row_span'],
                 sub['position']['col_span'],
                 sub['data_series'],
-                sub['axes_info'],
-                sub['title_info'],
-                sub['legend_info'],
+                sub['sub_info'],
                 sub.get('lines', [])
             ])
             
@@ -1846,276 +1134,113 @@ class SubplotEditor(QWidget):
 
         self.editor_group.setEnabled(True)
 
-        self.update_lines_table()
-    
-    def __init_lines_tab__(self):
-        """Adding a tab to manage the lines."""
-
-        #container with scroller
-        scroll_container = QScrollArea()
-        scroll_container.setWidgetResizable(True)
-        scroll_container.setMinimumHeight(Minimum_Height)
-
-        #main widget
-        lines_tab = QWidget()
-        layout = QVBoxLayout(lines_tab)
-        
-        # A group for adding new lines
-        add_group = QGroupBox("Add line")
-        add_layout = QFormLayout()
-        self.lines_id = 0
-
-        #Group for line labels
-        label_group = QGroupBox("Line label")
-        label_layout = QFormLayout()
-        
-        # Line type
-        self.line_type_combo = QComboBox()
-        self.line_type_combo.addItems(["By two points", "By equation", "By point and angle"])
-        self.line_type_combo.currentIndexChanged.connect(self.update_line_params_ui)
-        add_layout.addRow("Line type:", self.line_type_combo)
-        
-        # Container for parameters
-        self.line_params_stack = QStackedWidget()
-        
-        # Widget for two points
-        two_points_widget = QWidget()
-        two_points_layout = QFormLayout(two_points_widget)
-        self.x1_spin = QDoubleSpinBox()
-        self.x1_spin.setRange(-10000, 10000)
-        self.y1_spin = QDoubleSpinBox()
-        self.y1_spin.setRange(-10000, 10000)
-        self.x2_spin = QDoubleSpinBox()
-        self.x2_spin.setRange(-10000, 10000)
-        self.y2_spin = QDoubleSpinBox()
-        self.y2_spin.setRange(-10000, 10000)
-        two_points_layout.addRow("x1:", self.x1_spin)
-        two_points_layout.addRow("y1:", self.y1_spin)
-        two_points_layout.addRow("x2:", self.x2_spin)
-        two_points_layout.addRow("y2:", self.y2_spin)
-        self.line_params_stack.addWidget(two_points_widget)
-        
-        # Widget for the equation
-        equation_widget = QWidget()
-        equation_layout = QFormLayout(equation_widget)
-        self.k_spin = QDoubleSpinBox()
-        self.k_spin.setRange(-100, 100)
-        self.k_spin.setValue(1.0)
-        self.b_spin = QDoubleSpinBox()
-        self.b_spin.setRange(-10000, 10000)
-        equation_layout.addRow("k (angular coefficient):", self.k_spin)
-        equation_layout.addRow("b (shift):", self.b_spin)
-        self.line_params_stack.addWidget(equation_widget)
-        
-        # Widget for a point and an angle
-        point_angle_widget = QWidget()
-        point_angle_layout = QFormLayout(point_angle_widget)
-        self.px_spin = QDoubleSpinBox()
-        self.px_spin.setRange(-10000, 10000)
-        self.py_spin = QDoubleSpinBox()
-        self.py_spin.setRange(-10000, 10000)
-        self.angle_spin = QDoubleSpinBox()
-        self.angle_spin.setRange(-np.pi, np.pi)
-        self.angle_spin.setValue(np.pi / 4)
-        point_angle_layout.addRow("x choordinate:", self.px_spin)
-        point_angle_layout.addRow("y choordinate:", self.py_spin)
-        point_angle_layout.addRow("Angle (in radians):", self.angle_spin)
-        self.line_params_stack.addWidget(point_angle_widget)
-        
-        add_layout.addRow(self.line_params_stack)
-        
-        # line style
-        color_layout = QHBoxLayout()
-        self.line_draw_color_btn = QPushButton("Choose color")
-        self.line_draw_color_btn.clicked.connect(self.choose_line_color)
-        self.line_color_preview = QFrame()
-        self.line_color_preview.setFixedSize(24, 24)
-        self.line_color_draw = "#ff0000"
-        self.line_color_preview.setStyleSheet(f"background-color: {self.line_color_draw}; border: 1px solid #888;")
-        color_layout.addWidget(QLabel("Line color:"))
-        color_layout.addWidget(self.line_color_preview)
-        color_layout.addWidget(self.line_draw_color_btn)
-        add_layout.addRow(color_layout)
-        
-        self.line_width_spin = QDoubleSpinBox()
-        self.line_width_spin.setValue(1.5)
-        self.line_width_spin.setRange(0.1, 10)
-        add_layout.addRow("Line width:", self.line_width_spin)
-        
-        self.line_style_combo = QComboBox()
-        self.line_style_combo.addItems(["- (solid)", "-- (dashed)", "-. (dashdot)", ": (dotted)"])
-        add_layout.addRow("Line style:", self.line_style_combo)
-        
-        self.add_line_btn = QPushButton("Add line")
-        self.add_line_btn.clicked.connect(self.add_line_to_subplot)
-        add_layout.addRow(self.add_line_btn)
-        
-        add_group.setLayout(add_layout)
-        layout.addWidget(add_group)
-        
-        
-        #set labels widgets
-        self.line = QComboBox()
-        self.line.currentTextChanged.connect(self.change_labels_params)
-        label_layout.addRow("Choose line:", self.line)
-        self.line_label_edit = QLineEdit()
-        label_layout.addRow("Label text:", self.line_label_edit)
-        
-        self.label_position_combo = QComboBox()
-        self.label_position_combo.addItems([
-            "Above the beginning of the line",
-            "Above the middle of the line",
-            "Above the end of the line",
-            "Under the beginning of the line",
-            "Under the middle of the line",
-            "Under the end of the line",
-            "To the left of the beginning",
-            "To the left of the middle",
-            "To the left of the end",
-            "To the right of the beginning",
-            "To the right of the middle",
-            "To the right of the end"
-            ])
-        self.label_position_combo.setCurrentIndex(1)
-        label_layout.addRow("Label poisition:", self.label_position_combo)
-        
-        self.label_font_size_spin = QSpinBox()
-        self.label_font_size_spin.setRange(0, 36)
-        self.label_font_size_spin.setValue(10)
-        label_layout.addRow("Label font size:", self.label_font_size_spin)
-        
-        self.add_label_btn = QPushButton("Add/Upgrade label")
-        self.add_label_btn.clicked.connect(self.add_label_to_line)
-        label_layout.addRow(self.add_label_btn)
-        
-        label_group.setLayout(label_layout)
-        layout.addWidget(label_group)
-
-        # List of existing lines
-        self.lines_group = QGroupBox("Existing line")
-        lines_layout = QVBoxLayout()
-        
-        self.lines_table = QTableWidget(0, 8)
-        self.lines_table.setHorizontalHeaderLabels(["Id", "Type", "Parameter", "Color", "Width", "Label", "Position", "Delete"])
-        self.lines_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.lines_table.verticalHeader().setVisible(False)
-        lines_layout.addWidget(self.lines_table)
-        
-        self.lines_group.setLayout(lines_layout)
-        layout.addWidget(self.lines_group)
-
-        # Add tab
-        scroll_container.setWidget(lines_tab)
-        self.editor_tabs.addTab(scroll_container, "Lines")
-
-        # Обработка выбора строки в таблице
-        self.lines_table.itemSelectionChanged.connect(self.on_line_selected)
-    
-    def update_line_params_ui(self):
-        """Updates the UI depending on the selected line type."""
-
-
-        self.line_params_stack.setCurrentIndex(self.line_type_combo.currentIndex())
-    
-    def choose_line_color(self):
-        """Choose line color"""
-
-
-        color = QColorDialog.getColor(QColor(self.line_color_draw), self)
-        if color.isValid():
-            self.line_color = color.name()
-            self.line_color_preview.setStyleSheet(f"background-color: {self.line_color_draw}; border: 1px solid #888;")
-    
-    def add_line_to_subplot(self):
+        self.__update_lines_table__()
+   
+    def __add_line_to_subplot__(self) -> None:
         """Adds a line to the selected subgraph."""
-
 
         if self.selected_subplot_id is None:
             return
             
         # Get the line parameters
         params = {
-            'type': self.line_type_combo.currentIndex(),
-            'color': self.line_color_draw,
-            'width': self.line_width_spin.value(),
-            'style': self.line_style_combo.currentText().split()[0],
-            'id': self.lines_id,
+            'type': self.lines_tab.line_type_combo.currentIndex(),
+            'color': self.lines_tab.line_color_draw,
+            'width': self.lines_tab.line_width_spin.value(),
+            'style': self.lines_tab.line_style_combo.currentText().split()[0],
+            'id': self.lines_tab.lines_id,
             'label': "",
             'label_position': "Above the middle of the line",
             'label_font_size': 14
         }
-        self.lines_id += 1
+        self.lines_tab.lines_id += 1
 
         # Get the parameters depending on the type
         if params['type'] == 0:  # two points
             params.update({
-                'x1': self.x1_spin.value(),
-                'y1': self.y1_spin.value(),
-                'x2': self.x2_spin.value(),
-                'y2': self.y2_spin.value()
+                'x1': self.lines_tab.x1_spin.value(),
+                'y1': self.lines_tab.y1_spin.value(),
+                'x2': self.lines_tab.x2_spin.value(),
+                'y2': self.lines_tab.y2_spin.value()
             })
         elif params['type'] == 1:  # equation
             params.update({
-                'k': self.k_spin.value(),
-                'b': self.b_spin.value()
+                'k': self.lines_tab.k_spin.value(),
+                'b': self.lines_tab.b_spin.value()
             })
         elif params['type'] == 2:  # point and angle
             params.update({
-                'px': self.px_spin.value(),
-                'py': self.py_spin.value(),
-                'angle': self.angle_spin.value()
+                'px': self.lines_tab.px_spin.value(),
+                'py': self.lines_tab.py_spin.value(),
+                'angle': self.lines_tab.angle_spin.value()
             })
-        
+
         # Add a line to the selected subgraph
         for i, subplot in enumerate(self.plot_canvas.subplots):
             if subplot[0] == self.selected_subplot_id:
-                # Add lines as part of the state of the subgraph
-                if len(subplot) < 10:  # If there is no line slot yet
+                if len(subplot) < 8:  # If there is no line slot yet
                     subplot.append([])
-                subplot[9].append(params)
-                
+                subplot[7].append(params)
                 # Update subplot
-                if self.selected_subplot_id < len(self.plot_canvas.axes):
-                    ax = self.plot_canvas.update_one_plot(subplot, self.window())
+                if self.selected_subplot_id in self.plot_canvas.axes:
+                    for line in subplot[7]:
+                        ax = self.plot_canvas.draw_line(ax=self.plot_canvas.axes[subplot[0]], params=line)
                     # self.plot_canvas.canvas.blit(ax.bbox)
                     self.plot_canvas.canvas.draw()
                     self.plot_canvas.draw()
-                self.update_lines_table()
-                if len(subplot) > 9 and subplot[9]:  # If there are lines)
-                    self.update_lines_labels(subplot[9][-1])
+                self.__update_lines_table__()
+                if len(subplot) > 7 and subplot[7]:  # If there are lines
+                    self.lines_tab.update_lines_labels(subplot[7][-1])
                 break
 
-    def update_lines_labels(self, line: list) -> None:
-        """Update data about lines labels"""
+    def __work_with_lines_signals__(self, msg: str) -> None:
+        """Call function regarding the signal."""
         
-        self.line.addItems(["Line " + str(line['id'])])
-        self.line.setCurrentText("Line " + str(line['id']))
-        self.line_label_edit.setText(line['label'])
-        index = self.label_position_combo.findText(line['label_position'])
-        if index >= 0:
-            self.label_position_combo.setCurrentIndex(index)
-        self.label_font_size_spin.setValue(line['label_font_size'])
+        if msg == "line added":
+            self.__add_line_to_subplot__()
+        elif msg == "table changed":
+            self.__update_lines_table__()
+        elif msg.split()[0] == "delete line":
+            self.__delete_line__(int(msg.split()[1]))
+        elif msg.split(":")[0] == "line selected ":
+            self.__on_line_selected__(int(msg.split(":")[1]))
+        elif msg.split(":")[0] == "add label to row ":
+            self.__add_label_to_line__(int(msg.split(":")[1]))
+        elif msg.split(":")[0] == "change label ":
+            self.__change_labels_params__(int(msg.split(":")[1]))
+        elif msg.split(":")[0] == "change label ":
+            self.__toggle_drawing_mode__(bool(msg.split(":")[1]))
+            
+    def  __work_with_sub_data_signals__(self, msg: str) -> None:
+        """Call function regarding the signal."""
 
-    def update_lines_table(self):
+        if msg == "update subplot position":
+            self.__update_subplot_position__()
+        elif msg == "update subplot data":
+            self.__update_subplot_data__()
+        elif msg == "edit data series":
+            self.__edit_data_series__()
+
+    def __update_lines_table__(self) -> None:
         """Updates the table of existing lines"""
 
 
-        self.lines_table.setRowCount(0)
+        self.lines_tab.lines_table.setRowCount(0)
         
         # Finding the selected subgraph
         for subplot in self.plot_canvas.subplots:
             if subplot[0] == self.selected_subplot_id:
-                if len(subplot) > 9:  # If there are lines
-                    for i, line in enumerate(subplot[9]):
-                        row = self.lines_table.rowCount()
-                        self.lines_table.insertRow(row)
+                if len(subplot) > 7:  # If there are lines
+                    for i, line in enumerate(subplot[7]):
+                        row = self.lines_tab.lines_table.rowCount()
+                        self.lines_tab.lines_table.insertRow(row)
                         
                         #Line id
-                        self.lines_table.setItem(row, 0, QTableWidgetItem(str(line['id'])))
+                        self.lines_tab.lines_table.setItem(row, 0, QTableWidgetItem(str(line['id'])))
 
                         # Line type
                         types = ["By two points", "By equation", "By point and angle"]
-                        self.lines_table.setItem(row, 1, QTableWidgetItem(types[line['type']]))
+                        self.lines_tab.lines_table.setItem(row, 1, QTableWidgetItem(types[line['type']]))
                         
                         # Parameters
                         if line['type'] == 0:
@@ -2124,125 +1249,128 @@ class SubplotEditor(QWidget):
                             params_str = f"y = {line['k']}x + {line['b']}"
                         else:
                             params_str = f"Точка: ({line['px']}, {line['py']}), Угол: {line['angle']}°"
-                        self.lines_table.setItem(row, 2, QTableWidgetItem(params_str))
+                        self.lines_tab.lines_table.setItem(row, 2, QTableWidgetItem(params_str))
                         
                         # color
                         line_color_preview = QFrame()
                         line_color_preview.setFixedSize(10, 10)
                         line_color_preview.setStyleSheet(f"background-color: {line['color']};")
-                        self.lines_table.setCellWidget(row, 3, line_color_preview)
+                        self.lines_tab.lines_table.setCellWidget(row, 3, line_color_preview)
                         
                         # width
-                        self.lines_table.setItem(row, 4, QTableWidgetItem(str(line['width'])))
+                        self.lines_tab.lines_table.setItem(row, 4, QTableWidgetItem(str(line['width'])))
                         
                         #update label
-                        self.lines_table.setItem(row, 5, QTableWidgetItem(line['label']))
+                        self.lines_tab.lines_table.setItem(row, 5, QTableWidgetItem(line['label']))
 
                         #update label position
-                        self.lines_table.setItem(row, 6, QTableWidgetItem(line['label_position']))
+                        self.lines_tab.lines_table.setItem(row, 6, QTableWidgetItem(line['label_position']))
                         
                         # Delete button
                         delete_btn = QPushButton("Delete")
-                        delete_btn.clicked.connect(lambda _, idx=i: self.delete_line(idx))
-                        self.lines_table.setCellWidget(row, 7, delete_btn)
+                        delete_btn.clicked.connect(lambda _, idx=i: self.__delete_line__(idx))
+                        self.lines_tab.lines_table.setCellWidget(row, 7, delete_btn)
                 break
     
-    def delete_line(self, line_index):
+    def __delete_line__(self, line_index: int) -> None:
         """Removes a line from a subgraph."""
-
 
         if self.selected_subplot_id is None:
             return
             
         for i, subplot in enumerate(self.plot_canvas.subplots):
-            if subplot[0] == self.selected_subplot_id and len(subplot) > 9:
-                if line_index < len(subplot[9]):
-                    del subplot[9][line_index]
-                    if self.selected_subplot_id < len(self.plot_canvas.axes):
-                        ax = self.plot_canvas.update_one_plot(subplot, self.window())
+            if subplot[0] == self.selected_subplot_id and len(subplot) > 7:
+                if line_index < len(subplot[7]):
+                    del subplot[7][line_index]
+                    if self.selected_subplot_id in self.plot_canvas.axes:
+                        
+                        ax = self.plot_canvas.update_one_plot(subplot=subplot, win=self.window())
                         # self.plot_canvas.canvas.blit(ax.bbox)
                         self.plot_canvas.canvas.draw()
                         self.plot_canvas.draw()
-                    self.update_lines_table()
-                    self.delete_line_label(line_index)
+                    self.__update_lines_table__()
+                    self.lines_tab.__delete_line_label__(line_index)
                 break
 
-    def delete_line_label(self, line_index: int):
-        """Delete position for adding label for line with index line_index."""
-
-
-        index = self.line.findText("Line " + str(line_index))
-        if index >= 0:
-            self.line.removeItem(index)
-
-
-    def on_line_selected(self):
+    def __on_line_selected__(self, row: int) -> None:
         """Fills in the signature fields when selecting a line."""
 
-
-        row = int(self.line.currentText().split()[-1])
         # Find the selected subgraph and the line
         for subplot in self.plot_canvas.subplots:
-            if subplot[0] == self.selected_subplot_id and len(subplot) > 9:
+            if subplot[0] == self.selected_subplot_id and len(subplot) > 7:
                 line = {}
-                for l in subplot[9]:
+                for l in subplot[7]:
                     if l['id'] == row:
                         line = l
+                        self.lines_tab.line.setCurrentText(f"Line {l['id']}")
                         break
                 if 'label' in line:
-                    self.line_label_edit.setText(line['label'])
+                    self.lines_tab.line_label_edit.setText(line['label'])
                 if 'label_position' in line:
-                    index = self.label_position_combo.findText(line['label_position'])
+                    index = self.lines_tab.label_position_combo.findText(line['label_position'])
                     if index >= 0:
-                        self.label_position_combo.setCurrentIndex(index)
+                        self.lines_tab.label_position_combo.setCurrentIndex(index)
                 if 'label_font_size' in line:
-                    self.label_font_size_spin.setValue(line['label_font_size'])
+                    self.lines_tab.label_font_size_spin.setValue(line['label_font_size'])
                 break
     
-    def add_label_to_line(self):
+    def __add_label_to_line__(self, row: int) -> None:
         """Add or updates a signature for a selected line."""
 
-
-        # selected_rows = self.lines_table.selectedItems()
-        # if not selected_rows:
-        #     QMessageBox.warning(self, "Error", "Select a line to add a label")
-        #     return
-            
-        row = int(self.line.currentText().split()[-1])
         # Find chosen subplot and line
         for subplot in self.plot_canvas.subplots:
-            if subplot[0] == self.selected_subplot_id and len(subplot) > 9:
+            if subplot[0] == self.selected_subplot_id and len(subplot) > 7:
                 #new line settings
                 line = {}
-                for l in subplot[9]:
+                for l in subplot[7]:
                     if l['id'] == row:
                         line = l
                         break
-                line['label'] = self.line_label_edit.text()
-                line['label_position'] = self.label_position_combo.currentText()
-                line['label_font_size'] = self.label_font_size_spin.value()
-                if self.selected_subplot_id < len(self.plot_canvas.axes):
-                    ax = self.plot_canvas.update_one_plot(subplot, self.window())
+                line['label'] = self.lines_tab.line_label_edit.text()
+                line['label_position'] = self.lines_tab.label_position_combo.currentText()
+                line['label_font_size'] = self.lines_tab.label_font_size_spin.value()
+                if self.selected_subplot_id in self.plot_canvas.axes:
+                    ax = self.plot_canvas.draw_line(ax=self.plot_canvas.axes[subplot[0]], params=line)
                     # self.plot_canvas.canvas.blit(ax.bbox)
                     self.plot_canvas.canvas.draw()
                     self.plot_canvas.draw()
-                self.update_lines_table()
+                self.__update_lines_table__()
                 break
     
-    def change_labels_params(self):
-        if self.line.currentText()=='':
-            return
-        index = int(self.line.currentText().split()[-1])
+    def __change_labels_params__(self, index: int) -> None:
+        """change label for selected line"""
 
         # Finding the selected subgraph
         for subplot in self.plot_canvas.subplots:
             if subplot[0] == self.selected_subplot_id:
-                if len(subplot) > 9:  # If there are lines
-                    for i, line in enumerate(subplot[9]):
+                if len(subplot) > 7:  # If there are lines
+                    for i, line in enumerate(subplot[7]):
                         if line['id'] == index:
-                            self.line_label_edit.setText(line['label'])
-                            index = self.label_position_combo.findText(line['label_position'])
+                            self.lines_tab.line_label_edit.setText(line['label'])
+                            index = self.lines_tab.label_position_combo.findText(line['label_position'])
                             if index >= 0:
-                                self.label_position_combo.setCurrentIndex(index)
-                            self.label_font_size_spin.setValue(line['label_font_size'])
+                                self.lines_tab.label_position_combo.setCurrentIndex(index)
+                            self.lines_tab.label_font_size_spin.setValue(line['label_font_size'])
                             break
+               
+    def __toggle_drawing_mode__(self, enabled: bool) -> None:
+        """
+        Toggle line drawing mode on the plot canvas
+        
+        Args:
+            enabled: Boolean indicating whether drawing mode should be activated
+        """
+
+        self.plot_canvas.toggle_drawing_mode(enabled)
+        
+    def __append_subplot__(self, plot_id:int, row:int, col:int, row_span:int, col_span:int, data_series:dict, sub_info:dict, line_info: list) -> None:
+        self.plot_canvas.subplots.append([
+                    plot_id,
+                    row,
+                    col,
+                    row_span,
+                    col_span,
+                    data_series,
+                    sub_info,
+                    line_info
+                ])

@@ -19,7 +19,7 @@ class ZAVLAB(QMainWindow):
     def __init__(self) -> None:
         super(ZAVLAB, self).__init__()
         self.setWindowTitle("ZAVLAB")
-        self.resize(400, 400)
+        self.resize(100, 100)
 
         #centreal widget
         self.central_widget: QSplitter = QSplitter(Qt.Orientation.Horizontal)
@@ -172,7 +172,7 @@ class ZAVLAB(QMainWindow):
             with open(file_name, 'r', encoding='utf-8') as f:
                 state = json.load(f)
             
-            # Восстанавливаем состояние
+            # reset status
             self.plotter.set_state(state)
             
             self.statusBar().showMessage(f"Chart settings are loaded: {file_name}", 5000)
@@ -196,13 +196,13 @@ class ZAVLAB(QMainWindow):
             return
         
         try:
-            # Определяем формат по расширению
+            # get format of the file
             ext = os.path.splitext(file_name)[1].lower()
             if not ext:
                 file_name += ".png"
                 ext = ".png"
             
-            # Сохраняем изображение
+            # save image
             self.plotter.plot_canvas.fig.savefig(file_name, dpi=300)
             
             self.statusBar().showMessage(f"The graph is saved: {file_name}", 5000)
@@ -509,7 +509,8 @@ class ZAVLAB(QMainWindow):
             QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить файл:\n{str(e)}")
 
     def plot_data(self, x:int, y:int, lenght: int) -> None:
-        """Строит график по выбранным данным"""
+        """Plot data by chosen data"""
+
         data = self.get_data(x, y, lenght)
         labels = [f"{self.table.item(0, x).text() if self.table.item(0, x) else ''}", f"{self.table.item(0, y).text() if self.table.item(0, y) else ''}"]
         self.plotter.plot_data(data, labels)
@@ -523,7 +524,7 @@ class ZAVLAB(QMainWindow):
         return -1
 
     def get_data(self, x:int|str, y:int|str, lenght : int|None = None) -> np.ndarray:
-        """Извлекает данные из таблицы для построения графика"""
+        """get data from table to plot them"""
 
         data = [[], []]
         x_flag = True
@@ -630,6 +631,7 @@ class ZAVLAB(QMainWindow):
 
     def update_headers(self) -> None:
         """Extract headers and emit them as a list"""
+        
         headers = []
         for col in range(self.table.columnCount()):
             header_item = self.table.item(0, col)

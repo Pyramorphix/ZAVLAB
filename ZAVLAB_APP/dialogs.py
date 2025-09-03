@@ -7,7 +7,7 @@ Contains all dialog windows used in the application:
 
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QListWidget, QLabel, QHBoxLayout, QPushButton, QComboBox,
                               QDoubleSpinBox, QFormLayout, QDialogButtonBox, QColorDialog, 
-                              QLineEdit, QMessageBox, QGridLayout, QSpinBox)
+                              QLineEdit, QMessageBox, QGridLayout, QSpinBox, QCheckBox)
 from PyQt6.QtGui import QColor
 import numpy as np
 from matplotlib.axes import Axes
@@ -219,7 +219,7 @@ class DataSeriesDialog(QDialog):
                 "x small ticks": 5,
                 "x label fs": 14,
                 "x scale": 0,
-                "x number of accuracy": 1,
+                "x round accuracy": 1,
                 "y-label":self.data_combo_y.currentText(),
                 "y min": 0,
                 "y max": 1,
@@ -227,8 +227,8 @@ class DataSeriesDialog(QDialog):
                 "y small ticks": 5,
                 "y label fs": 14,
                 "y scale": 0,
-                "y number of accuracy": 1,
-                "show grid": True}
+                "y round accuracy": 1,
+                }
     
     def get_title_info(self) -> dict:
         return {"title": f"{self.data_combo_y.currentText()}({self.data_combo_x.currentText()})",
@@ -510,3 +510,196 @@ class SubplotPositionDialog(QDialog):
 
         return (self.row_spin.value(), self.row_span_spin.value(), self.col_spin.value(), self.col_span_spin.value())
 
+
+
+class LegendConfigDialog(QDialog):
+    """Dialog for configuring legend properties: position and font size."""
+
+
+    def __init__(self, ax, parent=None):
+        """
+        Initialize legend configuration dialog
+        
+        Args:
+            ax: Matplotlib axis object containing the legend
+            parent: Parent Qt widget
+        """
+
+
+        super().__init__(parent)
+        self.ax = ax
+        self.setWindowTitle("Setting up a Legend")
+        layout = QFormLayout(self)
+        
+        self.position_combo = QComboBox()
+        self.position_combo.addItems(['best', 'upper right', 'upper left', 'lower left', 
+                                      'lower right', 'right', 'center left', 'center right', 
+                                      'lower center', 'upper center', 'center'])
+        if self.ax.get_legend():
+            self.position_combo.setCurrentIndex(self.ax.get_legend()._get_loc())
+        else:
+            self.position_combo.setCurrentText('best')
+        
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(6, 24)
+        self.font_size_spin.setValue(14)
+        if self.ax.get_legend():
+            self.font_size_spin.setValue(14)
+        
+        layout.addRow("Position:", self.position_combo)
+        layout.addRow("Font size:", self.font_size_spin)
+        
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
+                                  QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def get_position(self):
+        """Get selected legend position"""
+
+
+        return self.position_combo.currentText()
+    
+    def get_font_size(self):
+        """Get selected font size for legend"""
+
+
+        return self.font_size_spin.value()
+
+
+
+class TitleConfigDialog(QDialog):
+    """Dialog for configuring plot title properties: text and font size."""
+
+
+    def __init__(self, ax, parent=None):
+        """
+        Initialize title configuration dialog
+        
+        Args:
+            ax: Matplotlib axis object containing the title
+            parent: Parent Qt widget
+        """
+
+
+        super().__init__(parent)
+        self.ax = ax
+        self.setWindowTitle("Configuring the title")
+        layout = QFormLayout(self)
+        
+        self.title_edit = QLineEdit(self.ax.get_title())
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(6, 24)
+        self.font_size_spin.setValue(14)
+        if self.ax.title:
+            self.font_size_spin.setValue(int(self.ax.title.get_fontsize()))
+        
+        layout.addRow("Title:", self.title_edit)
+        layout.addRow("Font size:", self.font_size_spin)
+        
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
+                                  QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def get_title(self):
+        """Get entered title text"""
+
+
+        return self.title_edit.text()
+    
+    def get_font_size(self):
+        """Get selected font size for title"""
+
+
+        return self.font_size_spin.value()
+
+class GridConfigDialog(QDialog):
+    """Dialog for toggling grid visibility on/off."""
+
+
+    def __init__(self, show_grid, parent=None):
+        """
+        Initialize grid configuration dialog
+        
+        Args:
+            show_grid: Current grid visibility state
+            parent: Parent Qt widget
+        """
+
+
+        super().__init__(parent)
+        self.setWindowTitle("Setting up the Grid")
+        layout = QVBoxLayout(self)
+        
+        self.grid_checkbox = QCheckBox("Show the grid")
+        self.grid_checkbox.setChecked(show_grid)
+        layout.addWidget(self.grid_checkbox)
+        
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
+                                  QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def show_grid(self):
+        """Get grid visibility state"""
+        
+
+        return self.grid_checkbox.isChecked()
+    
+
+
+class LineLabelDialog(QDialog):
+    def __init__(self, parent=None):
+        """
+        Dialog for configuring line labels:
+        - Text content
+        - Position relative to line
+        - Font size
+        """
+        super().__init__(parent)
+        self.setWindowTitle("Line Label Configuration")
+        layout = QFormLayout(self)
+        
+        # Text input
+        self.text_edit = QLineEdit()
+        layout.addRow("Label Text:", self.text_edit)
+        
+        # Position selection
+        self.position_combo = QComboBox()
+        self.position_combo.addItems([
+            "Top Center", "Top Left", "Top Right",
+            "Bottom Center", "Bottom Left", "Bottom Right",
+            "Middle Left", "Middle Right"
+        ])
+        layout.addRow("Position:", self.position_combo)
+        
+        # Font size
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(6, 24)
+        self.font_size_spin.setValue(10)
+        layout.addRow("Font Size:", self.font_size_spin)
+        
+        # Dialog buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | 
+            QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+    
+    def get_text(self):
+        """Get entered label text"""
+        return self.text_edit.text()
+    
+    def get_position(self):
+        """Get selected label position"""
+        return self.position_combo.currentText()
+    
+    def get_font_size(self):
+        """Get selected font size"""
+        return self.font_size_spin.value()
