@@ -1,0 +1,66 @@
+{
+    "grid": {
+        "rows": 1,
+        "cols": 1
+    },
+    "subplots": [
+        {
+            "id": 0,
+            "position": {
+                "row": 0,
+                "col": 0,
+                "row_span": 1,
+                "col_span": 1
+            },
+            "data_series": [
+                {
+                    "id": 0,
+                    "x": "term_1",
+                    "xerr": "None",
+                    "y": "B",
+                    "yerr": "None",
+                    "color": "#1f77b4",
+                    "width": 1.0,
+                    "label": "B(term_1)",
+                    "ls": "",
+                    "alpha": 1.0,
+                    "marker": "o",
+                    "marker size": 3
+                }
+            ],
+            "sub_info": {
+                "axes": {
+                    "x-label": "term_1",
+                    "x min": 0.7,
+                    "x max": 7.3,
+                    "x ticks": 10,
+                    "x small ticks": 5,
+                    "x label fs": 14,
+                    "x scale": 0,
+                    "x number of rounding digits": 2,
+                    "y-label": "B",
+                    "y min": -1.4,
+                    "y max": 51.4,
+                    "y ticks": 10,
+                    "y small ticks": 5,
+                    "y label fs": 14,
+                    "y scale": 0,
+                    "y number of rounding digits": 2
+                },
+                "title": {
+                    "title": "a",
+                    "title fs": 14
+                },
+                "legend": {
+                    "legend position": "best",
+                    "legend fs": 14
+                },
+                "grid": {
+                    "show grid": true
+                }
+            },
+            "lines": []
+        }
+    ],
+    "current_id": 1
+}

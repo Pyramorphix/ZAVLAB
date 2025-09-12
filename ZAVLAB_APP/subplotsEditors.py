@@ -9,6 +9,7 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtCore import pyqtSignal
 import numpy as np
 
+
 ####
 AXES_SCALING = 100
 Minimum_Height = 100
@@ -113,8 +114,8 @@ class DataStyleTab(QWidget):
         
         self.line_label.setText(self.data_styles_spin.currentText().split('-')[0][:-1])
         data_id = int(self.data_styles_spin.currentText().split('-')[1])
-        for series in self.current_data_style:
-            #find proper data
+        series = self.current_data_style
+        if series:
             if series['id'] == data_id:
                 self.line_color = series["color"]
                 self.line_width_spin.setValue(series["width"])
@@ -178,7 +179,7 @@ class DataStyleTab(QWidget):
             new_ls = ""
         return {"color" : new_color, "width" : new_width, "label": new_label,
                 "ls": new_ls, "alpha": new_alpha, "marker": new_marker,
-                "marker size": new_marker_size}
+                "marker size": new_marker_size, "id": int(self.data_styles_spin.currentText().split()[-1])}
 
     def __interactive_edit_data_style(self, series_id: int) -> None:
         # set current series
@@ -307,7 +308,7 @@ class SubplotStyleTab(QWidget):
             ("X Max", "float", 1.0),
             ("X ticks number", "int", 1, 0),
             ("X small ticks number", "int", 1, 0),
-            ("X round accuracy", "int", 1),
+            ("X number of rounding digits", "int", 1),
             ("X scale", "combo", "Linear", ["Linear", "Logarithmic"]),
 
             ("Y Axis Title", "text", "Y"),
@@ -316,7 +317,7 @@ class SubplotStyleTab(QWidget):
             ("Y Max", "float", 1.0),
             ("Y ticks number", "int", 1, 0),
             ("Y small ticks number", "int", 1, 0),
-            ("Y round accuracy", "int", 1),
+            ("Y number of rounding digits", "int", 1),
             ("Y scale", "combo", "Linear", ["Linear", "Logarithmic"]),            
         ]
 
@@ -372,7 +373,7 @@ class SubplotStyleTab(QWidget):
             elif name == "X scale":
                 self.x_scale: QComboBox = editor
                 self.x_scale.currentTextChanged.connect(self.update_some_xAxis_states)
-            elif name == "X round accuracy":
+            elif name == "X number of rounding digits":
                 self.x_number_of_ac: QSpinBox = editor
                 self.x_number_of_ac.setMinimum(-100)
                 self.x_number_of_ac.valueChanged.connect(self.update_range)
@@ -404,7 +405,7 @@ class SubplotStyleTab(QWidget):
             elif name == "Y scale":
                 self.y_scale: QComboBox = editor
                 self.y_scale.currentTextChanged.connect(self.update_some_yAxis_states)
-            elif name == "Y round accuracy":
+            elif name == "Y number of rounding digits":
                 self.y_number_of_ac: QSpinBox = editor
                 self.y_number_of_ac.setMinimum(-100)
                 self.y_number_of_ac.valueChanged.connect(self.update_range)
@@ -412,8 +413,8 @@ class SubplotStyleTab(QWidget):
     def update_range(self) -> None:
         """Updates limits for axis"""
 
-        axes_info = {"x min": self.x_min.value(), "x max": self.x_max.value(), "x round accuracy": self.x_number_of_ac.value(),
-                     "y min": self.y_min.value(), "y max": self.y_max.value(), "y round accuracy": self.y_number_of_ac.value()}
+        axes_info = {"x min": self.x_min.value(), "x max": self.x_max.value(), "x number of rounding digits": self.x_number_of_ac.value(),
+                     "y min": self.y_min.value(), "y max": self.y_max.value(), "y number of rounding digits": self.y_number_of_ac.value()}
         self.__set_new_axes_ranges__(axes_info)
 
     def __add_subplot_main_settings_group(self) -> None:
@@ -645,22 +646,22 @@ class SubplotStyleTab(QWidget):
             y_max = axes_info["y min"] * AXES_SCALING * (-1)
 
         self.x_min.setRange(x_min, x_max)
-        self.x_min.setSingleStep(10 ** (-1 * axes_info["x round accuracy"]))
-        if axes_info["x round accuracy"] > -1:
-            self.x_min.setDecimals(axes_info["x round accuracy"])
+        self.x_min.setSingleStep(10 ** (-1 * axes_info["x number of rounding digits"]))
+        if axes_info["x number of rounding digits"] > -1:
+            self.x_min.setDecimals(axes_info["x number of rounding digits"])
         self.x_max.setRange(x_min, x_max)
-        self.x_max.setSingleStep(10 ** (-1 * axes_info["x round accuracy"]))
-        if axes_info["x round accuracy"] > -1:
-            self.x_max.setDecimals(axes_info["x round accuracy"])
+        self.x_max.setSingleStep(10 ** (-1 * axes_info["x number of rounding digits"]))
+        if axes_info["x number of rounding digits"] > -1:
+            self.x_max.setDecimals(axes_info["x number of rounding digits"])
 
         self.y_min.setRange(y_min, y_max)
-        self.y_min.setSingleStep(10 ** (-1 * axes_info["y round accuracy"]))
-        if axes_info["y round accuracy"] > -1:
-            self.y_min.setDecimals(axes_info["y round accuracy"])
+        self.y_min.setSingleStep(10 ** (-1 * axes_info["y number of rounding digits"]))
+        if axes_info["y number of rounding digits"] > -1:
+            self.y_min.setDecimals(axes_info["y number of rounding digits"])
         self.y_max.setRange(y_min, y_max)
-        self.y_max.setSingleStep(10 ** (-1 * axes_info["y round accuracy"]))
-        if axes_info["y round accuracy"] > -1:
-            self.y_max.setDecimals(axes_info["y round accuracy"])
+        self.y_max.setSingleStep(10 ** (-1 * axes_info["y number of rounding digits"]))
+        if axes_info["y number of rounding digits"] > -1:
+            self.y_max.setDecimals(axes_info["y number of rounding digits"])
 
     def get_sub_style_info(self) -> dict:
         """return current information about data style."""
@@ -702,7 +703,7 @@ class SubplotStyleTab(QWidget):
                 "x small ticks": x_small_ticks,
                 "x label fs" : x_label_fs,
                 "x scale" : x_scale,
-                "x round accuracy": x_number_of_accuracy,
+                "x number of rounding digits": x_number_of_accuracy,
                 "y-label": y_label,
                 "y min": y_min,
                 "y max": y_max,
@@ -710,7 +711,7 @@ class SubplotStyleTab(QWidget):
                 "y small ticks": y_small_ticks,
                 "y label fs" : y_label_fs,
                 "y scale" : y_scale,
-                "y round accuracy": y_number_of_accuracy,
+                "y number of rounding digits": y_number_of_accuracy,
             }
     
     def get_title_info(self) -> dict:
@@ -779,7 +780,7 @@ class SubplotStyleTab(QWidget):
         self.x_ticks.setValue(axes_info["x ticks"])
         self.x_small_ticks.setValue(axes_info["x small ticks"])
         self.x_scale.setCurrentIndex(axes_info["x scale"])
-        self.x_number_of_ac.setValue(axes_info["x round accuracy"])
+        self.x_number_of_ac.setValue(axes_info["x number of rounding digits"])
 
 
         #y axis
@@ -790,7 +791,7 @@ class SubplotStyleTab(QWidget):
         self.y_ticks.setValue(axes_info["y ticks"])
         self.y_small_ticks.setValue(axes_info["y small ticks"])
         self.y_scale.setCurrentIndex(axes_info["y scale"])
-        self.y_number_of_ac.setValue(axes_info["y round accuracy"])
+        self.y_number_of_ac.setValue(axes_info["y number of rounding digits"])
 
         self.__set_new_axes_ranges__(axes_info)
 
@@ -841,8 +842,15 @@ class LineStyleTab(QWidget):
         add_layout: QFormLayout = QFormLayout()
         self.lines_id: int = 0
 
-        self.draw_btn: QPushButton = QPushButton("Draw Line")
+        self.draw_btn: QPushButton = QPushButton("Draw Line ")
         self.draw_btn.setCheckable(True)
+        self.draw_btn.setToolTip("If you want to draw line without using line equations or points, you can use this button.\n"
+                                 "Follow this steps:\n"
+                                 "1. Click \"Draw Line\" button.\n"
+                                 "2. Click first time your subplot, this will be starting point of your line.\n"
+                                 "3. Click second time your subplot, that will be ending point.\n"
+                                 "3. Then pops up dialog window for chossing label text and position.\n"
+                                 "4. After pushing \"OK\" button, you line will appear in table with all subplot's lines (in the bottom of this tab).")
         self.draw_btn.toggled.connect(self.toggle_drawing_mode)
 
         # Add to appropriate layout position
@@ -1022,9 +1030,9 @@ class LineStyleTab(QWidget):
 
         self.line_style_signal.emit("line added")
 
-    def update_lines_labels(self, line: list[dict]) -> None:
+    def update_lines_labels(self, line: dict) -> None:
         """Update data about lines labels"""
-        
+    
         self.line.addItems(["Line " + str(line['id'])])
         self.line.setCurrentText("Line " + str(line['id']))
         self.line_label_edit.setText(line['label'])

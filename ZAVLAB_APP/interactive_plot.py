@@ -7,19 +7,27 @@ Interactive plotting canvas with click handling:
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.gridspec as gridspec
-from dialogs import AxisConfigDialog, LegendConfigDialog, GridConfigDialog, TitleConfigDialog, LineLabelDialog
-from PyQt6.QtWidgets import QMessageBox, QMenu
+from dialogs import AxisConfigDialog, LegendConfigDialog, TitleConfigDialog, LineLabelDialog
+from PyQt6.QtWidgets import QMessageBox, QMenu, QDialog
 from PyQt6.QtGui import QAction
+from PyQt6.QtCore import pyqtSignal, QPoint
 import matplotlib.ticker as ticker
 from matplotlib.axes import Axes
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from dialogs import DataStyleDialog
 
+#constant and global parameters
 plt.rcParams['mathtext.fontset'] = 'cm' 
+
+MAXIMUM_DISTANCE: int = 5 #in pixels
 
 
 class INTERACTIVE_PLOT(FigureCanvas):
+
+    interactive_plot_signal = pyqtSignal(list)
+
     def __init__(self, parent=None, width=5, height=4, dpi=100, data=[]):
         """
         Initialize interactive plotting canvas with line drawing capabilities
@@ -43,8 +51,12 @@ class INTERACTIVE_PLOT(FigureCanvas):
         self.data = None
         self.textes = dict()
 
+        #connect events with their functions
         self.mpl_connect("button_press_event", self.on_click)
         self.mpl_connect("pick_event", self.on_pick)
+        self.mpl_connect("motion_notify_event", self.on_mouse_move)
+        self.mpl_connect("button_release_event", self.on_mouse_release)
+
         self.context_menu = None
         self.current_line = None
         self.current_legend = None
@@ -54,6 +66,9 @@ class INTERACTIVE_PLOT(FigureCanvas):
         self.temp_line = None      # Temporary line object during drawing
         self.start_point = None    # Starting coordinates for line drawing
         self.current_label = None  # Currently active label object
+        self.last_hovered_point = None
+        self.context_menu = None
+        self.hover_timer = None
 
     def on_click(self, event):
         """
@@ -71,78 +86,140 @@ class INTERACTIVE_PLOT(FigureCanvas):
             event: Matplotlib mouse event
         """
 
-        if not event.inaxes:
-            return
-        
-        # Determine on which subplot the click occured
+        #check if click on title
         for ax in self.axes.values():
-            if event.inaxes == ax:
+            if self.is_click_on_title(event, ax):
+                # process title click event
                 self.current_subplot_id = ax._subplot_id
-                
-                # Click on the Y-axis
-                if event.ydata < ax.get_ylim()[0] + 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0]):
-                    dialog = AxisConfigDialog('x', ax, self)
-                    dialog.exec()
-                    return
-                
-                # Click on the X-axis
-                if event.xdata < ax.get_xlim()[0] + 0.05 * (ax.get_xlim()[1] - ax.get_xlim()[0]):
-                    dialog = AxisConfigDialog('y', ax, self)
-                    dialog.exec()
-                    return
+                self.handle_title_click(ax)
+                return
 
-                # Right click for the context menu
-                if event.button == 3:
-                    self.show_context_menu(event, ax)
-                    return
-                
-                if self.drawing_mode and event.button == 1:  # Left click
-                    if not self.start_point:
-                        # First click - store starting point
-                        self.start_point = (event.xdata, event.ydata)
-                    else:
-                        # Second click - finish line and open label dialog
-                        self.current_ax = ax
-                        self.finish_line((event.xdata, event.ydata))
-                        self.start_point = None
 
-                # Click on the legend
-                if ax.get_legend():
-                    # Используем преобразование координат для точного определения
-                    legend_bbox = ax.get_legend().get_frame().get_window_extent()
-                    # Преобразуем координаты события в пиксели фигуры
-                    if legend_bbox.contains(event.x, event.y):
-                        self.current_legend = ax.get_legend()
-                        dialog = LegendConfigDialog(ax, self)
-                        if dialog.exec():
-                            ax.legend(loc=dialog.get_position(), frameon=False, fontsize=dialog.get_font_size())
+        # Determine on which subplot the click occured
+        if event.inaxes:
+            for ax in self.axes.values():
+                if event.inaxes == ax:
+                    self.current_subplot_id = ax._subplot_id
+                    sub_id, subplot = self.find_subplot(self.current_subplot_id)
+
+                    # Click on the Y-axis
+                    if event.ydata < ax.get_ylim()[0] + 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0]):
+                        dialog = AxisConfigDialog('x', ax, subplot, self)
+                        if dialog.exec() == QDialog.DialogCode.Accepted:
+                            self.subplots[sub_id] = dialog.get_data()
+                            self.interactive_plot_signal.emit(["change_subplot", sub_id, self.subplots[sub_id]])
+                            self.update_one_plot(self.subplots[sub_id], self.win)
                             self.canvas.draw()
                         return
-                
-                # Click on the title
-                if ax.get_title():
-                    # Получаем рендерер для преобразования координат
-                    renderer = self.figure.canvas.get_renderer()
                     
-                    # Получаем bbox заголовка в координатах фигуры
-                    bbox = ax.title.get_window_extent(renderer)
-                    
-                    # Преобразуем координаты события в пиксели фигуры
-                    x_px, y_px = self.figure.canvas.get_width_height()
-                    x_ratio = event.x / x_px
-                    y_ratio = 1 - (event.y / y_px)  # Инвертируем Y-координату
-                    
-                    # Проверяем попадание в заголовок
-                    if (bbox.x0 <= x_ratio <= bbox.x1 and 
-                        bbox.y0 <= y_ratio <= bbox.y1):
-                        self.current_title = ax.title
-                        dialog = TitleConfigDialog(ax, self)
-                        if dialog.exec():
-                            ax.set_title(dialog.get_title(), fontsize=dialog.get_font_size())
+                    # Click on the X-axis
+                    if event.xdata < ax.get_xlim()[0] + 0.05 * (ax.get_xlim()[1] - ax.get_xlim()[0]):
+                        dialog = AxisConfigDialog('y', ax, subplot, self)
+                        if dialog.exec() == QDialog.DialogCode.Accepted: 
+                            self.subplots[sub_id] = dialog.get_data()
+                            self.interactive_plot_signal.emit(["change_subplot", sub_id, self.subplots[sub_id]])
+                            self.update_one_plot(self.subplots[sub_id], self.win)
                             self.canvas.draw()
                         return
 
+                    # Right click for the context menu
+                    if event.button == 3:
+                        for ax in self.axes.values():
+                            if event.inaxes == ax:
+                                # find closest point
+                                point_info = self.find_closest_point(event, ax)
+                                if point_info:
+                                    line, x, y, series_id = point_info
+                                    self.show_data_context_menu(event, line, x, y, series_id)
+                                else:
+                                    self.show_context_menu(event, ax, subplot, sub_id)
+                        return
+                    if self.drawing_mode and event.button == 1:  # Left click
+                        if not self.start_point:
+                            # First click - store starting point
+                            self.start_point = (event.xdata, event.ydata)
+                        else:
+                            # Second click - finish line and open label dialog
+                            self.current_ax = ax
+                            self.finish_line((event.xdata, event.ydata))
+                            self.start_point = None
+
+                    # Click on the legend
+                    if ax.get_legend():
+                        # Используем преобразование координат для точного определения
+                        legend_bbox = ax.get_legend().get_frame().get_window_extent()
+                        # Преобразуем координаты события в пиксели фигуры
+                        if legend_bbox.contains(event.x, event.y):
+                            self.current_legend = ax.get_legend()
+                            dialog = LegendConfigDialog(ax=ax,subplot_config=subplot, parent=self)
+                            if dialog.exec() == QDialog.DialogCode.Accepted:
+                                self.subplots[sub_id] = dialog.get_data()
+                                self.interactive_plot_signal.emit(["change_subplot", sub_id, self.subplots[sub_id]])
+                                ax.legend(loc=self.subplots[sub_id][6]["legend"]["legend position"], frameon=False, fontsize=self.subplots[sub_id][6]["legend"]["legend fs"])
+                                self.canvas.draw()
+                            return
+    
+    def find_closest_point(self, event, ax):
+        """Находит ближайшую точку данных к месту клика"""
+        closest_point = None
+        min_distance = float('inf')
+        
+        for line in ax.get_lines():
+            if not line.get_visible() or not hasattr(line, '_series_id'):
+                continue
+                
+            # Получаем данные линии
+            xdata, ydata = line.get_data()
+            if len(xdata) == 0:
+                continue
+                
+            # Преобразуем координаты данных в экранные координаты
+            xy_pixels = ax.transData.transform(np.column_stack([xdata, ydata]))
             
+            # Вычисляем расстояния до всех точек
+            distances = np.sqrt((xy_pixels[:, 0] - event.x)**2 + (xy_pixels[:, 1] - event.y)**2)
+            
+            # Находим минимальное расстояние
+            idx = np.argmin(distances)
+            distance = distances[idx]
+            
+            # Если это самая близкая точка, сохраняем информацию
+            if distance < min_distance and distance < 15:  # 15 пикселей - максимальное расстояние
+                min_distance = distance
+                closest_point = (line, xdata[idx], ydata[idx], line._series_id)
+        
+        return closest_point
+
+    def find_subplot(self, id: int) -> tuple[int, dict]:
+        """find subplot with approprate subplot id"""
+
+        for i, subplot in enumerate(self.subplots):
+                if subplot[0] == id:
+                    return (i, subplot)
+        return (None, None)
+    
+    def find_series(self, subplot: dict, series_id: int) -> tuple[int, dict]:
+        """find subplot with approprate data series id"""
+        for i, series in enumerate(subplot[5]): 
+            if series.get('id') == series_id:
+                return i, series
+        return None, None
+
+    def edit_data_style(self, subplot_idx, series_idx):
+        """Открывает диалог для редактирования стиля данных"""
+        # Получаем текущие данные
+        series_data = self.subplots[subplot_idx][5][series_idx]
+        
+        # Создаем диалог на основе DataStyleTab
+        dialog = DataStyleDialog(series_data, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Обновляем данные
+            self.subplots[subplot_idx][5][series_idx] = dialog.get_updated_data()
+            
+            # Перерисовываем график
+            self.update_one_plot(self.subplots[subplot_idx], self.win)
+            self.canvas.draw()
+                
     def on_pick(self, event):
         """
         Handle line selection events:
@@ -161,12 +238,13 @@ class INTERACTIVE_PLOT(FigureCanvas):
             if parent:
                 parent.edit_line_style(self.current_line)
 
-    def show_context_menu(self, event, ax):
+    def show_context_menu(self, event, ax: Axes, subplot: dict, sub_id: int):
         """
         Display context menu for plot customization options:
         - Toggle grid visibility
         - Edit legend properties
         - Edit title properties
+        -
         
         Args:
             event: Mouse event that triggered the menu
@@ -175,75 +253,84 @@ class INTERACTIVE_PLOT(FigureCanvas):
 
 
         self.context_menu = QMenu(self)
-        
-        # Get current subolot
-        current_subplot = next((s for s in self.subplots if s[0] == ax._subplot_id), None)
-        
-        if current_subplot:
+                
+        if subplot:
             # The menu item for the grid
-            grid_action = QAction("Grid: " + ("On" if current_subplot[6]["show grid"] else "Off"), self)
-            grid_action.triggered.connect(lambda: self.toggle_grid(ax))
+            grid_action = QAction("Grid: " + ("On" if subplot[6]["grid"]["show grid"] else "Off"), self)
+            grid_action.triggered.connect(lambda: self.toggle_grid(ax, subplot, sub_id))
             self.context_menu.addAction(grid_action)
             
             # The menu item for the Legend
             legend_action = QAction("Edit the legend", self)
-            legend_action.triggered.connect(lambda: self.edit_legend(ax))
+            legend_action.triggered.connect(lambda: self.edit_legend(ax, subplot, sub_id))
             self.context_menu.addAction(legend_action)
             
             # The menu item for the title
             title_action = QAction("Edit the title", self)
-            title_action.triggered.connect(lambda: self.edit_title(ax))
+            title_action.triggered.connect(lambda: self.edit_title(ax, subplot, sub_id))
             self.context_menu.addAction(title_action)
             
             self.context_menu.exec(event.guiEvent.globalPosition().toPoint())
 
-    def toggle_grid(self, ax):
+    def toggle_grid(self, ax: Axes, subplot: dict, sub_id: int) -> None:
         """
         Toggle grid visibility for the specified axis
         
         Args:
             ax: Matplotlib axis object to modify
+            subplot: all settings for chosen subplot
+            sub_id: id of the subplot in suboplots list
         """
 
-
-        current_subplot = next((s for s in self.subplots if s[0] == ax._subplot_id), None)
-        if current_subplot:
-            current_subplot[6]["show grid"] = not current_subplot[6]["show grid"]
-            self.update_one_plot(current_subplot, self.window())
+        if subplot:
+            subplot[6]["grid"]["show grid"] = not subplot[6]["grid"]["show grid"]
+            self.subplots[sub_id] = subplot
+            self.interactive_plot_signal.emit(["change_subplot", sub_id, self.subplots[sub_id]])
+            self.update_one_plot(subplot, self.window())
             self.canvas.draw()
 
-    def edit_legend(self, ax):
+    def edit_legend(self, ax: Axes, subplot: dict, sub_id: int) -> None:
         """
         Open legend configuration dialog for the specified axis
         
         Args:
             ax: Matplotlib axis object containing the legend
+            subplot: all settings for chosen subplot
+            sub_id: id of the subplot in suboplots list
         """
 
 
         self.current_legend = ax.get_legend()
-        dialog = LegendConfigDialog(ax, self)
+        dialog = LegendConfigDialog(ax=ax,subplot_config=subplot, parent=self)
         if dialog.exec():
-            ax.legend(loc=dialog.get_position(), frameon=False, fontsize=dialog.get_font_size())
+            self.subplots[sub_id] = dialog.get_data()
+            self.interactive_plot_signal.emit(["change_subplot", sub_id, self.subplots[sub_id]])
+            ax.legend(loc=subplot[6]["legend"]["legend position"], frameon=False, fontsize=subplot[6]["legend"]["legend fs"])
             self.canvas.draw()
 
-    def edit_title(self, ax):
+    def edit_title(self, ax: Axes, subplot: dict, sub_id: int) -> None:
         """
         Open title configuration dialog for the specified axis
         
         Args:
             ax: Matplotlib axis object containing the title
+            subplot: all settings for chosen subplot
+            sub_id: id of the subplot in suboplots list
         """
 
 
         self.current_title = ax.title
-        dialog = TitleConfigDialog(ax, self)
+        dialog = TitleConfigDialog(ax=ax,subplot_config=subplot, parent=self)
         if dialog.exec():
-            ax.set_title(dialog.get_title(), fontsize=dialog.get_font_size())
+            self.subplots[sub_id] = dialog.get_data()
+            self.interactive_plot_signal.emit(["change_subplot", sub_id, self.subplots[sub_id]])
+            ax.set_title(subplot[6]["title"]["title"], fontsize=subplot[6]["title"]["title fs"])
             self.canvas.draw()
 
     def plot_all_data(self, win, rows, cols):
         """Generate the plot based on current configuration"""
+
+        self.win = win
 
         if not self.subplots:
             QMessageBox.warning(self, "No Subplots", "Please add at least one subplot")
@@ -313,8 +400,8 @@ class INTERACTIVE_PLOT(FigureCanvas):
         for series in data_series:
             if series['x'] != "None" and series['y'] != "None":
                 if series['xerr'] != "None" or series['yerr'] != "None":
-                    data = win.get_error_data(x=series['x'], y=series['y'], xerr=series['xerr'], yerr=series['yerr'])
-                    if data:
+                    data: np.ndarray = win.get_error_data(x=series['x'], y=series['y'], xerr=series['xerr'], yerr=series['yerr'])
+                    if data.size != 0:
                         container = ax.errorbar(x=data[0], y=data[2],xerr=data[1], yerr=data[3],
                             linewidth=series['width'], 
                             color=series['color'],
@@ -326,8 +413,8 @@ class INTERACTIVE_PLOT(FigureCanvas):
                         line = container.lines[0] if container.lines else None
                     
                 else:
-                    data = win.get_data(series['x'], series['y'])
-                    if data:
+                    data: np.ndarray = win.get_data(series['x'], series['y'])
+                    if data.size != 0:
                         line = ax.plot(data[0], data[1], 
                                 linewidth=series['width'], 
                                 color=series['color'],
@@ -353,14 +440,14 @@ class INTERACTIVE_PLOT(FigureCanvas):
         
 
         #local functions for rounding labels
-        def zero_formatter_x(x, pos, acc=axes_info["x round accuracy"]):
+        def zero_formatter_x(x, pos, acc=axes_info["x number of rounding digits"]):
             rounded_x = round(x, acc)
             if abs(rounded_x) < 1e-8:
                 return "0" 
             else:
                 return f"{x:.{acc}f}"
     
-        def zero_formatter_y(y, pos, acc=axes_info["y round accuracy"]):
+        def zero_formatter_y(y, pos, acc=axes_info["y number of rounding digits"]):
             rounded_y = round(y, acc)
             if abs(rounded_y) < 1e-8:
                 return "0" 
@@ -368,47 +455,53 @@ class INTERACTIVE_PLOT(FigureCanvas):
                 return f"{y:.{acc}f}"
             
         #set x axis
+        if not axes_info["x scale"]:
+            ax.set_xscale("linear")
+        else:
+            ax.set_xscale("log")
         ax.set_xlabel(axes_info["x-label"], loc="center", fontsize=axes_info["x label fs"])
         ax.xaxis.set_major_formatter(ticker.FuncFormatter(zero_formatter_x))
         ax.xaxis.set_ticks_position("bottom")
         ax.tick_params(axis='x', length=4, width=2, labelsize=axes_info["x label fs"], direction ='in')
-        if not axes_info["x scale"]:
-            ax.tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
-            ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(axes_info["x small ticks"]))
-        else:
-            ax.set_xscale("log")
         ax.set_xlim(axes_info["x min"], axes_info["x max"])
         ax.spines["left"].set_position(("data", axes_info["x min"]))
         ax.set_xticks(np.linspace(axes_info["x min"], axes_info["x max"], axes_info["x ticks"]))
 
+        if not axes_info["x scale"]:
+            ax.tick_params(axis='x', which='minor', direction='in', length=2, width=1, color='black')
+            ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(axes_info["x small ticks"]))
+
         #set y axis
+        if not axes_info["y scale"]:
+            ax.set_yscale("linear")
+        else:
+            ax.set_yscale("log")
         ax.set_ylabel(axes_info["y-label"], loc="center", fontsize=axes_info["y label fs"])
         ax.yaxis.set_major_formatter(ticker.FuncFormatter(zero_formatter_y))        
         ax.yaxis.set_ticks_position("left")
         ax.tick_params(axis='y', length=4, width=2, labelsize=axes_info["y label fs"], direction ='in')
-        if not axes_info["y scale"]:
-            ax.tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
-            ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(axes_info["y small ticks"]))
-        else:
-            ax.set_yscale("log")
         ax.set_ylim(axes_info["y min"], axes_info["y max"])
         ax.spines["bottom"].set_position(("data", axes_info["y min"]))
         ax.set_yticks(np.linspace(axes_info["y min"], axes_info["y max"], axes_info["y ticks"]))
         
+        if not axes_info["y scale"]:
+            ax.tick_params(axis='y', which='minor', direction='in', length=2, width=1, color='black')
+            ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(axes_info["y small ticks"]))
+            
         #set legend
         ax.legend(loc=legend_info["legend position"], frameon=False, prop={"size": legend_info["legend fs"]})
 
+        #set ax id
+        ax._subplot_id = plot_id
         #draw lines
         for line in lines:
             self.draw_line(line, ax)
 
-        #set ax id
-        ax._subplot_id = plot_id
 
         # Add picker functionality to lines
         for line in ax.get_lines():
             line.set_picker(5)  # 5 pixels tolerance
-            line._series_id = series.get('id', 0)
+            line._series_id = series.get('id', 0) if 'series' in locals() else 0
             line._subplot_id = plot_id
 
     def draw_line(self, params, ax=None):
@@ -531,13 +624,14 @@ class INTERACTIVE_PLOT(FigureCanvas):
         # add label
         if ax._subplot_id in self.textes:
             if not params['id'] in self.textes[ax._subplot_id]:
-                self.textes[ax._subplot_id][params['id']] = ax.text(x, y, params['label'], 
+                self.textes[ax._subplot_id][params['id']] = ax.text(x, y, s=params['label'], 
                         fontsize=fontsize, 
                         color=params['color'],
                         horizontalalignment=ha,
                         verticalalignment=va,
                         bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
             else:
+                self.textes[ax._subplot_id][params['id']].set_text(params['label'])
                 self.textes[ax._subplot_id][params['id']].set(x=x, y=y, label=params['label'],
                                                              fontsize=fontsize, color=params['color'],
                                                              horizontalalignment=ha,
@@ -545,7 +639,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
                                                              bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
         else:
             self.textes[ax._subplot_id] = dict()
-            self.textes[ax._subplot_id][params['id']] = ax.text(x, y, params['label'], 
+            self.textes[ax._subplot_id][params['id']] = ax.text(x, y, s=params['label'], 
                     fontsize=fontsize, 
                     color=params['color'],
                     horizontalalignment=ha,
@@ -601,6 +695,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
         Args:
             end_point: Tuple (x, y) of line end point coordinates
         """
+
         # Remove temporary line
         if self.temp_line:
             self.temp_line.remove()
@@ -611,19 +706,25 @@ class INTERACTIVE_PLOT(FigureCanvas):
         line = ax.plot(
             [self.start_point[0], end_point[0]],
             [self.start_point[1], end_point[1]],
-            'b-', linewidth=1.5, picker=5
+            color="#0609b4", ls="-", linewidth=1.5, picker=5
         )[0]
         
         # Store line reference
         self.draw_lines.append(line)
         
         # Open label dialog
-        self.open_label_dialog(line, mid_point=(
+        info = self.open_label_dialog(line, mid_point=(
             (self.start_point[0] + end_point[0]) / 2,
             (self.start_point[1] + end_point[1]) / 2
-        ))
+        ), ax=ax)
 
-    def open_label_dialog(self, line, mid_point):
+        line_info = {"type": 0, "x1":self.start_point[0], "x2": end_point[0],
+                     "y1": self.start_point[1], "y2": end_point[1], "width": 1.5,  
+                     "color": "#0609b4", "style": "-", "label": info[0], "label_position": info[1], "label_font_size": info[2]}
+        self.interactive_plot_signal.emit(["add line", ax._subplot_id, line_info])
+
+
+    def open_label_dialog(self, line, mid_point: tuple[float|int], ax: Axes) -> tuple[str, str, int]:
         """
         Open dialog for configuring line label
         
@@ -648,17 +749,192 @@ class INTERACTIVE_PLOT(FigureCanvas):
             elif "right" in position:
                 x += 0.05  # Offset right of line
                 
-            # Create text annotation
-            self.current_label = ax.text(
-                x, y, text, 
-                fontsize=font_size,
-                ha='center' if 'center' in position else 
-                    'left' if 'right' in position else 'right',
-                va='center' if 'middle' in position else 
-                    'bottom' if 'top' in position else 'top',
-                bbox=dict(facecolor='white', alpha=0.7, pad=2)
-            )
+            # # Create text annotation
+            # self.current_label = ax.text(
+            #     x, y, text, 
+            #     fontsize=font_size,
+            #     ha='center' if 'center' in position else 
+            #         'left' if 'right' in position else 'right',
+            #     va='center' if 'middle' in position else 
+            #         'bottom' if 'top' in position else 'top',
+            #     bbox=dict(facecolor='white', alpha=0.7, pad=2)
+            # )
             
             # Connect label to line
             line._label = self.current_label
             self.canvas.draw()
+            return (text, position, font_size)
+            
+    def is_click_on_title(self, event, ax: Axes) -> None:
+        """
+        Checks if there was a click in the chart header area.
+        """
+
+        if not ax.title.get_text():
+            return False
+        
+        # Getting a renderer for converting coordinates
+        renderer = self.figure.canvas.get_renderer()
+        
+        # Getting the bounding box of the title in pixels of the screen
+        bbox = ax.title.get_window_extent(renderer=renderer)
+        
+        # Converting the coordinates of the event to the coordinates of the shape
+        # (event.x and event.y is already in the coordinates of the shape)
+        x, y = event.x, event.y
+
+        # Check if the click point falls into the bounding box of the header
+        return (bbox.x0 <= x <= bbox.x1 and 
+                bbox.y0 <= y <= bbox.y1)
+
+    def handle_title_click(self, ax):
+        """
+        Handles a click on the subplot header
+        """
+
+        # Find the appropriate subtitle in the configuration
+        sub_id, subplot = self.find_subplot(self.current_subplot_id)
+        
+        # Creating a dialog for editing the title
+        dialog = TitleConfigDialog(ax=ax,subplot_config=subplot, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Updating the configuration
+            self.subplots[sub_id] = dialog.get_data()
+            self.interactive_plot_signal.emit(["change_subplot", sub_id, self.subplots[sub_id]])
+            # Redrawing the graph
+            self.update_one_plot(self.subplots[sub_id], self.window())
+            self.canvas.draw()
+    
+    
+    def on_mouse_move(self, event) -> None:
+        """Mouse movement handler for detrmining points under the cursor"""
+
+        if not event.inaxes:
+            self.hide_context_menu()
+            return
+        
+        # Check all lines in the current axes
+        for line in event.inaxes.get_lines():
+            if not line.get_visible():
+                continue
+                
+            # Check if the cursor is near to the point
+            point_info = self.get_point_near_cursor(event, line)
+            if point_info:
+                x, y, index, distance = point_info
+                if distance < MAXIMUM_DISTANCE:  # check the distance between cursor and point
+                    self.show_context_menu_point(event, line, x, y)
+                    return
+        
+        # If there is no point under cursor hide the context menu
+        self.hide_context_menu()
+
+    def get_point_near_cursor(self, event, line) -> tuple[int]:
+        """find the nearest point to the cursor"""
+
+        xdata, ydata = line.get_data()
+        if len(xdata) == 0:
+            return None
+        
+        # transform plot coords to the canvas coords
+        xy_pixels = line.get_transform().transform(np.column_stack([xdata, ydata]))
+        
+        # distnace between cursot to each point
+        distances = np.sqrt((xy_pixels[:, 0] - event.x)**2 + (xy_pixels[:, 1] - event.y)**2)
+        
+        min_index = np.argmin(distances)
+        min_distance = distances[min_index]
+        
+        return (xdata[min_index], ydata[min_index], min_index, min_distance)
+    
+
+    def show_context_menu_point(self, event, line, x, y):
+        """shows context menu with point info"""
+
+        # If cursor is over the same point, don't update menu
+        current_point = (line, x, y)
+        if self.last_hovered_point == current_point:
+            return
+            
+        self.last_hovered_point = current_point
+        
+        # Create or update context menu
+        if not self.context_menu:
+            self.context_menu = QMenu(self)
+        
+        # Clear menu
+        self.context_menu.clear()
+        
+        # Add point information
+        x_str = f"{x:.4f}" if isinstance(x, float) else str(x)
+        y_str = f"{y:.4f}" if isinstance(y, float) else str(y)
+        
+        point_action = self.context_menu.addAction(f"Point: ({x_str}, {y_str})")
+        point_action.setEnabled(False)
+        
+        # Add line information
+        label = line.get_label() if line.get_label() else "Unnamed"
+        line_action = self.context_menu.addAction(f"Line: {label}")
+        line_action.setEnabled(False)
+        
+        # Show menu at cursor position (fixed to appear under cursor)
+        if hasattr(event, 'guiEvent'):
+            # Use the original Qt event coordinates for accurate positioning
+            qt_event = event.guiEvent
+            global_pos = qt_event.globalPosition().toPoint()
+        else:
+            # Fallback: calculate position based on event coordinates
+            global_pos = self.mapToGlobal(QPoint(int(event.x), int(event.y)))
+        
+        self.context_menu.popup(global_pos)
+
+    def hide_context_menu(self):
+        """hide contextt menu"""
+
+        if self.context_menu and self.context_menu.isVisible():
+            self.context_menu.hide()
+        self.last_hovered_point = None
+
+    def on_mouse_release(self, event):
+        """Mose release handler"""
+
+        self.hide_context_menu()
+
+    def show_data_context_menu(self, event, line, x, y, series_id):
+        """Shows context menu for editing data parameters"""
+        # Create menu
+        menu = QMenu(self)
+        
+        # Add point information
+        x_str = f"{x:.4f}" if isinstance(x, float) else str(x)
+        y_str = f"{y:.4f}" if isinstance(y, float) else str(y)
+        
+        info_action = menu.addAction(f"Point: ({x_str}, {y_str})")
+        info_action.setEnabled(False)
+        
+        # Add separator
+        menu.addSeparator()
+        
+        # Find corresponding subplot and series
+        subplot_id = line._subplot_id
+        subplot_idx, subplot = self.find_subplot(subplot_id)
+        
+        if subplot_idx is not None:
+            # Find series by ID
+            series_idx, series_data = self.find_series(subplot, series_id)
+            
+            if series_idx is not None:
+                # Add edit actions
+                edit_action = menu.addAction("Edit Data Style...")
+                edit_action.triggered.connect(lambda: self.edit_data_style(subplot_idx, series_idx))
+        
+        # Show menu at cursor position (fixed to appear under cursor)
+        if hasattr(event, 'guiEvent'):
+            # Use the original Qt event coordinates for accurate positioning
+            qt_event = event.guiEvent
+            global_pos = qt_event.globalPosition().toPoint()
+        else:
+            # Fallback: calculate position based on event coordinates
+            global_pos = self.mapToGlobal(QPoint(int(event.x), int(event.y)))
+        
+        menu.popup(global_pos)

@@ -221,7 +221,9 @@ class SubplotEditor(QWidget):
         """Initialize form for grid configuraion."""
 
 
-        grid_group: QGroupBox = QGroupBox("Grid Configuration")
+        grid_group: QGroupBox = QGroupBox("Subplots Configuration")
+        grid_group.setToolTip("Here you can create grid to place your subplots \n(Choose size of the grid and click \"Cretae grid\")\n"
+                              "If you add some subplots and want to change grid size, \nfor all subplots, that don't fit new sizes, question where\n to place them or delete will appear.")
         grid_layout: QGridLayout = QGridLayout()
         
         grid_layout.addWidget(QLabel("Rows number:"), 0, 0)
@@ -268,14 +270,16 @@ class SubplotEditor(QWidget):
         position_group.setLayout(position_sub_layout)
         one_sub_group.setLayout(one_sub_layout)
         
-        position_sub_layout.addWidget(QLabel("Row position:"), 0, 0)
+        position_sub_layout.addWidget(QLabel("Row\nposition:"), 0, 0)
         self.row_spin: QSpinBox = QSpinBox()
         self.row_spin.setRange(0, 7)
+        self.row_spin.setMinimumWidth(60)
         position_sub_layout.addWidget(self.row_spin, 0, 1)
         
-        position_sub_layout.addWidget(QLabel("Column position:"), 0, 2)
+        position_sub_layout.addWidget(QLabel("Column\nposition:"), 0, 2)
         self.col_spin: QSpinBox = QSpinBox()
         self.col_spin.setRange(0, 7)
+        self.col_spin.setMinimumWidth(60)
         position_sub_layout.addWidget(self.col_spin, 0, 3)
         
         position_sub_layout.addWidget(QLabel("Row Span:"), 1, 0)
@@ -311,11 +315,18 @@ class SubplotEditor(QWidget):
         one_sub_layout.addWidget(self.data_combo_yerr, 3, 1, 1, 3)
 
         self.add_subplot_btn: QPushButton = QPushButton("Add Subplot")
+        self.add_subplot_btn.setToolTip("Click this button if you want to add subplot\n with chosen data to you grid to the position \nentered in \"Row position\", \"Column position\"\n with size in corresponding spans.")
         self.add_subplot_btn.clicked.connect(self.__add_subplot__)
         one_sub_layout.addWidget(self.add_subplot_btn, 4, 0, 1, 2)
         
         self.data_btn: QPushButton = QPushButton("Configure Data Series")
         self.data_btn.clicked.connect(self.configure_data_series)
+        self.data_btn.setToolTip("In case you want to add more then one data set to your subplot use this button.\n" 
+                                 "To add data series follow this steps:\n"
+                                 "1. Choose columns in \"X Data\", \"Y Data\" (\"X Error\", \"Y Error\").\n"
+                                 "2. Change some data style if you want.\n"
+                                 "3. Click button \"+\"\n"
+                                 "4. To Delete data you need to click this data in \"Data Series\" Window, then push the button \"-\".")
         creation_layout.addWidget(self.data_btn, 1, 0, 1, 4)
         
         self.clear_btn: QPushButton = QPushButton("Clear All")
@@ -333,6 +344,7 @@ class SubplotEditor(QWidget):
         self.editor_group: QGroupBox = QGroupBox("Edit Selected Subplot")
         self.editor_group.setEnabled(False)
         editor_layout: QVBoxLayout = QVBoxLayout()
+        self.editor_group.setToolTip("To unlock this part, you need firstly create subplot.")
         self.editor_group.setLayout(editor_layout)
 
         ## Tab widget for different editing options
@@ -416,6 +428,7 @@ class SubplotEditor(QWidget):
         
         # Matplotlib figure
         self.plot_canvas = INTERACTIVE_PLOT()
+        self.plot_canvas.interactive_plot_signal.connect(lambda sig: self.__work_with_plot_signals__(sig))
         self.plot_canvas.subplots = []
         # self.figure = Figure(figsize=(10, 8), dpi=100)
         plot_layout.addWidget(self.plot_canvas.canvas)
@@ -426,6 +439,16 @@ class SubplotEditor(QWidget):
         # splitter.setSizes([500, 1100])
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
+    
+    def __work_with_plot_signals__(self, sig):
+        if isinstance(sig, list):
+            if sig[0] == "change_subplot":
+                self.plot_canvas.subplots[sig[1]] = sig[2]
+                self.subplot_style_tab.populate_control(sig[2][6])
+            elif sig[0] == "add line":
+                self.select_subplot(sig[1])
+                self.__add_line_to_subplot__(params=sig[2])
+
         
     def update_column_data(self, headers: list[str]) -> None:
         "updates all combo boxes that contain headers from the table"
@@ -608,7 +631,7 @@ class SubplotEditor(QWidget):
              "x small ticks": 5,
              "x label fs": 14,
              "x scale": 0,
-             "x round accuracy": 1,
+             "x number of rounding digits": 1,
              "y-label":self.data_combo_y.currentText(),
              "y min": 0,
              "y max": 1,
@@ -616,7 +639,7 @@ class SubplotEditor(QWidget):
              "y small ticks": 5,
              "y label fs": 14,
              "y scale": 0,
-             "y round accuracy": 1}
+             "y number of rounding digits": 1}
         title_info = {"title": "a",
              "title fs": 14}
         legend_info = {"legend position": "best",
@@ -634,9 +657,9 @@ class SubplotEditor(QWidget):
         self.plot_canvas.subplots[-1][6]["axes"]["x max"] = min_max_x[1] + shift[0]
         self.plot_canvas.subplots[-1][6]["axes"]["y min"] = min_max_y[0] - shift[0]
         self.plot_canvas.subplots[-1][6]["axes"]["y max"] = min_max_y[1] + shift[1]
-        self.plot_canvas.subplots[-1][6]["axes"]["x round accuracy"] = max([self.find_first_nonzero_digit(min_max_x[0] - shift[0]),
+        self.plot_canvas.subplots[-1][6]["axes"]["x number of rounding digits"] = max([self.find_first_nonzero_digit(min_max_x[0] - shift[0]),
                                                                         self.find_first_nonzero_digit(min_max_x[1] + shift[0])]) + 1
-        self.plot_canvas.subplots[-1][6]["axes"]["y round accuracy"] = max([self.find_first_nonzero_digit(min_max_y[0] - shift[1]), 
+        self.plot_canvas.subplots[-1][6]["axes"]["y number of rounding digits"] = max([self.find_first_nonzero_digit(min_max_y[0] - shift[1]), 
                                                                         self.find_first_nonzero_digit(min_max_x[1] + shift[1])]) + 1
         self.current_plot_id += 1
         
@@ -733,9 +756,9 @@ class SubplotEditor(QWidget):
                 axes_info["x max"] = np.max(extremums[1]) + shift[0]
                 axes_info["y min"] = np.min(extremums[2]) - shift[1]
                 axes_info["y max"] = np.max(extremums[3]) + shift[1]
-                axes_info["x round accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[0]) - shift[0]),
+                axes_info["x number of rounding digits"] = max([self.find_first_nonzero_digit(np.min(extremums[0]) - shift[0]),
                                                             self.find_first_nonzero_digit(np.max(extremums[1]) + shift[0])]) + 1
-                axes_info["y round accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[2]) - shift[1]),
+                axes_info["y number of rounding digits"] = max([self.find_first_nonzero_digit(np.min(extremums[2]) - shift[1]),
                                                             self.find_first_nonzero_digit(np.max(extremums[3]) + shift[1])]) + 1
                 
                 # Populate position, size and data (data series) controls
@@ -753,6 +776,7 @@ class SubplotEditor(QWidget):
                 break
     
     def __add_subplot_lines(self, line_info) -> None:
+        self.lines_tab.line.clear()
         for line in line_info:
             self.lines_tab.update_lines_labels(line)
 
@@ -913,13 +937,12 @@ class SubplotEditor(QWidget):
                     data = self.plot_canvas.subplots[i][5][counter]
                     if str(data['id']) == index:
                         self.plot_canvas.subplots[i][5][counter]["color"] = self.data_style_tab.current_data_style["color"]
-                        self.plot_canvas.subplots[i][5][counter]["width"] = self.data_style_tab.current_data_style["color"]
-                        self.plot_canvas.subplots[i][5][counter]["label"] = self.data_style_tab.current_data_style["color"]
-                        self.plot_canvas.subplots[i][5][counter]["ls"] = self.data_style_tab.current_data_style["color"]
-                        self.plot_canvas.subplots[i][5][counter]["alpha"] = self.data_style_tab.current_data_style["color"]
-                        self.plot_canvas.subplots[i][5][counter]["marker"] = self.data_style_tab.current_data_style["color"]
-                        self.plot_canvas.subplots[i][5][counter]["marker size"] = self.data_style_tab.current_data_style["color"]
-                                
+                        self.plot_canvas.subplots[i][5][counter]["width"] = self.data_style_tab.current_data_style["width"]
+                        self.plot_canvas.subplots[i][5][counter]["label"] = self.data_style_tab.current_data_style["label"]
+                        self.plot_canvas.subplots[i][5][counter]["ls"] = self.data_style_tab.current_data_style["ls"]
+                        self.plot_canvas.subplots[i][5][counter]["alpha"] = self.data_style_tab.current_data_style["alpha"]
+                        self.plot_canvas.subplots[i][5][counter]["marker"] = self.data_style_tab.current_data_style["marker"]
+                        self.plot_canvas.subplots[i][5][counter]["marker size"] = self.data_style_tab.current_data_style["marker size"]
                 if self.selected_subplot_id in self.plot_canvas.axes:
                     ax = self.plot_canvas.update_one_plot(subplot, self.window())
                     # self.plot_canvas.canvas.blit(ax.bbox)
@@ -927,6 +950,7 @@ class SubplotEditor(QWidget):
                     self.plot_canvas.draw()
                 break
         self.update_subplot_list()
+        
     
     def plot_graphs(self) -> None:
         """plot all subplots"""
@@ -1002,9 +1026,9 @@ class SubplotEditor(QWidget):
         axes_info["x max"] = np.max(extremums[1]) + shift[0]
         axes_info["y min"] = np.min(extremums[2]) - shift[1]
         axes_info["y max"] = np.max(extremums[3]) + shift[1]
-        axes_info["x round accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[0]) - shift[0]),
+        axes_info["x number of rounding digits"] = max([self.find_first_nonzero_digit(np.min(extremums[0]) - shift[0]),
                                                  self.find_first_nonzero_digit(np.max(extremums[1]) + shift[0])]) + 1
-        axes_info["y round accuracy"] = max([self.find_first_nonzero_digit(np.min(extremums[2]) - shift[1]), 
+        axes_info["y number of rounding digits"] = max([self.find_first_nonzero_digit(np.min(extremums[2]) - shift[1]), 
                                                  self.find_first_nonzero_digit(np.max(extremums[3]) + shift[1])]) + 1
         self.current_plot_id += 1
         
@@ -1046,7 +1070,7 @@ class SubplotEditor(QWidget):
                     self.plot_canvas.canvas.draw()
                     self.plot_canvas.draw()
 
-    def find_first_nonzero_digit(self, number:int) -> int:
+    def find_first_nonzero_digit(self, number:int|float) -> int:
         """Return order of the first non zero digit."""
 
         order = 0
@@ -1136,44 +1160,48 @@ class SubplotEditor(QWidget):
 
         self.__update_lines_table__()
    
-    def __add_line_to_subplot__(self) -> None:
+    def __add_line_to_subplot__(self, params=None) -> None:
         """Adds a line to the selected subgraph."""
 
         if self.selected_subplot_id is None:
             return
             
         # Get the line parameters
-        params = {
-            'type': self.lines_tab.line_type_combo.currentIndex(),
-            'color': self.lines_tab.line_color_draw,
-            'width': self.lines_tab.line_width_spin.value(),
-            'style': self.lines_tab.line_style_combo.currentText().split()[0],
-            'id': self.lines_tab.lines_id,
-            'label': "",
-            'label_position': "Above the middle of the line",
-            'label_font_size': 14
-        }
+        if params == None:
+            params = {
+                'type': self.lines_tab.line_type_combo.currentIndex(),
+                'color': self.lines_tab.line_color_draw,
+                'width': self.lines_tab.line_width_spin.value(),
+                'style': self.lines_tab.line_style_combo.currentText().split()[0],
+                'id': self.lines_tab.lines_id,
+                'label': "",
+                'label_position': "Above the middle of the line",
+                'label_font_size': 14
+            }
+            # Get the parameters depending on the type
+            if params['type'] == 0:  # two points
+                params.update({
+                    'x1': self.lines_tab.x1_spin.value(),
+                    'y1': self.lines_tab.y1_spin.value(),
+                    'x2': self.lines_tab.x2_spin.value(),
+                    'y2': self.lines_tab.y2_spin.value()
+                })
+            elif params['type'] == 1:  # equation
+                params.update({
+                    'k': self.lines_tab.k_spin.value(),
+                    'b': self.lines_tab.b_spin.value()
+                })
+            elif params['type'] == 2:  # point and angle
+                params.update({
+                    'px': self.lines_tab.px_spin.value(),
+                    'py': self.lines_tab.py_spin.value(),
+                    'angle': self.lines_tab.angle_spin.value()
+                })
+        else:
+            params["id"] = self.lines_tab.lines_id
         self.lines_tab.lines_id += 1
 
-        # Get the parameters depending on the type
-        if params['type'] == 0:  # two points
-            params.update({
-                'x1': self.lines_tab.x1_spin.value(),
-                'y1': self.lines_tab.y1_spin.value(),
-                'x2': self.lines_tab.x2_spin.value(),
-                'y2': self.lines_tab.y2_spin.value()
-            })
-        elif params['type'] == 1:  # equation
-            params.update({
-                'k': self.lines_tab.k_spin.value(),
-                'b': self.lines_tab.b_spin.value()
-            })
-        elif params['type'] == 2:  # point and angle
-            params.update({
-                'px': self.lines_tab.px_spin.value(),
-                'py': self.lines_tab.py_spin.value(),
-                'angle': self.lines_tab.angle_spin.value()
-            })
+        
 
         # Add a line to the selected subgraph
         for i, subplot in enumerate(self.plot_canvas.subplots):
@@ -1190,7 +1218,7 @@ class SubplotEditor(QWidget):
                     self.plot_canvas.draw()
                 self.__update_lines_table__()
                 if len(subplot) > 7 and subplot[7]:  # If there are lines
-                    self.lines_tab.update_lines_labels(subplot[7][-1])
+                    self.__add_subplot_lines(subplot[7])
                 break
 
     def __work_with_lines_signals__(self, msg: str) -> None:
@@ -1208,7 +1236,7 @@ class SubplotEditor(QWidget):
             self.__add_label_to_line__(int(msg.split(":")[1]))
         elif msg.split(":")[0] == "change label ":
             self.__change_labels_params__(int(msg.split(":")[1]))
-        elif msg.split(":")[0] == "change label ":
+        elif msg.split(":")[0] == "toggle mode ":
             self.__toggle_drawing_mode__(bool(msg.split(":")[1]))
             
     def  __work_with_sub_data_signals__(self, msg: str) -> None:
@@ -1223,7 +1251,6 @@ class SubplotEditor(QWidget):
 
     def __update_lines_table__(self) -> None:
         """Updates the table of existing lines"""
-
 
         self.lines_tab.lines_table.setRowCount(0)
         
