@@ -12,6 +12,7 @@ import csv
 import numpy as np
 # -----------------
 
+from theme_manager import ThemeManager
 from graphClasses import PREPARE_DATA, SubplotEditor
 
 
@@ -37,32 +38,13 @@ class ZAVLABMainWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
+
+        self.theme = 'default'
+        
         self._configure_window()
         self._initialize_components()
         self._setup_ui()
         self._connect_signals()
-
-        
-
-
-
-        #plotting info
-
-        self.data_updated.connect(self.plotter.update_column_data)
-        self.plotter.update_column_data([self.table.item(0, col).text() if self.table.item(0, col) else f"Column {col+1}" for col in range(self.table.columnCount())])
-        #design
-
-        #set some properties
-
-        # styles
-        self.central_widget.setStyleSheet("""
-            QSplitter::handle:horizontal {
-                background-color: #ccc;
-                border: 1px solid #999;
-                height: 12px;  /* Высота ручки */
-                margin: 0px;
-            }
-        """)
 
 
 
@@ -87,6 +69,20 @@ class ZAVLABMainWindow(QMainWindow):
 
         # Vizualization-related widgets
         self.plotter = SubplotEditor()
+
+        # Initial data update
+        self._initialize_plot_data()
+
+
+    def _initialize_plot_data(self) -> None:
+        """Initialize plot with column headers from the table"""
+        
+        column_headers: List[str] = [
+            self.table.item(0, col).text() if self.table.item(0, col) 
+            else f"Column {col + 1}" 
+            for col in range(self.table.columnCount())
+        ]
+        self.plotter.update_column_data(column_headers)
 
 
     def _setup_ui(self) -> None:
@@ -116,7 +112,27 @@ class ZAVLABMainWindow(QMainWindow):
         self.central_widget.setChildrenCollapsible(False)  # Disallow element collapsing
         self.central_widget.setHandleWidth(self.SPLITTER_HANDLE_WIDTH) 
 
+    
+    def _apply_styles(self) -> None:
+        """Get and apply CSS"""
 
+        stylesheet = ThemeManager.get_stylesheet(self.theme)
+        self.central_widget.setStyleSheet(stylesheet)
+
+
+    def _connect_signals(self) -> None:
+        """Connect internal signals"""
+
+        self.data_updated.connect(self.plotter.update_column_data)
+
+
+
+    def set_theme(self, theme_name: str) -> None:
+        """Change app theme"""
+
+        if theme_name in ThemeManager.get_available_themes():
+            self.theme = theme_name
+            self._apply_styles()
 
 
 
