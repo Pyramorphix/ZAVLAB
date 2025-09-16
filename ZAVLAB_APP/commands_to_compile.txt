@@ -1,0 +1,5 @@
+windows:
+pyinstaller --noconsole --onefile --icon=.\icons\icon.ico --name "ZAVLAB" .\classApp.py
+
+Linux:
+ pyinstaller --noconsole --onefile --icon=./icons/icon.ico --name "ZAVLAB" ./classApp.py

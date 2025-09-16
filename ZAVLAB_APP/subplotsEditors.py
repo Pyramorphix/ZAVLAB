@@ -16,8 +16,9 @@ Minimum_Height = 100
 ####
 
 class DataStyleTab(QWidget):
-    """Initialize tab for styling data in subplots."""
+    """A widget for styling data series (lines) within subplots."""
 
+    #signal emitted when some action happens.
     data_style_signal = pyqtSignal(str)
 
     def __init__(self, parent=None) -> None:
@@ -27,6 +28,7 @@ class DataStyleTab(QWidget):
         self.__init_style_tab_ui()
 
     def __init_style_tab_ui(self) -> None:
+        """Initializes the UI components"""
 
         #main layout
         main_layout = QVBoxLayout(self)
@@ -44,27 +46,30 @@ class DataStyleTab(QWidget):
         #style layout
         style_widget: QWidget = QWidget()
         style_layout = QFormLayout(style_widget)
-
-        # Add style_layout
         scroll_container.setWidget(style_widget)
         main_layout.addWidget(scroll_container)
 
+        #widget to choose subplot
         self.data_styles_spin = QComboBox()
         self.data_styles_spin.addItems(["None"])
         self.data_styles_spin.currentTextChanged.connect(self.__data_styles_changed__)
         style_layout.addRow("Data to change:", self.data_styles_spin)
         
+        #widget to change line label
         self.line_label = QLineEdit()
         self.line_label.setText("y(x)")
         self.line_label.setPlaceholderText("Enter line label...")
         style_layout.addRow("Line Label:", self.line_label)
 
+        #widgets for setting line parameters
+        #width
         self.line_width_spin = QDoubleSpinBox()
         self.line_width_spin.setMinimum(0)
-        # self.line_width_spin.setRange(0.1, 10.0)
+        self.line_width_spin.setRange(0.1, 10.0)
         self.line_width_spin.setValue(1.0)
         style_layout.addRow("Line Width:", self.line_width_spin)
         
+        #color
         color_layout = QHBoxLayout()
         self.line_color_btn = QPushButton("Choose Color")
         self.line_color_btn.clicked.connect(self.choose_line_color)
@@ -72,17 +77,18 @@ class DataStyleTab(QWidget):
         self.color_preview.setFixedSize(24, 24)
         self.color_preview.setStyleSheet(f"background-color: {self.line_color}; border: 1px solid #888; border-radius: 3px;")
         self.color_preview.setProperty("color", self.line_color)
-
         color_layout.addWidget(QLabel("Line Color:"))
         color_layout.addWidget(self.color_preview)
         color_layout.addWidget(self.line_color_btn)
         style_layout.addRow(color_layout)
         
+        #line style
         self.line_style_spin = QComboBox()
         self.line_style_spin.addItems(["Nothing", "- (solid)", ": (solid)", "-- (dashed)", "-. (dashdot)"])
         self.line_style_spin.setCurrentIndex(0)
         style_layout.addRow("Line style:", self.line_style_spin)
         
+        #line transparancy
         self.line_transparancy = QDoubleSpinBox()
         self.line_transparancy.setRange(0.0, 1.0)
         self.line_transparancy.setValue(1.0)
@@ -90,17 +96,20 @@ class DataStyleTab(QWidget):
         self.line_transparancy.setDecimals(2)
         style_layout.addRow("Line transparancy:", self.line_transparancy)
 
+        #line markers
         self.dotes_marker_shape = QComboBox()
         self.dotes_marker_shape.addItems(["o", "", ".", ",", "v", "^", "<", ">", "1", "2", "3", "4", "8", "s", "p", "P", "*", "h", "H", "+", "x", "D", "d", "|", "_"])
         self.dotes_marker_shape.setCurrentIndex(0)
         style_layout.addRow("Marker shape:", self.dotes_marker_shape)
 
+        #line marker sizes
         self.dotes_marker_size = QSpinBox()
         self.dotes_marker_size.setMinimum(0)
         self.dotes_marker_size.setValue(3)
         style_layout.addRow("Marker size:", self.dotes_marker_size)
 
-
+        
+        #update button
         self.update_style_btn = QPushButton("Update Data Style")
         self.update_style_btn.clicked.connect(self.__update_data_style__)
         style_layout.addRow(self.update_style_btn)
@@ -143,7 +152,6 @@ class DataStyleTab(QWidget):
     def __populate_controls__(self, data_series: dict) -> None:
         """Populates style tab with information about selected subplot."""
 
-        # Populate style controls
         self.data_styles_spin.clear()
         self.data_styles_spin.addItems([f"{data['y']}({data['x']}) - {data['id']}" for data in data_series])
         self.data_styles_spin.setCurrentIndex(0)
@@ -181,19 +189,8 @@ class DataStyleTab(QWidget):
                 "ls": new_ls, "alpha": new_alpha, "marker": new_marker,
                 "marker size": new_marker_size, "id": int(self.data_styles_spin.currentText().split()[-1])}
 
-    def __interactive_edit_data_style(self, series_id: int) -> None:
-        # set current series
-        self.data_styles_spin.setCurrentText("Subplot " + str(series_id))
-        # Set the current color
-        self.line_color = self.current_data_style['color']
-        self.color_preview.setStyleSheet(f"background-color: {self.line_color};")
-        
-        # Set the current width and ls
-        self.line_width_spin.setValue(self.current_data_style['width'])
-        self.line_style_spin.setCurrentText(self.current_data_style['ls'])
-
     def clear_selection(self) -> None:
-        """clear selection."""
+        """clear selection"""
 
         self.line_width_spin.setValue(1.0)
         self.line_color = "#1f77b4"
@@ -206,6 +203,7 @@ class DataStyleTab(QWidget):
 
     def edit_line_style(self, line) -> None:
         """
+        Used for interactive user interaction with plot.
         Edit style properties of a selected plot line:
         - Switches to style tab
         - Loads current line properties into editors
@@ -243,8 +241,9 @@ class DataStyleTab(QWidget):
 
 
 class SubplotStyleTab(QWidget):
-    """Initialize UI for subplots styling tab."""
+    """A widget for styling subplot properties including axes, title, legend, and grid."""
 
+    #signal emitted when some action happens.
     sub_style_signal = pyqtSignal(str)
 
     def __init__(self, parent=None) -> None:
@@ -252,10 +251,12 @@ class SubplotStyleTab(QWidget):
         self.__init_subplot_style_tab_ui__()
     
     def __init_subplot_style_tab_ui__(self) -> None:
-        """Initialize subplot styling tab."""
+        """Initializes the UI components."""
 
+        #main layout
         sub_style_layout = QVBoxLayout(self)
 
+        #main tree
         self.settings_tree = QTreeWidget()
         self.settings_tree.setHeaderLabels(["Parameters", "Values"])
         self.settings_tree.setAlternatingRowColors(True)
@@ -290,17 +291,19 @@ class SubplotStyleTab(QWidget):
         sub_style_layout.addWidget(self.update_sub_style_btn)
     
     def __update_sub_style__(self) -> None:
-        """Update  style properties for the subplot"""
+        """Emits signal to update subplot style."""
 
         self.sub_style_signal.emit("sub style changed")
 
     def __add_axes_group__(self) -> None:
-        """Add a tree group for axes settings."""
+        """Adds axes settings to the tree widget."""
 
+        #main group
         group_main = QTreeWidgetItem(self.settings_tree, ["Axes"])
         group_x = QTreeWidgetItem(group_main, ["X axis"])
         group_y = QTreeWidgetItem(group_main, ["Y axis"])
 
+        #Axes parameters
         params = [
             ("X Axis Title", "text", "X"),
             ("X labels font size", "int", 14, 0),
@@ -321,6 +324,8 @@ class SubplotStyleTab(QWidget):
             ("Y scale", "combo", "Linear", ["Linear", "Logarithmic"]),            
         ]
 
+        #axes widgets
+        #x
         self.x_title = None
         self.x_min = None
         self.x_max = None
@@ -330,6 +335,7 @@ class SubplotStyleTab(QWidget):
         self.x_scale = None
         self.x_number_of_ac = None
 
+        #y
         self.y_title = None
         self.y_min = None
         self.y_max = None
@@ -339,6 +345,7 @@ class SubplotStyleTab(QWidget):
         self.y_scale = None
         self.y_number_of_ac = None
 
+        #set all axes widgets
         for name, ptype, default, *args in params:
             if name[0] == "X":
                 editor = self.__add_parameter__(group_x, name, ptype, default, *args)
@@ -411,19 +418,21 @@ class SubplotStyleTab(QWidget):
                 self.y_number_of_ac.valueChanged.connect(self.update_range)
 
     def update_range(self) -> None:
-        """Updates limits for axis"""
+        """Updates limits for axes."""
 
         axes_info = {"x min": self.x_min.value(), "x max": self.x_max.value(), "x number of rounding digits": self.x_number_of_ac.value(),
                      "y min": self.y_min.value(), "y max": self.y_max.value(), "y number of rounding digits": self.y_number_of_ac.value()}
         self.__set_new_axes_ranges__(axes_info)
 
     def __add_subplot_main_settings_group(self) -> None:
-        """Add main settings for subplot group."""
+        """Adds main subplot settings to the tree widget."""
 
+        #tree for subplot group
         group: QTreeWidgetItem = QTreeWidgetItem(self.settings_tree, ["Subplot main settings"])
         title_group: QTreeWidgetItem = QTreeWidgetItem(group, ["Title"])
         legend_group: QTreeWidgetItem = QTreeWidgetItem(group, ["Legend"])
 
+        #subplot params
         params = [
             ("Subplot Title", "text", "a"),
             ("Subplot title font size", "int", 14, 0),
@@ -431,11 +440,13 @@ class SubplotStyleTab(QWidget):
             ("Legend font size", "int", 14, 0)
         ]
 
+        #subplot widgets
         self.subplot_title = None
         self.subplot_title_fs = None
         self.legend_position = None
         self.legend_fs = None
 
+        #set subplot widgets
         for name, ptype, default, *args in params[:2]:
             editor = self.__add_parameter__(title_group, name, ptype, default, *args)
             if name == "Subplot Title":
@@ -552,8 +563,13 @@ class SubplotStyleTab(QWidget):
             self.y_max.setValue(10)
 
     def __add_parameter__(self, parent: QTreeWidgetItem, name: str, ptype: str, default: str|float|int, *args: tuple) -> None:
-        """Add a parameter to the group and return the editor widget"""
+        """
+        Adds a parameter row to the tree.
+        
+        Return: editor widget
+        """
 
+        #tree for params
         param_item = QTreeWidgetItem(parent, [name])
         editor = None
         
@@ -765,6 +781,9 @@ class SubplotStyleTab(QWidget):
         self.grid_checkbox.setChecked(True)
 
     def populate_control(self, sub_info: dict) -> None:
+        """Populates controls with existing subplot properties."""
+
+        #get subplot info
         axes_info: dict = sub_info["axes"]
         title_info: dict = sub_info["title"]
         legend_info: dict = sub_info["legend"]
@@ -809,7 +828,11 @@ class SubplotStyleTab(QWidget):
 
 
 class LineStyleTab(QWidget):
+    """
+    A widget for adding and managing annotation lines (e.g., trend lines, guides).
+    """
 
+    #Emitted for line-related actions.
     line_style_signal = pyqtSignal(str)
 
     def __init__(self, parent=None) -> None:
@@ -817,7 +840,7 @@ class LineStyleTab(QWidget):
         self.__init_line_style_tab_ui__()
 
     def __init_line_style_tab_ui__(self) -> None:
-        """Adding a tab to manage the lines."""
+        """Initializes the UI components."""
 
         #main layout
         main_layout = QVBoxLayout(self)
@@ -1054,13 +1077,13 @@ class LineStyleTab(QWidget):
     def __delete_line_label__(self, line_index: int) -> None:
         """Delete position for adding label for line with index line_index."""
 
-
         index = self.line.findText("Line " + str(line_index))
         if index >= 0:
             self.line.removeItem(index)
 
     def on_line_selected(self) -> None:
         """Fills in the signature fields when selecting a line."""
+
         try:
             row = self.lines_table.selectedItems()[0].text()
 
@@ -1107,8 +1130,9 @@ class LineStyleTab(QWidget):
 
 
 class PositioningChoosingDataTab(QWidget):
-    """Initialize tab for changing subplot position, size, and placed data."""
+    """A widget for managing subplot position, size, and associated data."""
 
+    # Emitted for position/data changes.
     pos_data_signal = pyqtSignal(str)
 
     def __init__(self, parent=None) -> None:
@@ -1116,7 +1140,7 @@ class PositioningChoosingDataTab(QWidget):
         self.__init_pos_data_tab__()
     
     def __init_pos_data_tab__(self) -> None:
-        """Initialize tab for changing position, size and data of a subplot."""
+        """Initializes the UI components."""
     
         #main layout
         main_layout = QVBoxLayout(self)

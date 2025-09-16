@@ -656,6 +656,7 @@ class LegendConfigDialog(QDialog):
     def get_data(self):
         return self.subplot_config
 
+
 class TitleConfigDialog(QDialog):
     def __init__(self, ax, subplot_config, parent=None):
         super().__init__(parent)
@@ -692,7 +693,7 @@ class TitleConfigDialog(QDialog):
     def get_data(self):
         return self.subplot_config
 
-# Changes to GridConfigDialog
+
 class GridConfigDialog(QDialog):
     def __init__(self, subplot_config, parent=None):
         super().__init__(parent)
@@ -721,6 +722,7 @@ class GridConfigDialog(QDialog):
 
     def get_data(self):
         return self.subplot_config
+
 
 class LineLabelDialog(QDialog):
 

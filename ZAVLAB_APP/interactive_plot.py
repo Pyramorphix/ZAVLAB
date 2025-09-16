@@ -16,6 +16,7 @@ from matplotlib.axes import Axes
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.ticker import NullFormatter
 from dialogs import DataStyleDialog
 
 #constant and global parameters
@@ -374,6 +375,8 @@ class INTERACTIVE_PLOT(FigureCanvas):
                             ha='center', va='center', fontsize=10,
                             transform=ax.transAxes, alpha=0.5)
                     ax.axis('off')
+                    # ax.xaxis.set_major_formatter(NullFormatter())
+                    # ax.yaxis.set_major_formatter(NullFormatter())
         
         self.fig.tight_layout()
         self.canvas.draw()
@@ -441,25 +444,59 @@ class INTERACTIVE_PLOT(FigureCanvas):
 
         #local functions for rounding labels
         def zero_formatter_x(x, pos, acc=axes_info["x number of rounding digits"]):
-            rounded_x = round(x, acc)
-            if abs(rounded_x) < 1e-8:
-                return "0" 
+            if acc is None:
+                acc = 2  # Default precision if not set
+            try:
+                acc = int(acc)  # Ensure it's an integer
+            except (ValueError, TypeError):
+                acc = 2  # Fallback to default if conversion fails
+            if acc >= 0:
+                rounded_x = round(x, acc)
+                if abs(rounded_x) < 1e-8:
+                    return "0" 
+                else:
+                    return f"{x:.{acc}f}"
             else:
-                return f"{x:.{acc}f}"
+                factor = 10 **(-acc)
+                rounded_x = round(x / factor) * factor
+                if abs(rounded_x) < 1e-8:
+                    return "0" 
+                else:
+                    return f'{rounded_x:.0f}'
     
         def zero_formatter_y(y, pos, acc=axes_info["y number of rounding digits"]):
-            rounded_y = round(y, acc)
-            if abs(rounded_y) < 1e-8:
-                return "0" 
+            if acc is None:
+                acc = 2
+            try:
+                acc = int(acc)
+            except (ValueError, TypeError):
+                acc = 2
+            if acc >= 0:
+                rounded_y = round(y, acc)
+                if abs(rounded_y) < 1e-8:
+                    return "0" 
+                else:
+                    return f"{y:.{acc}f}"
             else:
-                return f"{y:.{acc}f}"
-            
+                factor = 10 **(-acc)
+                rounded_y = round(y / factor) * factor
+                if abs(rounded_y) < 1e-8:
+                    return "0" 
+                else:
+                    return f'{rounded_y:.0f}'          
+
         #set x axis
         if not axes_info["x scale"]:
             ax.set_xscale("linear")
         else:
             ax.set_xscale("log")
-        ax.set_xlabel(axes_info["x-label"], loc="center", fontsize=axes_info["x label fs"])
+        try:
+            ax.set_xlabel(axes_info["x-label"], loc="center", fontsize=axes_info["x label fs"], usetex=True)
+            self.canvas.draw()
+            plt.draw()
+        except Exception as e:
+            ax.set_xlabel(axes_info["x-label"], loc="center", fontsize=axes_info["x label fs"], usetex=False)
+
         ax.xaxis.set_major_formatter(ticker.FuncFormatter(zero_formatter_x))
         ax.xaxis.set_ticks_position("bottom")
         ax.tick_params(axis='x', length=4, width=2, labelsize=axes_info["x label fs"], direction ='in')
@@ -476,7 +513,13 @@ class INTERACTIVE_PLOT(FigureCanvas):
             ax.set_yscale("linear")
         else:
             ax.set_yscale("log")
-        ax.set_ylabel(axes_info["y-label"], loc="center", fontsize=axes_info["y label fs"])
+        try:
+            ax.set_ylabel(axes_info["y-label"], loc="center", fontsize=axes_info["y label fs"], usetex=True)
+            plt.draw()
+        except Exception as e:
+            ax.set_ylabel(axes_info["y-label"], loc="center", fontsize=axes_info["y label fs"], usetex=False)
+
+
         ax.yaxis.set_major_formatter(ticker.FuncFormatter(zero_formatter_y))        
         ax.yaxis.set_ticks_position("left")
         ax.tick_params(axis='y', length=4, width=2, labelsize=axes_info["y label fs"], direction ='in')

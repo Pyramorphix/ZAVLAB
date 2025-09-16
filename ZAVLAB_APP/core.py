@@ -6,8 +6,13 @@ import os
 
 ###Constants
 TIMER_INTERVAL = 60000 # in ms = 1 minute
+###
 
 class AutoSaveManager(QObject):
+    """
+    An object that creates backup in case of emergency situation.
+    """
+
     def __init__(self, parent=None, save_interval=TIMER_INTERVAL): 
         super().__init__(parent)
         self.save_interval = save_interval
@@ -15,14 +20,17 @@ class AutoSaveManager(QObject):
         self.timer.timeout.connect(self.auto_save)
         self.timer.start(self.save_interval)
         
+        #create log dir if current directory doesn't have it
         log_dir = 'logs'
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         
+        #create files dir if current directory doesn't have it
         file_dir = 'files'
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
 
+        #create logging funciton
         logging.basicConfig(
             filename='logs/app_autosave.log',
             level=logging.INFO,
@@ -30,6 +38,8 @@ class AutoSaveManager(QObject):
         )
     
     def auto_save(self):
+        """Creates backup files with current data and app settings."""
+
         try:
             sub_state = self.parent().plotter.get_state()  
             state = self.parent().get_state()
@@ -38,7 +48,9 @@ class AutoSaveManager(QObject):
         except Exception as e:
             logging.error(f"Auto-save error: {str(e)}")
     
-    def save_to_file(self, sub_state, state, filename_subs="./files/autosave_backup_subplots.json", filename="./files/autosave_backup_table.json"):
+    def save_to_file(self, sub_state: dict, state: dict, filename_subs="./files/autosave_backup_subplots.json", filename="./files/autosave_backup_table.json"):
+        """Saves current state."""
+        
         try:
             with open(filename_subs, 'w') as f:
                 json.dump(sub_state, f, indent=4)
@@ -53,7 +65,9 @@ class AutoSaveManager(QObject):
         except Exception as e:
             logging.error(f"File recording error: {str(e)}")
 
-    def load_backup(self, filename_subs="./files/sub_setting_final.json", filename="./files/settings_final.json", last_copy_subs="./files/autosave_backup_subplots.json", last_copy="./files/autosave_backup.json"):
+    def load_backup(self, filename_subs="./files/sub_setting_final.json", filename="./files/settings_final.json", last_copy_subs="./files/autosave_backup_subplots.json", last_copy="./files/autosave_backup.json") -> tuple[dict, dict]:
+        """Loads backup files"""
+        
         try:
             with open(filename_subs, 'r') as f:
                 sub_state = json.load(f)
@@ -65,7 +79,7 @@ class AutoSaveManager(QObject):
             return (None, None)
         except Exception as e:
             logging.error(f"File reading error: {str(e)}")
-            # Пробуем загрузить из резервной копии
+            # In case of errors tries to save from last backup
             try:
                 with open(f"{last_copy_subs}.backup", 'r') as f:
                     sub_state = json.load(f)

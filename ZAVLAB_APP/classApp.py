@@ -1123,8 +1123,8 @@ class ZAVLAB(QMainWindow):
         if state:
             reply = QMessageBox.question(
                 self, 
-                "Восстановление настроек", 
-                "Обнаружены сохраненные настройки. Восстановить их?",
+                "Restoring settings",
+                "Saved settings are detected. Restore them?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply == QMessageBox.StandardButton.Yes:
@@ -1138,7 +1138,7 @@ class ZAVLAB(QMainWindow):
             sub_state = self.plotter.get_state()  
             self.auto_save_manager.save_to_file(sub_state, state, "./files/sub_setting_final.json","./files/settings_final.json")
         except Exception as e:
-            logging.error(f"Ошибка сохранения при закрытии: {str(e)}")
+            logging.error(f"Saving error when closing: {str(e)}")
         
         event.accept()
 
@@ -1213,8 +1213,8 @@ class ZAVLAB(QMainWindow):
             self.update_headers()
             
         except Exception as e:
-            logging.error(f"Ошибка восстановления состояния: {str(e)}")
-            QMessageBox.warning(self, "Ошибка", f"Не удалось восстановить состояние: {str(e)}")
+            logging.error(f"Status recovery error: {str(e)}")
+            QMessageBox.warning(self, "Error", f"Failed to restore state: {str(e)}")
 
 if __name__ == "__main__":
     app = QApplication([])

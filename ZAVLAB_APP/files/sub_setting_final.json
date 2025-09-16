@@ -1,6 +1,6 @@
 {
     "grid": {
-        "rows": 1,
+        "rows": 2,
         "cols": 1
     },
     "subplots": [
@@ -30,7 +30,7 @@
             ],
             "sub_info": {
                 "axes": {
-                    "x-label": "None",
+                    "x-label": "$\\tau$",
                     "x min": -0.05,
                     "x max": 1.05,
                     "x ticks": 10,
@@ -39,8 +39,8 @@
                     "x scale": 0,
                     "x number of rounding digits": 2,
                     "y-label": "None",
-                    "y min": -0.05,
-                    "y max": 1.05,
+                    "y min": 0.0,
+                    "y max": 1.0,
                     "y ticks": 10,
                     "y small ticks": 5,
                     "y label fs": 14,
@@ -59,96 +59,65 @@
                     "show grid": true
                 }
             },
-            "lines": [
+            "lines": []
+        },
+        {
+            "id": 1,
+            "position": {
+                "row": 1,
+                "col": 0,
+                "row_span": 1,
+                "col_span": 1
+            },
+            "data_series": [
                 {
-                    "type": 0,
-                    "color": "#ff0000",
-                    "width": 0.1,
-                    "style": "-",
                     "id": 0,
-                    "label": "",
-                    "label_position": "Above the middle of the line",
-                    "label_font_size": 14,
-                    "x1": -1.0,
-                    "y1": -1.0,
-                    "x2": 0.0,
-                    "y2": 0.0
-                },
-                {
-                    "type": 0,
-                    "color": "#ff0000",
-                    "width": 0.1,
-                    "style": "-",
-                    "id": 1,
-                    "label": "qe",
-                    "label_position": "To the left of the end",
-                    "label_font_size": 14,
-                    "x1": -1.0,
-                    "y1": -1.0,
-                    "x2": 0.0,
-                    "y2": 0.0
-                },
-                {
-                    "type": 0,
-                    "color": "#ff0000",
-                    "width": 0.1,
-                    "style": "-",
-                    "id": 2,
-                    "label": "",
-                    "label_position": "Above the middle of the line",
-                    "label_font_size": 14,
-                    "x1": -1.0,
-                    "y1": -1.0,
-                    "x2": 0.0,
-                    "y2": 0.0
-                },
-                {
-                    "type": 0,
-                    "color": "#ff0000",
-                    "width": 0.1,
-                    "style": "-",
-                    "id": 3,
-                    "label": "",
-                    "label_position": "Above the middle of the line",
-                    "label_font_size": 14,
-                    "x1": -1.0,
-                    "y1": -1.0,
-                    "x2": 0.0,
-                    "y2": 0.0
-                },
-                {
-                    "type": 0,
-                    "color": "#ff0000",
-                    "width": 1.5,
-                    "style": "-",
-                    "id": 0,
-                    "label": "",
-                    "label_position": "Above the middle of the line",
-                    "label_font_size": 14,
-                    "x1": 0.0,
-                    "y1": 0.0,
-                    "x2": 0.0,
-                    "y2": 0.0
-                },
-                {
-                    "type": 2,
-                    "color": "#ff0000",
-                    "width": 1.5,
-                    "style": "-",
-                    "id": 1,
-                    "label": "",
-                    "label_position": "Above the middle of the line",
-                    "label_font_size": 14,
-                    "px": 0.0,
-                    "py": 0.0,
-                    "angle": 2.0,
-                    "x1": -0.05,
-                    "x2": 1.05,
-                    "y1": 0.10925199316307595,
-                    "y2": -2.294291856424595
+                    "x": "T",
+                    "xerr": "None",
+                    "y": "P",
+                    "yerr": "None",
+                    "color": "#1f77b4",
+                    "width": 1.0,
+                    "label": "P(T)",
+                    "ls": "",
+                    "alpha": 1.0,
+                    "marker": "o",
+                    "marker size": 3
                 }
-            ]
+            ],
+            "sub_info": {
+                "axes": {
+                    "x-label": "T",
+                    "x min": 956.6,
+                    "x max": 1515.4,
+                    "x ticks": 10,
+                    "x small ticks": 5,
+                    "x label fs": 14,
+                    "x scale": 0,
+                    "x number of rounding digits": -1,
+                    "y-label": "P",
+                    "y min": 40.54600000000001,
+                    "y max": 190.014,
+                    "y ticks": 10,
+                    "y small ticks": 5,
+                    "y label fs": 14,
+                    "y scale": 0,
+                    "y number of rounding digits": 0
+                },
+                "title": {
+                    "title": "a",
+                    "title fs": 14
+                },
+                "legend": {
+                    "legend position": "best",
+                    "legend fs": 14
+                },
+                "grid": {
+                    "show grid": true
+                }
+            },
+            "lines": []
         }
     ],
-    "current_id": 1
+    "current_id": 2
 }
