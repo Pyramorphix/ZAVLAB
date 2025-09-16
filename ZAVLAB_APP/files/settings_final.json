@@ -1,0 +1,255 @@
+{
+    "table": {
+        "decimal_places": 2,
+        "column_names": [
+            "A",
+            "B"
+        ],
+        "formulas": [
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ],
+            [
+                "",
+                ""
+            ]
+        ],
+        "row_count": 20,
+        "column_count": 2
+    },
+    "window": {
+        "geometry": "01d9d0cb00030000000000f00000006a0000059f000003a7000000f0000000880000059f000003a700000000000000000690000000f0000000880000059f000003a7",
+        "state": "000000ff00000000fd00000000000004b0000002ff00000004000000040000000800000008fc00000000"
+    },
+    "splitter_sizes": [
+        150,
+        1027
+    ],
+    "plotter": {
+        "grid": {
+            "rows": 1,
+            "cols": 1
+        },
+        "subplots": [
+            {
+                "id": 0,
+                "position": {
+                    "row": 0,
+                    "col": 0,
+                    "row_span": 1,
+                    "col_span": 1
+                },
+                "data_series": [
+                    {
+                        "id": 0,
+                        "x": "None",
+                        "xerr": "None",
+                        "y": "None",
+                        "yerr": "None",
+                        "color": "#1f77b4",
+                        "width": 1.0,
+                        "label": "None(None)",
+                        "ls": "",
+                        "alpha": 1.0,
+                        "marker": "o",
+                        "marker size": 3
+                    }
+                ],
+                "sub_info": {
+                    "axes": {
+                        "x-label": "None",
+                        "x min": -0.05,
+                        "x max": 1.05,
+                        "x ticks": 10,
+                        "x small ticks": 5,
+                        "x label fs": 14,
+                        "x scale": 0,
+                        "x number of rounding digits": 2,
+                        "y-label": "None",
+                        "y min": -0.05,
+                        "y max": 1.05,
+                        "y ticks": 10,
+                        "y small ticks": 5,
+                        "y label fs": 14,
+                        "y scale": 0,
+                        "y number of rounding digits": 2
+                    },
+                    "title": {
+                        "title": "a",
+                        "title fs": 14
+                    },
+                    "legend": {
+                        "legend position": "best",
+                        "legend fs": 14
+                    },
+                    "grid": {
+                        "show grid": true
+                    }
+                },
+                "lines": [
+                    {
+                        "type": 0,
+                        "color": "#ff0000",
+                        "width": 0.1,
+                        "style": "-",
+                        "id": 0,
+                        "label": "",
+                        "label_position": "Above the middle of the line",
+                        "label_font_size": 14,
+                        "x1": -1.0,
+                        "y1": -1.0,
+                        "x2": 0.0,
+                        "y2": 0.0
+                    },
+                    {
+                        "type": 0,
+                        "color": "#ff0000",
+                        "width": 0.1,
+                        "style": "-",
+                        "id": 1,
+                        "label": "qe",
+                        "label_position": "To the left of the end",
+                        "label_font_size": 14,
+                        "x1": -1.0,
+                        "y1": -1.0,
+                        "x2": 0.0,
+                        "y2": 0.0
+                    },
+                    {
+                        "type": 0,
+                        "color": "#ff0000",
+                        "width": 0.1,
+                        "style": "-",
+                        "id": 2,
+                        "label": "",
+                        "label_position": "Above the middle of the line",
+                        "label_font_size": 14,
+                        "x1": -1.0,
+                        "y1": -1.0,
+                        "x2": 0.0,
+                        "y2": 0.0
+                    },
+                    {
+                        "type": 0,
+                        "color": "#ff0000",
+                        "width": 0.1,
+                        "style": "-",
+                        "id": 3,
+                        "label": "",
+                        "label_position": "Above the middle of the line",
+                        "label_font_size": 14,
+                        "x1": -1.0,
+                        "y1": -1.0,
+                        "x2": 0.0,
+                        "y2": 0.0
+                    },
+                    {
+                        "type": 0,
+                        "color": "#ff0000",
+                        "width": 1.5,
+                        "style": "-",
+                        "id": 0,
+                        "label": "",
+                        "label_position": "Above the middle of the line",
+                        "label_font_size": 14,
+                        "x1": 0.0,
+                        "y1": 0.0,
+                        "x2": 0.0,
+                        "y2": 0.0
+                    },
+                    {
+                        "type": 2,
+                        "color": "#ff0000",
+                        "width": 1.5,
+                        "style": "-",
+                        "id": 1,
+                        "label": "",
+                        "label_position": "Above the middle of the line",
+                        "label_font_size": 14,
+                        "px": 0.0,
+                        "py": 0.0,
+                        "angle": 2.0,
+                        "x1": -0.05,
+                        "x2": 1.05,
+                        "y1": 0.10925199316307595,
+                        "y2": -2.294291856424595
+                    }
+                ]
+            }
+        ],
+        "current_id": 1
+    }
+}
