@@ -29,7 +29,8 @@ class DataSeriesDialog(QDialog):
         Initialize data series dialog
         
         Args:
-            headers: List of available column 
+            headers: List of available column headers from data source
+            max_id: Starting ID for new data series
             parent: Parent Qt widget
         """
 
@@ -39,6 +40,7 @@ class DataSeriesDialog(QDialog):
 
     def __init_dialog_window__(self) -> None:
         """Initialize Dialog window for configuring data series."""
+        
         self.setWindowTitle("Data Series Configuration")
 
     def __init_dialog_ui__(self, headers: list[str], max_id:int = 0) -> None:
@@ -209,10 +211,7 @@ class DataSeriesDialog(QDialog):
         return self.series
 
     def get_axes_info(self) -> dict:
-        """
-        Return subplot information
-        """
-
+        """Return subplot axes information with default values."""
 
         return {"x-label": self.x_line_edit.text(),
                 "x min": 0,
@@ -233,6 +232,8 @@ class DataSeriesDialog(QDialog):
                 }
     
     def get_title_info(self) -> dict:
+        """Return subplot title information with default values."""
+
         return {"title": f"{self.data_combo_y.currentText()}({self.data_combo_x.currentText()})",
                 "title fs": 14}
 
@@ -258,6 +259,7 @@ class AxisConfigDialog(QDialog):
             subplots_config: Reference to the subplot configuration
             parent: Parent Qt widget
         """
+
         super().__init__(parent)
         self.ax = ax
         self.axis_type = axis_type
@@ -412,6 +414,7 @@ class AxisConfigDialog(QDialog):
 
     def __accept_new_axes_info__(self):
         """Validate and apply new axis configuration"""
+        
         try:
             # Get all values
             min_val = self.min_edit.value()
@@ -462,6 +465,8 @@ class AxisConfigDialog(QDialog):
             QMessageBox.warning(self, "Error", f"Invalid input: {str(e)}")
 
     def get_data(self) -> dict:
+        """Return updated subplot configuration."""
+
         return self.subplot_config
 
 
@@ -493,8 +498,7 @@ class SubplotPositionDialog(QDialog):
         self.__init_dialog_ui__()
     
     def __init_all_sub_config(self, subs: list, max_row: int, max_col: int, base_info: list) -> None:
-        """Initialize all needed information."""
-
+        """Initialize all needed information for subplot positioning."""
 
         self.subs: list = subs
         self.max_row: int = max_row
@@ -503,8 +507,7 @@ class SubplotPositionDialog(QDialog):
         self.base_info: list = base_info[:-1]
 
     def __init_dialog_window__(self) -> None:
-        """Initialize dialog window for subplot poisitioning dialog."""
-
+        """Initialize dialog window for subplot positioning dialog."""
 
         self.setWindowTitle(f"Change subplot {self.id} configuration")
 
@@ -566,7 +569,10 @@ class SubplotPositionDialog(QDialog):
         return self.col_spin.value() + self.col_span_spin.value() > self.max_col
     
     def __rectangles_overlap__(self, rect1, rect2) -> bool:
-        """Check if two rectangles overlap."""
+        """
+        Check if two rectangles overlap.
+        Return: true if ovdrlaps, false othervise
+        """
 
 
         r1_row, r1_col, r1_row_span, r1_col_span = rect1
@@ -594,7 +600,6 @@ class SubplotPositionDialog(QDialog):
     def validate_input(self):
         """Validate all data entered in dialog window."""
 
-
         if self.__validate_col__():
             QMessageBox.warning(self, "Invalid Position", 
                                 f"Row span exceeds grid height (max row: {self.max_row-1})")
@@ -610,18 +615,34 @@ class SubplotPositionDialog(QDialog):
     def get_data(self):
         """Return new subplot poisition and size."""
 
-
         return (self.row_spin.value(), self.row_span_spin.value(), self.col_spin.value(), self.col_span_spin.value())
 
 
 class LegendConfigDialog(QDialog):
+    """
+    Dialog for configuring plot legend properties:
+    - Legend position selection
+    - Font size adjustment
+    - Applies settings to matplotlib legend and updates subplot configuration
+    """
+
     def __init__(self, ax, subplot_config, parent=None):
+        """
+        Initialize legend configuration dialog
+        
+        Args:
+            ax: Matplotlib axis object containing the legend
+            subplot_config: Reference to the subplot configuration dictionary
+            parent: Parent Qt widget
+        """
+
         super().__init__(parent)
         self.ax = ax
         self.subplot_config = subplot_config
         self.setWindowTitle("Setting up a Legend")
         layout = QFormLayout(self)
         
+        # Position selection combo box
         self.position_combo = QComboBox()
         self.position_combo.addItems(['best', 'upper right', 'upper left', 'lower left', 
                                       'lower right', 'right', 'center left', 'center right', 
@@ -634,6 +655,7 @@ class LegendConfigDialog(QDialog):
         
         self.position_combo.setCurrentText(current_position)
         
+        # Font size selection
         self.font_size_spin = QSpinBox()
         self.font_size_spin.setRange(6, 24)
         self.font_size_spin.setValue(current_font_size)
@@ -641,6 +663,7 @@ class LegendConfigDialog(QDialog):
         layout.addRow("Position:", self.position_combo)
         layout.addRow("Font size:", self.font_size_spin)
         
+        # Dialog buttons
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
                                   QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.__accept_new_legend_info__)
@@ -648,17 +671,45 @@ class LegendConfigDialog(QDialog):
         layout.addRow(buttons)
 
     def __accept_new_legend_info__(self):
+        """
+        Apply new legend configuration settings to the subplot
+        and close the dialog
+        """
+
         legend_config = self.subplot_config[6]["legend"]
         legend_config["legend position"] = self.position_combo.currentText()
         legend_config["legend fs"] = self.font_size_spin.value()
         self.accept()
 
     def get_data(self):
+        """
+        Return updated subplot configuration with new legend settings
+        
+        Returns:
+            dict: Updated subplot configuration
+        """
+
         return self.subplot_config
 
 
 class TitleConfigDialog(QDialog):
+    """
+    Dialog for configuring plot title properties:
+    - Title text content
+    - Title font size
+    - Applies settings to matplotlib title and updates subplot configuration
+    """
+
     def __init__(self, ax, subplot_config, parent=None):
+        """
+        Initialize title configuration dialog
+        
+        Args:
+            ax: Matplotlib axis object containing the title
+            subplot_config: Reference to the subplot configuration dictionary
+            parent: Parent Qt widget
+        """
+
         super().__init__(parent)
         self.ax = ax
         self.subplot_config = subplot_config
@@ -670,7 +721,10 @@ class TitleConfigDialog(QDialog):
         current_title = title_config.get("title", "")
         current_font_size = title_config.get("title fs", 14)
         
+        # Title text input
         self.title_edit = QLineEdit(current_title)
+        
+        # Font size selection
         self.font_size_spin = QSpinBox()
         self.font_size_spin.setRange(6, 24)
         self.font_size_spin.setValue(current_font_size)
@@ -678,6 +732,7 @@ class TitleConfigDialog(QDialog):
         layout.addRow("Title:", self.title_edit)
         layout.addRow("Font size:", self.font_size_spin)
         
+        # Dialog buttons
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
                                   QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.__accept_new_title_info__)
@@ -685,17 +740,43 @@ class TitleConfigDialog(QDialog):
         layout.addRow(buttons)
 
     def __accept_new_title_info__(self):
+        """
+        Apply new title configuration settings to the subplot
+        and close the dialog
+        """
+
         title_config = self.subplot_config[6]["title"]
         title_config["title"] = self.title_edit.text()
         title_config["title fs"] = self.font_size_spin.value()
         self.accept()
 
     def get_data(self):
+        """
+        Return updated subplot configuration with new title settings
+        
+        Returns:
+            dict: Updated subplot configuration
+        """
+
         return self.subplot_config
 
 
 class GridConfigDialog(QDialog):
+    """
+    Dialog for configuring plot grid properties:
+    - Toggle grid visibility on/off
+    - Applies settings to matplotlib grid and updates subplot configuration
+    """
+    
     def __init__(self, subplot_config, parent=None):
+        """
+        Initialize grid configuration dialog
+        
+        Args:
+            subplot_config: Reference to the subplot configuration dictionary
+            parent: Parent Qt widget
+        """
+
         super().__init__(parent)
         self.subplot_config = subplot_config
         self.setWindowTitle("Setting up the Grid")
@@ -705,10 +786,12 @@ class GridConfigDialog(QDialog):
         grid_config = self.subplot_config[6]["grid"]
         current_grid_state = grid_config.get("show grid", True)
         
+        # Grid visibility checkbox
         self.grid_checkbox = QCheckBox("Show the grid")
         self.grid_checkbox.setChecked(current_grid_state)
         layout.addWidget(self.grid_checkbox)
         
+        # Dialog buttons
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
                                   QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.__accept_new_grid_info__)
@@ -716,18 +799,45 @@ class GridConfigDialog(QDialog):
         layout.addWidget(buttons)
 
     def __accept_new_grid_info__(self):
+        """
+        Apply new grid configuration settings to the subplot
+        and close the dialog
+        """
+
         grid_config = self.subplot_config[6]["grid"]
         grid_config["show grid"] = self.grid_checkbox.isChecked()
         self.accept()
 
     def get_data(self):
+        """
+        Return updated subplot configuration with new grid settings
+        
+        Returns:
+            dict: Updated subplot configuration
+        """
+
         return self.subplot_config
 
 
 class LineLabelDialog(QDialog):
+    """
+    Dialog for configuring line label properties:
+    - Text content for line annotations
+    - Position relative to the line
+    - Font size for labels
+    - Applies settings to matplotlib text annotations
+    """
 
 
     def __init__(self, line_params, parent=None):
+        """
+        Initialize line label configuration dialog
+        
+        Args:
+            line_params: Dictionary containing current line label parameters
+            parent: Parent Qt widget
+        """
+
         super().__init__(parent)
         self.line_params = line_params
         self.setWindowTitle("Line Label Configuration")
@@ -768,51 +878,24 @@ class LineLabelDialog(QDialog):
         layout.addRow(buttons)
     
     def __accept_new_label_info__(self):
+        """
+        Apply new line label configuration settings
+        and close the dialog
+        """
+
         self.line_params['label'] = self.text_edit.text()
         self.line_params['label_position'] = self.position_combo.currentText()
         self.line_params['label_font_size'] = self.font_size_spin.value()
         self.accept()
 
     def get_data(self):
+        """
+        Return updated line label parameters
+        
+        Returns:
+            dict: Updated line label configuration
+        """
         return self.line_params
-    def __init__(self, parent=None):
-        """
-        Dialog for configuring line labels:
-        - Text content
-        - Position relative to line
-        - Font size
-        """
-        super().__init__(parent)
-        self.setWindowTitle("Line Label Configuration")
-        layout = QFormLayout(self)
-        
-        # Text input
-        self.text_edit = QLineEdit()
-        layout.addRow("Label Text:", self.text_edit)
-        
-        # Position selection
-        self.position_combo = QComboBox()
-        self.position_combo.addItems([
-            "Top Center", "Top Left", "Top Right",
-            "Bottom Center", "Bottom Left", "Bottom Right",
-            "Middle Left", "Middle Right"
-        ])
-        layout.addRow("Position:", self.position_combo)
-        
-        # Font size
-        self.font_size_spin = QSpinBox()
-        self.font_size_spin.setRange(6, 24)
-        self.font_size_spin.setValue(10)
-        layout.addRow("Font Size:", self.font_size_spin)
-        
-        # Dialog buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | 
-            QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addRow(buttons)
     
     def get_text(self):
         """Get entered label text"""
@@ -828,9 +911,23 @@ class LineLabelDialog(QDialog):
     
 
 class DataStyleDialog(QDialog):
-    """Dialog for editing data series style properties"""
+    """
+    Dialog for configuring data series visual properties:
+    - Line style, color, width, and transparency
+    - Marker style and size
+    - Label text for legend
+    - Organized in tabs for different styling categories
+    """
     
     def __init__(self, series_data, parent=None):
+        """
+        Initialize data style configuration dialog
+        
+        Args:
+            series_data: Dictionary containing current series styling parameters
+            parent: Parent Qt widget
+        """
+
         super().__init__(parent)
         self.series_data = series_data.copy()  # Make a copy for editing
         self.setWindowTitle("Edit Data Style")
@@ -873,6 +970,7 @@ class DataStyleDialog(QDialog):
 
     def setup_style_tab(self):
         """Setup the style tab with basic styling options"""
+
         layout = QFormLayout(self.style_tab)
         
         # Label
@@ -960,7 +1058,13 @@ class DataStyleDialog(QDialog):
             self.color_button.setText(color_name)
 
     def get_updated_data(self):
-        """Get updated series data based on form values"""
+        """
+        Get updated series data based on form values
+        
+        Returns:
+            dict: Updated series styling parameters
+        """
+                
         # Update data based on selected values
         self.series_data['label'] = self.label_edit.text()
         self.series_data['alpha'] = self.alpha_spin.value()

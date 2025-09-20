@@ -4,6 +4,7 @@ Interactive plotting canvas with click handling:
 - Manages subplot layout
 - Renders matplotlib figures
 """
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.gridspec as gridspec
@@ -19,15 +20,19 @@ import matplotlib as mpl
 from matplotlib.ticker import NullFormatter
 from dialogs import DataStyleDialog
 
-#constant and global parameters
-plt.rcParams['mathtext.fontset'] = 'cm' 
 
-MAXIMUM_DISTANCE: int = 5 #in pixels
+# Constants and global parameters
+plt.rcParams['mathtext.fontset'] = 'cm'  # Use Computer Modern font for math text
+MAXIMUM_DISTANCE: int = 5  # Maximum distance in pixels for point detection
 
 
 class INTERACTIVE_PLOT(FigureCanvas):
+    """
+    Interactive plotting canvas that extends matplotlib's FigureCanvas.
+    Handles user interactions, subplot management, and rendering.
+    """
 
-    interactive_plot_signal = pyqtSignal(list)
+    interactive_plot_signal = pyqtSignal(list) # Signal for communicating with parent components
 
     def __init__(self, parent=None, width=5, height=4, dpi=100, data=[]):
         """
@@ -38,26 +43,29 @@ class INTERACTIVE_PLOT(FigureCanvas):
             width: Figure width in inches
             height: Figure height in inches
             dpi: Figure resolution in dots per inch
+            data: Initial dataset for plotting
         """
 
-
+        # Initialize matplotlib figure and canvas
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = {}
-        self.subplots = []
-        self.draw_lines = []
-        self.gs = gridspec.GridSpec(1, 1, figure=self.fig)
+        self.axes = {}  # Dictionary to store axes objects
+        self.subplots = []  # List to store subplot configurations
+        self.draw_lines = []  # List to store drawn lines
+        self.gs = gridspec.GridSpec(1, 1, figure=self.fig)  # Default grid specification
+        
         super().__init__(self.fig)
         self.setParent(parent)
         self.canvas = FigureCanvas(self.fig)
         self.data = None
-        self.textes = dict()
+        self.textes = dict()# Dictionary to store text annotations
 
-        #connect events with their functions
+        # Connect matplotlib events to handler methods
         self.mpl_connect("button_press_event", self.on_click)
         self.mpl_connect("pick_event", self.on_pick)
         self.mpl_connect("motion_notify_event", self.on_mouse_move)
         self.mpl_connect("button_release_event", self.on_mouse_release)
 
+        # Initialize interaction state variables
         self.context_menu = None
         self.current_line = None
         self.current_legend = None
@@ -161,7 +169,8 @@ class INTERACTIVE_PLOT(FigureCanvas):
                             return
     
     def find_closest_point(self, event, ax):
-        """Находит ближайшую точку данных к месту клика"""
+        """Find the data point closest to the click location."""
+
         closest_point = None
         min_distance = float('inf')
         
@@ -169,7 +178,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
             if not line.get_visible() or not hasattr(line, '_series_id'):
                 continue
                 
-            # Получаем данные линии
+            # Getting the line data
             xdata, ydata = line.get_data()
             if len(xdata) == 0:
                 continue
@@ -177,15 +186,15 @@ class INTERACTIVE_PLOT(FigureCanvas):
             # Преобразуем координаты данных в экранные координаты
             xy_pixels = ax.transData.transform(np.column_stack([xdata, ydata]))
             
-            # Вычисляем расстояния до всех точек
+            # Converting data coordinates to screen coordinates
             distances = np.sqrt((xy_pixels[:, 0] - event.x)**2 + (xy_pixels[:, 1] - event.y)**2)
             
-            # Находим минимальное расстояние
+            # Find the minimum distance
             idx = np.argmin(distances)
             distance = distances[idx]
             
-            # Если это самая близкая точка, сохраняем информацию
-            if distance < min_distance and distance < 15:  # 15 пикселей - максимальное расстояние
+            # If this is the closest point, save the information.
+            if distance < min_distance and distance < 15: # 15 pixels is the maximum distance
                 min_distance = distance
                 closest_point = (line, xdata[idx], ydata[idx], line._series_id)
         
@@ -200,24 +209,25 @@ class INTERACTIVE_PLOT(FigureCanvas):
         return (None, None)
     
     def find_series(self, subplot: dict, series_id: int) -> tuple[int, dict]:
-        """find subplot with approprate data series id"""
+        """find subplot with approprate data series id within a subplot."""
         for i, series in enumerate(subplot[5]): 
             if series.get('id') == series_id:
                 return i, series
         return None, None
 
     def edit_data_style(self, subplot_idx, series_idx):
-        """Открывает диалог для редактирования стиля данных"""
-        # Получаем текущие данные
+        """Open dialog for editing data series style properties."""
+
+        # Getting the current data
         series_data = self.subplots[subplot_idx][5][series_idx]
         
-        # Создаем диалог на основе DataStyleTab
+        # Creating a dialog based on DataStyleTab
         dialog = DataStyleDialog(series_data, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            # Обновляем данные
+            # Updating the data
             self.subplots[subplot_idx][5][series_idx] = dialog.get_updated_data()
             
-            # Перерисовываем график
+            # Redrawing the graph
             self.update_one_plot(self.subplots[subplot_idx], self.win)
             self.canvas.draw()
                 
@@ -548,7 +558,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
             line._subplot_id = plot_id
 
     def draw_line(self, params, ax=None):
-        """Draws a line on the graph"""
+        """Draws a line on the graph based on parameters"""
 
         if not ax:
             ax = self.figure.gca()
@@ -587,7 +597,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
         # self.draw()
 
     def add_line_label(self, ax, line, params):
-        """Add label to line."""
+        """Add label to line with specified parameters."""
 
         # Define label position
         position = params.get('label_position', 'Above the middle of the line')
@@ -774,7 +784,12 @@ class INTERACTIVE_PLOT(FigureCanvas):
         Args:
             line: Matplotlib line object to label
             mid_point: Tuple (x, y) of line midpoint coordinates
+            ax: Matplotlib axis object containing the line
+
+        Returns:
+            Boolean indicating if click was on title
         """
+        
         dialog = LineLabelDialog(self)
         if dialog.exec():
             text = dialog.get_text()
@@ -810,7 +825,14 @@ class INTERACTIVE_PLOT(FigureCanvas):
             
     def is_click_on_title(self, event, ax: Axes) -> None:
         """
-        Checks if there was a click in the chart header area.
+        Check if click occurred in the chart title area.
+        
+        Args:
+            event: Matplotlib mouse event
+            ax: Matplotlib axis object to check
+            
+        Returns:
+            Boolean indicating if click was on title
         """
 
         if not ax.title.get_text():
@@ -830,9 +852,12 @@ class INTERACTIVE_PLOT(FigureCanvas):
         return (bbox.x0 <= x <= bbox.x1 and 
                 bbox.y0 <= y <= bbox.y1)
 
-    def handle_title_click(self, ax):
+    def handle_title_click(self, ax: Axes) -> None:
         """
-        Handles a click on the subplot header
+        Handle a click on the subplot title
+        
+        Args:
+            ax: Matplotlib axis object where title was clicked
         """
 
         # Find the appropriate subtitle in the configuration

@@ -1,6 +1,6 @@
 {
     "grid": {
-        "rows": 2,
+        "rows": 1,
         "cols": 1
     },
     "subplots": [
@@ -14,110 +14,68 @@
             },
             "data_series": [
                 {
-                    "id": 0,
-                    "x": "None",
-                    "xerr": "None",
-                    "y": "None",
-                    "yerr": "None",
-                    "color": "#1f77b4",
-                    "width": 1.0,
-                    "label": "None(None)",
-                    "ls": "",
                     "alpha": 1.0,
+                    "color": "#1f77b4",
+                    "id": 0,
+                    "label": "y(x)",
+                    "ls": "",
                     "marker": "o",
-                    "marker size": 3
+                    "marker size": 3,
+                    "width": 1.0,
+                    "x": "x",
+                    "xerr": "x_err",
+                    "y": "y",
+                    "yerr": "y_err"
                 }
             ],
             "sub_info": {
                 "axes": {
-                    "x-label": "$\\tau$",
-                    "x min": -0.05,
-                    "x max": 1.05,
-                    "x ticks": 10,
-                    "x small ticks": 5,
                     "x label fs": 14,
+                    "x max": 11.5,
+                    "x min": 0.5,
+                    "x number of rounding digits": 1,
                     "x scale": 0,
-                    "x number of rounding digits": 2,
-                    "y-label": "None",
-                    "y min": 0.0,
-                    "y max": 1.0,
-                    "y ticks": 10,
-                    "y small ticks": 5,
+                    "x small ticks": 5,
+                    "x ticks": 7,
+                    "x-label": "x",
                     "y label fs": 14,
+                    "y max": 127.0,
+                    "y min": -5.0,
+                    "y number of rounding digits": 2,
                     "y scale": 0,
-                    "y number of rounding digits": 2
+                    "y small ticks": 5,
+                    "y ticks": 8,
+                    "y-label": "y"
+                },
+                "grid": {
+                    "show grid": true
+                },
+                "legend": {
+                    "legend fs": 14,
+                    "legend position": "upper left"
                 },
                 "title": {
                     "title": "a",
                     "title fs": 14
-                },
-                "legend": {
-                    "legend position": "best",
-                    "legend fs": 14
-                },
-                "grid": {
-                    "show grid": true
                 }
             },
-            "lines": []
-        },
-        {
-            "id": 1,
-            "position": {
-                "row": 1,
-                "col": 0,
-                "row_span": 1,
-                "col_span": 1
-            },
-            "data_series": [
+            "lines": [
                 {
+                    "color": "#0609b4",
                     "id": 0,
-                    "x": "T",
-                    "xerr": "None",
-                    "y": "P",
-                    "yerr": "None",
-                    "color": "#1f77b4",
-                    "width": 1.0,
-                    "label": "P(T)",
-                    "ls": "",
-                    "alpha": 1.0,
-                    "marker": "o",
-                    "marker size": 3
+                    "label": "hh",
+                    "label_font_size": 10,
+                    "label_position": "Top Center",
+                    "style": "-",
+                    "type": 0,
+                    "width": 1.5,
+                    "x1": 1.396698210955308,
+                    "x2": 9.93437866961387,
+                    "y1": 80.52113491603939,
+                    "y2": 25.396641574985534
                 }
-            ],
-            "sub_info": {
-                "axes": {
-                    "x-label": "T",
-                    "x min": 956.6,
-                    "x max": 1515.4,
-                    "x ticks": 10,
-                    "x small ticks": 5,
-                    "x label fs": 14,
-                    "x scale": 0,
-                    "x number of rounding digits": -1,
-                    "y-label": "P",
-                    "y min": 40.54600000000001,
-                    "y max": 190.014,
-                    "y ticks": 10,
-                    "y small ticks": 5,
-                    "y label fs": 14,
-                    "y scale": 0,
-                    "y number of rounding digits": 0
-                },
-                "title": {
-                    "title": "a",
-                    "title fs": 14
-                },
-                "legend": {
-                    "legend position": "best",
-                    "legend fs": 14
-                },
-                "grid": {
-                    "show grid": true
-                }
-            },
-            "lines": []
+            ]
         }
     ],
-    "current_id": 2
+    "current_id": 1
 }

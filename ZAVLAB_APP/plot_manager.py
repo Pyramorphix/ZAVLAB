@@ -80,21 +80,21 @@ class SubplotGrid(QWidget):
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(2)
         self.setLayout(self.grid_layout)
-        self.cells: dict = {}
-        self.subplot_widgets: dict = {}
-        self.subplot_labels: dict = {}
-        self.subplot_colors: dict = {}
-        self.current_color_idx: int = 0
-        self.colors: list[str] = [
+        self.cells: dict = {}  # Dictionary to store cell widgets by (row, col) coordinates
+        self.subplot_widgets: dict = {}  # Dictionary to store subplot visual widgets by ID
+        self.subplot_labels: dict = {}  # Dictionary to store subplot labels by ID
+        self.subplot_colors: dict = {}  # Dictionary to store subplot colors by ID
+        self.current_color_idx: int = 0  # Index for cycling through colors
+        self.colors: list[str] = [  # List of colors for subplot visualization
             "#FFCCCC", "#CCFFCC", "#CCCCFF", "#FFFFCC", "#FFCCFF", "#CCFFFF",
             "#FFDDAA", "#DDFFAA", "#DDAADD", "#AADDAA", "#AADDFF", "#FFAADD"
         ]
-        self.rows: int = 0
-        self.cols: int = 0
+        self.rows: int = 0  # Current number of rows in grid
+        self.cols: int = 0  # Current number of columns in grid
+
 
     def __create_grid__(self, rows: int, cols: int) -> None:
         """Create grid that visualize subplots position."""
-
 
         # Clear existing grid
         self.__clear_grid__()
@@ -109,8 +109,7 @@ class SubplotGrid(QWidget):
                 self.cells[(r, c)] = cell
 
     def __clear_grid__(self) -> None:
-        """Clear the entire grid"""
-
+        """Clear the entire grid and remove all widgets."""
 
         # Remove all widgets from the layout
         for i in reversed(range(self.grid_layout.count())):
@@ -125,8 +124,7 @@ class SubplotGrid(QWidget):
         self.current_color_idx = 0
 
     def __add_subplot__(self, row: int, col: int, row_span: int, col_span: int, subplot_id: int) -> bool:
-        """Add one subplot to the grid."""
-
+        """Add one subplot to the grid at specified position and size."""
 
         # Get a unique color for this subplot
         color = self.colors[self.current_color_idx % len(self.colors)]
@@ -159,7 +157,6 @@ class SubplotGrid(QWidget):
 
     def  __remove_subplot__(self, subplot_id: int) -> None:
         """Remove the subplot from the grid."""
-
 
         if subplot_id in self.subplot_widgets:
             # Remove the visual widget
@@ -200,15 +197,15 @@ class SubplotEditor(QWidget):
     """
 
     def __init__(self, parent=None) -> None:
-        """Intialize subplotEditor"""
+        """Initialize the subplot editor with default values and UI setup."""
 
         super().__init__(parent)
 
         # Current subplot configuration
         self.subplots = []  # [id, row, col, row_span, col_span, data_series, show_grid]
-        self.current_plot_id = 0
-        self.selected_subplot_id = None
-        self.row_col: list[int] = [0, 0]
+        self.current_plot_id = 0  # Counter for assigning unique subplot IDs
+        self.selected_subplot_id = None  # Currently selected subplot ID
+        self.row_col: list[int] = [0, 0]  # Current grid dimensions [rows, columns]
 
         # Initialize line color
         self.line_color = "#1f77b4"  # Default matplotlib blue
@@ -338,7 +335,7 @@ class SubplotEditor(QWidget):
         config_layout.addWidget(creation_group)
 
     def __init_EditingControl__(self, config_layout: QVBoxLayout) -> None:
-        """Initialize form with tabs for all settings."""
+        """Initialize form with tabs for all subplot editing settings."""
         
         # Subplot editing controls
         self.editor_group: QGroupBox = QGroupBox("Edit Selected Subplot")
@@ -384,7 +381,7 @@ class SubplotEditor(QWidget):
         config_layout.addWidget(self.editor_group)
 
     def __initUI__(self) -> None:
-        """Initialize UI for subplot Editor window"""
+        """Initialize the complete UI for the subplot editor window."""
 
         #main layout      
         main_layout = QHBoxLayout()
@@ -441,6 +438,8 @@ class SubplotEditor(QWidget):
         splitter.setStretchFactor(1, 1)
     
     def __work_with_plot_signals__(self, sig):
+        """Handle signals from the interactive plot canvas."""
+
         if isinstance(sig, list):
             if sig[0] == "change_subplot":
                 self.plot_canvas.subplots[sig[1]] = sig[2]
@@ -451,7 +450,7 @@ class SubplotEditor(QWidget):
 
         
     def update_column_data(self, headers: list[str]) -> None:
-        "updates all combo boxes that contain headers from the table"
+        """Update all combo boxes that contain headers from the table."""
 
         self.data_combo_x.clear()
         self.data_combo_x.addItems(["None"] + headers)
@@ -594,7 +593,7 @@ class SubplotEditor(QWidget):
                                 f"Column span exceeds grid width (max col: {max_cols-1})")
             return
             
-        # Check for overlaps
+        # Check for overlaps with existing subplots
         for subplot in self.plot_canvas.subplots:
             s_row, s_col, s_row_span, s_col_span, *_ = subplot[1:8]
             
@@ -608,6 +607,7 @@ class SubplotEditor(QWidget):
 
                 return
 
+        # Create initial data series configuration
         data_series = [{
             "id": 0,
             "x":self.data_combo_x.currentText(),
@@ -696,7 +696,7 @@ class SubplotEditor(QWidget):
                    r1_row >= r2_row + r2_row_span)
     
     def clear_subplots(self) -> None:
-        """Clear all subplots"""
+        """Clear all subplots and reset the grid."""
 
         self.plot_canvas.subplots = []
         self.plot_canvas.fig.clear()
@@ -707,7 +707,7 @@ class SubplotEditor(QWidget):
         self.clear_selection()
     
     def update_subplot_list(self) -> None:
-        """Update the subplot list widget"""
+        """Update the subplot list widget with current subplot information."""
 
         self.subplot_list.clear()
         for subplot in self.plot_canvas.subplots:
@@ -776,6 +776,8 @@ class SubplotEditor(QWidget):
                 break
     
     def __add_subplot_lines(self, line_info) -> None:
+        """Add lines to the lines tab for the selected subplot."""
+
         self.lines_tab.line.clear()
         for line in line_info:
             self.lines_tab.update_lines_labels(line)
@@ -790,7 +792,7 @@ class SubplotEditor(QWidget):
         self.data_style_tab.__update_data_headers_spin__(data_series=data_series, index=index)
 
     def clear_selection(self) -> None:
-        """Clear the current selection"""
+        """Update all lists with data sets from subplot."""
 
         self.selected_subplot_id = None
         self.subplot_list.clearSelection()
@@ -953,12 +955,14 @@ class SubplotEditor(QWidget):
         
     
     def plot_graphs(self) -> None:
-        """plot all subplots"""
+        """Plot all subplots on the canvas."""
 
         self.plot_canvas.canvas.draw()
         self.plot_canvas.plot_all_data(self.window(),  self.rows_spin.value(), self.cols_spin.value())
         
     def configure_data_series(self) -> None:
+        """Open dialog to configure data series for subplots."""
+
         headers = self.window().get_headers() 
         dialog = DataSeriesDialog(headers=headers, parent=self, max_id=0)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -966,7 +970,7 @@ class SubplotEditor(QWidget):
                 self.add_data_series_subplot(dialog.get_series(), dialog.get_axes_info(), dialog.get_title_info())
 
     def add_data_series_subplot(self, series: list[dict], axes_info: dict, title_info: dict) -> None:
-        """Add a new subplot to the configuration"""
+        """Add a new subplot with multiple data series to the configuration."""
 
         row = self.row_spin.value()
         col = self.col_spin.value()
@@ -1092,19 +1096,19 @@ class SubplotEditor(QWidget):
     def get_state(self) -> dict:
         """Returns the current state to save."""
 
-        return {
+        state = {
             'grid': {
-                'rows': self.grid_display.rows,
-                'cols': self.grid_display.cols
+                'rows': int(self.grid_display.rows),  # Convert to native int
+                'cols': int(self.grid_display.cols)   # Convert to native int
             },
             'subplots': [
                 {
-                    'id': sub[0],
+                    'id': int(sub[0]),  # Convert to native int
                     'position': {
-                        'row': sub[1],
-                        'col': sub[2],
-                        'row_span': sub[3],
-                        'col_span': sub[4]
+                        'row': int(sub[1]),
+                        'col': int(sub[2]),
+                        'row_span': int(sub[3]),
+                        'col_span': int(sub[4])
                     },
                     'data_series': sub[5],
                     'sub_info': sub[6],
@@ -1112,8 +1116,9 @@ class SubplotEditor(QWidget):
                 }
                 for sub in self.plot_canvas.subplots
             ],
-            'current_id': self.current_plot_id
+            'current_id': int(self.current_plot_id)  # Convert to native int
         }
+        return state
 
     def set_state(self, state: dict) -> None:
         """Restores the state from the configuration."""
@@ -1391,6 +1396,8 @@ class SubplotEditor(QWidget):
         self.plot_canvas.toggle_drawing_mode(enabled)
         
     def __append_subplot__(self, plot_id:int, row:int, col:int, row_span:int, col_span:int, data_series:dict, sub_info:dict, line_info: list) -> None:
+        """Append a new subplot to the internal data structure."""
+        
         self.plot_canvas.subplots.append([
                     plot_id,
                     row,

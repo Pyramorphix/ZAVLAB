@@ -4,16 +4,21 @@ from PyQt6.QtCore import QTimer, QObject
 from PyQt6.QtWidgets import QApplication
 import os
 
-###Constants
-TIMER_INTERVAL = 60000 # in ms = 1 minute
-###
 
 class AutoSaveManager(QObject):
     """
-    An object that creates backup in case of emergency situation.
+    Manager for automatic saving of application state.
+    Creates backups in case of emergency situations.
     """
 
+    ###Constants
+    TIMER_INTERVAL = 60000 # in ms = 1 minute
+    ###
+
+    
     def __init__(self, parent=None, save_interval=TIMER_INTERVAL): 
+        """Initialize the auto-save manager with timer and directories."""
+        
         super().__init__(parent)
         self.save_interval = save_interval
         self.timer = QTimer()
@@ -66,7 +71,7 @@ class AutoSaveManager(QObject):
             logging.error(f"File recording error: {str(e)}")
 
     def load_backup(self, filename_subs="./files/sub_setting_final.json", filename="./files/settings_final.json", last_copy_subs="./files/autosave_backup_subplots.json", last_copy="./files/autosave_backup.json") -> tuple[dict, dict]:
-        """Loads backup files"""
+        """Load backup files and return application state."""
         
         try:
             with open(filename_subs, 'r') as f:
