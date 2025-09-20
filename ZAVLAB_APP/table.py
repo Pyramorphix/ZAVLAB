@@ -10,7 +10,10 @@ import random
 from PyQt6.QtCore import pyqtSignal
 
 class ExcelLikeModel(QtCore.QAbstractTableModel):
+    """Excel-like table model with formula support and relative references."""
+    
     def __init__(self, rows=20, cols=10):
+        """Initialize the table model with data, formulas, and dependencies."""
         super().__init__()
         self._data = [['' for _ in range(cols)] for _ in range(rows)]
         self._formulas = [['' for _ in range(cols)] for _ in range(rows)]
@@ -70,12 +73,18 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         self.cell_patern = r'(\[([A-Za-z_][A-Za-z0-9_]*)\])(\d+)'
 
     def rowCount(self, parent=None):
+        """Return number of rows in the model."""
+        
         return len(self._data)
 
     def columnCount(self, parent=None):
+        """Return number of columns in the model."""
+        
         return len(self._data[0])
     
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        """Return header data for the given section and orientation."""        
+        
         if role == Qt.ItemDataRole.DisplayRole:
             if orientation == Qt.Orientation.Horizontal:
                 # Return custom column name
@@ -89,6 +98,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         return None
 
     def setHeaderData(self, section, orientation, value, role=Qt.ItemDataRole.EditRole):
+        """Set header data for the given section and orientation."""
+        
         if (orientation == Qt.Orientation.Horizontal and 
             role == Qt.ItemDataRole.EditRole and 
             0 <= section < len(self._column_names)):
@@ -99,6 +110,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         return False
 
     def flags(self, index):
+        """Return the item flags for the given index."""
+        
         if not index.isValid():
             return Qt.ItemFlag.ItemIsEnabled
         
@@ -106,6 +119,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         return super().flags(index) | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        """Return data for the given role and index."""
+        
         if not index.isValid():
             return None
             
@@ -135,6 +150,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        """Set data at index to value for the given role."""
+
         if role == Qt.ItemDataRole.EditRole:
             row, col = index.row(), index.column()
             
@@ -176,6 +193,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         return False
 
     def evaluate_cell(self, row, col):
+        """Evaluate the formula in the specified cell."""
+
         formula = self._formulas[row][col]
         if not formula.startswith('='):
             return formula
@@ -221,6 +240,7 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
 
     def _safe_eval(self, expr):
         """Safely evaluate a mathematical expression"""
+        
         try:
             # Parse the expression into an AST
             tree = ast.parse(expr, mode='eval')
@@ -280,6 +300,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
             raise ValueError(f"Evaluation error: {str(e)}")
 
     def evaluate_all(self):
+        """Recalculate all formulas in the table."""
+
         # Recalculate all formulas
         self.dataChanged.emit(
             self.index(0, 0),
@@ -287,6 +309,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         )
     
     def is_number(self, s):
+        """Check if a string can be converted to a number."""
+
         try:
             float(s)
             return True
@@ -294,7 +318,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
             return False
 
     def column_name_to_index(self, name):
-        # Convert column name to index (supports both default and custom names)
+        """Convert column name to index (supports both default and custom names)."""
+
         try:
             # First try to find by custom name (case-insensitive)
             name_upper = name.upper()
@@ -314,9 +339,9 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
             # If the name doesn't match any pattern, return -1 (invalid)
             return -1
 
-
     def index_to_column_name(self, index):
-        # Convert zero-based column index to Excel-style name (A, B, ...)
+        """Convert zero-based column index to Excel-style name (A, B, ...)."""
+        
         name = ""
         index += 1
         while index > 0:
@@ -325,7 +350,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         return name
 
     def clear_dependencies(self, row, col):
-        # Remove this cell from all dependency lists
+        """Remove this cell from all dependency lists."""
+
         for key in list(self._dependencies.keys()):
             if (row, col) in self._dependencies[key]:
                 self._dependencies[key].remove((row, col))
@@ -333,6 +359,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
                     del self._dependencies[key]
                     
     def adjust_formula_references(self, formula, row_offset, col_offset):
+        """Adjust formula references based on row and column offsets."""
+        
         if not formula.startswith('='):
             return formula
         
@@ -369,6 +397,7 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
 
     def insertColumn(self, column, parent=QtCore.QModelIndex()):
         """Insert a new column at the specified position"""
+        
         self.beginInsertColumns(parent, column, column)
         for row in self._data:
             row.insert(column, '')
@@ -381,6 +410,7 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
 
     def removeColumn(self, column, parent=QtCore.QModelIndex()):
         """Remove the column at the specified position"""
+        
         if column < 0 or column >= self.columnCount():
             return False
             
@@ -395,6 +425,7 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
 
     def insertRow(self, row, parent=QtCore.QModelIndex()):
         """Insert a new row at the specified position"""
+        
         self.beginInsertRows(parent, row, row)
         self._data.insert(row, [''] * self.columnCount())
         self._formulas.insert(row, [''] * self.columnCount())
@@ -403,6 +434,7 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
 
     def removeRow(self, row, parent=QtCore.QModelIndex()):
         """Remove the row at the specified position"""
+        
         if row < 0 or row >= self.rowCount():
             return False
             
@@ -414,6 +446,7 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
     
     def setColumnCount(self, cols):
         """Set the number of columns in the model"""
+        
         current_cols = self.columnCount()
         if cols > current_cols:
             # Add columns
@@ -427,6 +460,7 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
 
     def setRowCount(self, rows):
         """Set the number of rows in the model"""
+        
         current_rows = self.rowCount()
         if rows > current_rows:
             # Add rows
@@ -439,16 +473,21 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         return True
 
 class FormulaLineEdit(QtWidgets.QLineEdit):
+    """Line edit widget specialized for formula input."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setPlaceholderText("Enter formula (e.g., =[A]1+[B]2). Column name should be placed in sqaure brackets.")
 
 
 class ExcelTableView(QtWidgets.QTableView):
-
+    """Excel-like table view with extended selection and header editing."""
+    
     table_headers_signal = pyqtSignal(str)
 
     def __init__(self, parent=None):
+        """Initialize the table ui"""
+
         super().__init__(parent)
         # Set selection mode for Excel-like extended selection
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -468,6 +507,8 @@ class ExcelTableView(QtWidgets.QTableView):
                                             "For example: \"lenght, m\"")
         
     def editColumnHeader(self, section):
+        """Edit the column header at the given section."""
+        
         # Get the current column name
         current_name = self.model().headerData(section, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole)
         
@@ -493,6 +534,8 @@ class ExcelTableView(QtWidgets.QTableView):
         self.table_headers_signal.emit("change headers")
         
     def mousePressEvent(self, event):
+        """Handle mouse press events for selection."""
+        
         index = self.indexAt(event.pos())
         selection_model = self.selectionModel()
         modifiers = event.modifiers()
@@ -530,244 +573,3 @@ class ExcelTableView(QtWidgets.QTableView):
         
         # Call parent to handle other events
         super().mousePressEvent(event)
-
-
-class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Excel-Like PyQt6 Application")
-        self.resize(1000, 600)
-        
-        # Create central widget and layout
-        central_widget = QtWidgets.QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QtWidgets.QVBoxLayout(central_widget)
-        
-        # Create settings toolbar
-        settings_layout = QtWidgets.QHBoxLayout()
-        
-        # Decimal places control
-        decimal_label = QtWidgets.QLabel("Decimal Places:")
-        self.decimal_spin = QtWidgets.QSpinBox()
-        self.decimal_spin.setRange(0, 10)
-        self.decimal_spin.setValue(2)
-        self.decimal_spin.valueChanged.connect(self.change_decimal_places)
-        
-        settings_layout.addWidget(decimal_label)
-        settings_layout.addWidget(self.decimal_spin)
-        settings_layout.addStretch()
-        
-        layout.addLayout(settings_layout)
-        
-        # Create formula bar
-        formula_layout = QtWidgets.QHBoxLayout()
-        formula_label = QtWidgets.QLabel("Formula:")
-        self.formula_edit = FormulaLineEdit()
-        formula_layout.addWidget(formula_label)
-        formula_layout.addWidget(self.formula_edit)
-        
-        # Add apply button
-        self.apply_button = QtWidgets.QPushButton("Apply Formula")
-        self.apply_button.clicked.connect(self.apply_formula)
-        formula_layout.addWidget(self.apply_button)
-        
-        # Add relative reference button
-        self.relative_button = QtWidgets.QPushButton("Apply with Relative Refs")
-        self.relative_button.clicked.connect(self.apply_formula_with_relative_refs)
-        formula_layout.addWidget(self.relative_button)
-        
-        layout.addLayout(formula_layout)
-        
-        # Create table view
-        self.table = ExcelTableView()
-        self.model = ExcelLikeModel(50, 10)  # 50 rows, 10 columns
-        self.table.setModel(self.model)
-        
-        # Enable grid and selection
-        self.table.setShowGrid(True)
-        self.table.setGridStyle(Qt.PenStyle.SolidLine)
-        
-        # Connect signals
-        self.table.selectionModel().selectionChanged.connect(self.update_formula_bar)
-        self.formula_edit.returnPressed.connect(self.apply_formula)
-        
-        layout.addWidget(self.table)
-        
-        # Setup status bar
-        self.statusBar().showMessage("Ready")
-        
-        # Setup menu
-        self.create_menus()
-
-    def create_menus(self):
-        menubar = self.menuBar()
-        
-        # File menu
-        file_menu = menubar.addMenu("File")
-        
-        new_action = QtGui.QAction("New", self)
-        new_action.setShortcut("Ctrl+N")
-        file_menu.addAction(new_action)
-        
-        open_action = QtGui.QAction("Open", self)
-        open_action.setShortcut("Ctrl+O")
-        file_menu.addAction(open_action)
-        
-        save_action = QtGui.QAction("Save", self)
-        save_action.setShortcut("Ctrl+S")
-        file_menu.addAction(save_action)
-        
-        file_menu.addSeparator()
-        
-        exit_action = QtGui.QAction("Exit", self)
-        exit_action.setShortcut("Ctrl+Q")
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-        
-        # Edit menu
-        edit_menu = menubar.addMenu("Edit")
-        
-        cut_action = QtGui.QAction("Cut", self)
-        cut_action.setShortcut("Ctrl+X")
-        edit_menu.addAction(cut_action)
-        
-        copy_action = QtGui.QAction("Copy", self)
-        copy_action.setShortcut("Ctrl+C")
-        edit_menu.addAction(copy_action)
-        
-        paste_action = QtGui.QAction("Paste", self)
-        paste_action.setShortcut("Ctrl+V")
-        edit_menu.addAction(paste_action)
-        
-        # Format menu
-        format_menu = menubar.addMenu("Format")
-        
-        decimal_action = QtGui.QAction("Decimal Places...", self)
-        decimal_action.triggered.connect(self.show_decimal_dialog)
-        format_menu.addAction(decimal_action)
-        
-        # Add column menu
-        column_menu = menubar.addMenu("Columns")
-        
-        rename_column_action = QtGui.QAction("Rename Column", self)
-        rename_column_action.triggered.connect(self.renameCurrentColumn)
-        column_menu.addAction(rename_column_action)
-
-    def change_decimal_places(self, value):
-        # Update the decimal places setting
-        self.model.decimal_places = value
-        # Refresh the view to show the new formatting
-        self.model.evaluate_all()
-
-    def show_decimal_dialog(self):
-        # Show a dialog to set decimal places
-        value, ok = QtWidgets.QInputDialog.getInt(
-            self, 
-            "Decimal Places", 
-            "Enter number of decimal places:", 
-            value=self.model.decimal_places,
-            min=0, 
-            max=10
-        )
-        
-        if ok:
-            self.model.decimal_places = value
-            self.decimal_spin.setValue(value)
-            # Refresh the view to show the new formatting
-            self.model.evaluate_all()
-
-    def renameCurrentColumn(self):
-        # Get the current column
-        selected_indexes = self.table.selectionModel().selectedIndexes()
-        if not selected_indexes:
-            self.statusBar().showMessage("No column selected")
-            return
-        
-        column = selected_indexes[0].column()
-        
-        # Get the current column name
-        current_name = self.model.headerData(column, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole)
-        
-        # Show a dialog to edit the column name
-        new_name, ok = QtWidgets.QInputDialog.getText(
-            self, 
-            "Rename Column", 
-            "Enter new column name:", 
-            text=current_name
-        )
-        
-        if ok and new_name:
-            # Set the new column name
-            self.model.setHeaderData(column, Qt.Orientation.Horizontal, new_name)
-            self.statusBar().showMessage(f"Column renamed to {new_name}")
-
-    def update_formula_bar(self):
-        selected_indexes = self.table.selectionModel().selectedIndexes()
-        current_index = self.table.selectionModel().currentIndex()
-        
-        if not current_index.isValid():
-            self.formula_edit.clear()
-            self.statusBar().showMessage("No cell selected")
-            return
-        
-        # Display the formula of the current cell
-        formula = self.model._formulas[current_index.row()][current_index.column()]
-        self.formula_edit.setText(formula)
-        
-        # Update status bar with selection info
-        if len(selected_indexes) > 1:
-            self.statusBar().showMessage(f"{len(selected_indexes)} cells selected")
-        else:
-            col_name = self.model.headerData(current_index.column(), Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole)
-            self.statusBar().showMessage(f"Cell {col_name}{current_index.row() + 1}")
-
-    def apply_formula(self):
-        selected_indexes = self.table.selectionModel().selectedIndexes()
-        if not selected_indexes:
-            self.statusBar().showMessage("No cells selected")
-            return
-        
-        formula = self.formula_edit.text()
-        count = 0
-        
-        for index in selected_indexes:
-            if self.model.setData(index, formula):
-                count += 1
-        
-        self.statusBar().showMessage(f"Formula applied to {count} cells")
-
-    def apply_formula_with_relative_refs(self):
-        selected_indexes = self.table.selectionModel().selectedIndexes()
-        if not selected_indexes:
-            self.statusBar().showMessage("No cells selected")
-            return
-        
-        base_formula = self.formula_edit.text()
-        if not base_formula:
-            self.statusBar().showMessage("No formula entered")
-            return
-        
-        base_index = self.table.selectionModel().currentIndex()
-        if not base_index.isValid():
-            self.statusBar().showMessage("No base cell selected")
-            return
-        
-        count = 0
-        
-        for index in selected_indexes:
-            row_offset = index.row() - base_index.row()
-            col_offset = index.column() - base_index.column()
-            
-            # Adjust the formula for relative references
-            adjusted_formula = self.model.adjust_formula_references(base_formula, row_offset, col_offset)
-            if self.model.setData(index, adjusted_formula):
-                count += 1
-        
-        self.statusBar().showMessage(f"Formula with relative references applied to {count} cells")
-
-
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())

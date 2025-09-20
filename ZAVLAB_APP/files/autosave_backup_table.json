@@ -2,122 +2,143 @@
     "table": {
         "decimal_places": 2,
         "column_names": [
-            "term_1",
-            "B",
-            "D"
+            "x",
+            "x_err",
+            "y",
+            "y_err"
         ],
         "formulas": [
             [
                 "1",
-                "=[term_1]1 ** 2",
-                "=log10([B]1 + 1)"
+                "=0.5",
+                "=[x]1 **2",
+                "=2 * [x]1 * [x_err]1"
             ],
             [
                 "2",
-                "=[term_1]2 ** 2",
-                "=log10([B]2 + 1)"
+                "=0.5",
+                "=[x]2 **2",
+                "=2 * [x]2 * [x_err]2"
             ],
             [
                 "3",
-                "=[term_1]3 ** 2",
-                "=log10([B]3 + 1)"
+                "=0.5",
+                "=[x]3 **2",
+                "=2 * [x]3 * [x_err]3"
             ],
             [
                 "4",
-                "=[term_1]4 ** 2",
-                "=log10([B]4 + 1)"
+                "=0.5",
+                "=[x]4 **2",
+                "=2 * [x]4 * [x_err]4"
             ],
             [
                 "5",
-                "=[term_1]5 ** 2",
-                "=log10([B]5 + 1)"
+                "=0.5",
+                "=[x]5 **2",
+                "=2 * [x]5 * [x_err]5"
             ],
             [
                 "6",
-                "=[term_1]6 ** 2",
-                "=log10([B]6 + 1)"
+                "=0.5",
+                "=[x]6 **2",
+                "=2 * [x]6 * [x_err]6"
             ],
             [
                 "7",
-                "=[term_1]7 ** 2",
-                "=log10([B]7 + 1)"
+                "=0.5",
+                "=[x]7 **2",
+                "=2 * [x]7 * [x_err]7"
+            ],
+            [
+                "8",
+                "=0.5",
+                "=[x]8 **2",
+                "=2 * [x]8 * [x_err]8"
+            ],
+            [
+                "9",
+                "=0.5",
+                "=[x]9 **2",
+                "=2 * [x]9 * [x_err]9"
+            ],
+            [
+                "10",
+                "=0.5",
+                "=[x]10 **2",
+                "=2 * [x]10 * [x_err]10"
+            ],
+            [
+                "11",
+                "=0.5",
+                "=[x]11 **2",
+                "=2 * [x]11 * [x_err]11"
             ],
             [
                 "",
-                "=[term_1]8 ** 2",
-                "=log10([B]8 + 1)"
+                "",
+                "",
+                ""
             ],
             [
                 "",
-                "=[term_1]9 ** 2",
-                "=log10([B]9 + 1)"
+                "",
+                "",
+                ""
             ],
             [
                 "",
-                "=[term_1]10 ** 2",
-                "=log10([B]10 + 1)"
+                "",
+                "",
+                ""
             ],
             [
                 "",
-                "=[term_1]11 ** 2",
-                "=log10([B]11 + 1)"
+                "",
+                "",
+                ""
             ],
             [
                 "",
-                "=[term_1]12 ** 2",
-                "=log10([B]12 + 1)"
+                "",
+                "",
+                ""
             ],
             [
                 "",
-                "=[term_1]13 ** 2",
-                "=log10([B]13 + 1)"
+                "",
+                "",
+                ""
             ],
             [
                 "",
-                "=[term_1]14 ** 2",
-                "=log10([B]14 + 1)"
+                "",
+                "",
+                ""
             ],
             [
                 "",
-                "=[term_1]15 ** 2",
-                "=log10([B]15 + 1)"
+                "",
+                "",
+                ""
             ],
             [
                 "",
-                "=[term_1]16 ** 2",
-                "=log10([B]16 + 1)"
-            ],
-            [
                 "",
-                "=[term_1]17 ** 2",
-                "=log10([B]17 + 1)"
-            ],
-            [
                 "",
-                "=[term_1]18 ** 2",
-                "=log10([B]18 + 1)"
-            ],
-            [
-                "",
-                "=[term_1]19 ** 2",
-                "=log10([B]19 + 1)"
-            ],
-            [
-                "",
-                "=[term_1]20 ** 2",
-                "=log10([B]20 + 1)"
+                ""
             ]
         ],
         "row_count": 20,
-        "column_count": 3
+        "column_count": 4
     },
     "window": {
-        "geometry": "01d9d0cb0003000000000000fffffff90000068f0000042f000001df000000c00000068e000003df0000000002000000069000000000000000170000068f0000042f",
+        "geometry": "01d9d0cb0003000000000000fffffff90000068f0000042f000000f0000000880000059f000003a70000000002000000069000000000000000170000068f0000042f",
         "state": "000000ff00000000fd0000000000000690000003f800000004000000040000000800000008fc00000000"
     },
     "splitter_sizes": [
-        302,
-        1355
+        112,
+        1545
     ],
     "plotter": {
         "grid": {
@@ -135,52 +156,67 @@
                 },
                 "data_series": [
                     {
-                        "id": 0,
-                        "x": "term_1",
-                        "xerr": "None",
-                        "y": "B",
-                        "yerr": "None",
-                        "color": "#1f77b4",
-                        "width": 1.0,
-                        "label": "B(term_1)",
-                        "ls": "",
                         "alpha": 1.0,
+                        "color": "#1f77b4",
+                        "id": 0,
+                        "label": "y(x)",
+                        "ls": "",
                         "marker": "o",
-                        "marker size": 3
+                        "marker size": 3,
+                        "width": 1.0,
+                        "x": "x",
+                        "xerr": "x_err",
+                        "y": "y",
+                        "yerr": "y_err"
                     }
                 ],
                 "sub_info": {
                     "axes": {
-                        "x-label": "term_1",
-                        "x min": 0.7,
-                        "x max": 7.3,
-                        "x ticks": 10,
-                        "x small ticks": 5,
                         "x label fs": 14,
+                        "x max": 11.5,
+                        "x min": 0.5,
+                        "x number of rounding digits": 1,
                         "x scale": 0,
-                        "x number of rounding digits": 2,
-                        "y-label": "B",
-                        "y min": -1.4,
-                        "y max": 51.4,
-                        "y ticks": 10,
-                        "y small ticks": 5,
+                        "x small ticks": 5,
+                        "x ticks": 7,
+                        "x-label": "x",
                         "y label fs": 14,
+                        "y max": 130.0,
+                        "y min": -5.0,
+                        "y number of rounding digits": 2,
                         "y scale": 0,
-                        "y number of rounding digits": 2
+                        "y small ticks": 5,
+                        "y ticks": 8,
+                        "y-label": "y"
+                    },
+                    "grid": {
+                        "show grid": true
+                    },
+                    "legend": {
+                        "legend fs": 14,
+                        "legend position": "upper left"
                     },
                     "title": {
                         "title": "a",
                         "title fs": 14
-                    },
-                    "legend": {
-                        "legend position": "best",
-                        "legend fs": 14
-                    },
-                    "grid": {
-                        "show grid": true
                     }
                 },
-                "lines": []
+                "lines": [
+                    {
+                        "color": "#0609b4",
+                        "id": 0,
+                        "label": "hh",
+                        "label_font_size": 10,
+                        "label_position": "Top Center",
+                        "style": "-",
+                        "type": 0,
+                        "width": 1.5,
+                        "x1": 1.396698210955308,
+                        "x2": 9.93437866961387,
+                        "y1": 80.52113491603939,
+                        "y2": 25.396641574985534
+                    }
+                ]
             }
         ],
         "current_id": 1

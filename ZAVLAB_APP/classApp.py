@@ -76,7 +76,6 @@ class ZAVLAB(QMainWindow):
         self.auto_save_manager = AutoSaveManager(self)
         self.restore_state()
 
-        
     def setupTable(self) -> None:
         """Инициализация таблицы данных"""
 
@@ -234,7 +233,7 @@ class ZAVLAB(QMainWindow):
         try:
             # Get state from SubplotEditor
             state = self.plotter.get_state()
-
+            state = self.convert_numpy_types(state) 
             # File type
             ext = os.path.splitext(file_name)[1].lower()
             if not ext:
@@ -744,7 +743,7 @@ class ZAVLAB(QMainWindow):
             self.update_headers()
 
 
-    def _save_file(self) -> None:
+    def _save_file(self, file_name=None) -> None:
         """Сохраняем данные таблицы в CSV файл"""
         file_name: str
         _: str
@@ -1123,8 +1122,8 @@ class ZAVLAB(QMainWindow):
         if state:
             reply = QMessageBox.question(
                 self, 
-                "Восстановление настроек", 
-                "Обнаружены сохраненные настройки. Восстановить их?",
+                "Restoring settings",
+                "Saved settings are detected. Restore them?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply == QMessageBox.StandardButton.Yes:
@@ -1138,7 +1137,7 @@ class ZAVLAB(QMainWindow):
             sub_state = self.plotter.get_state()  
             self.auto_save_manager.save_to_file(sub_state, state, "./files/sub_setting_final.json","./files/settings_final.json")
         except Exception as e:
-            logging.error(f"Ошибка сохранения при закрытии: {str(e)}")
+            logging.error(f"Saving error when closing: {str(e)}")
         
         event.accept()
 
@@ -1158,7 +1157,7 @@ class ZAVLAB(QMainWindow):
                 "state": self.saveState().toHex().data().decode()
             },
             "splitter_sizes": [size for size in self.splitter.sizes()],
-            "plotter": self.plotter.get_state() if hasattr(self, 'plotter') else None
+            "plotter": self.convert_numpy_types(self.plotter.get_state()) if hasattr(self, 'plotter') else None
         }
         return state
 
@@ -1213,8 +1212,23 @@ class ZAVLAB(QMainWindow):
             self.update_headers()
             
         except Exception as e:
-            logging.error(f"Ошибка восстановления состояния: {str(e)}")
-            QMessageBox.warning(self, "Ошибка", f"Не удалось восстановить состояние: {str(e)}")
+            logging.error(f"Status recovery error: {str(e)}")
+            QMessageBox.warning(self, "Error", f"Failed to restore state: {str(e)}")
+
+
+    def convert_numpy_types(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {k: self.convert_numpy_types(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self.convert_numpy_types(item) for item in obj]
+        return obj
+
 
 if __name__ == "__main__":
     app = QApplication([])

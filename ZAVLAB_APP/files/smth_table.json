@@ -30,39 +30,38 @@
             ],
             "sub_info": {
                 "axes": {
-                    "x label fs": 14,
-                    "x max": 11.5,
-                    "x min": 0.5,
-                    "x number of rounding digits": 1,
-                    "x scale": 0,
-                    "x small ticks": 5,
-                    "x ticks": 7,
                     "x-label": "x",
-                    "y label fs": 14,
-                    "y max": 130.0,
+                    "x min": 0.5,
+                    "x max": 11.5,
+                    "x ticks": 7,
+                    "x small ticks": 5,
+                    "x label fs": 14,
+                    "x scale": 0,
+                    "x number of rounding digits": 1,
+                    "y-label": "y",
                     "y min": -5.0,
-                    "y number of rounding digits": 2,
-                    "y scale": 0,
-                    "y small ticks": 5,
+                    "y max": 127.0,
                     "y ticks": 8,
-                    "y-label": "y"
-                },
-                "grid": {
-                    "show grid": true
-                },
-                "legend": {
-                    "legend fs": 14,
-                    "legend position": "upper left"
+                    "y small ticks": 5,
+                    "y label fs": 14,
+                    "y scale": 0,
+                    "y number of rounding digits": 2
                 },
                 "title": {
                     "title": "a",
                     "title fs": 14
+                },
+                "legend": {
+                    "legend position": "upper left",
+                    "legend fs": 14
+                },
+                "grid": {
+                    "show grid": true
                 }
             },
             "lines": [
                 {
                     "color": "#0609b4",
-                    "id": 0,
                     "label": "hh",
                     "label_font_size": 10,
                     "label_position": "Top Center",
@@ -72,7 +71,8 @@
                     "x1": 1.396698210955308,
                     "x2": 9.93437866961387,
                     "y1": 80.52113491603939,
-                    "y2": 25.396641574985534
+                    "y2": 25.396641574985534,
+                    "id": 0
                 }
             ]
         }
