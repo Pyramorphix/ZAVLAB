@@ -17,6 +17,7 @@ from dialogs import SubplotPositionDialog, DataSeriesDialog
 from subplotsEditors import SubplotStyleTab, DataStyleTab, LineStyleTab, PositioningChoosingDataTab
 from PyQt6.QtCore import Qt
 import numpy as np
+import matplotlib.pyplot as plt
 
 ##Constants
 Minimum_Height: int = 100
@@ -733,6 +734,7 @@ class SubplotEditor(QWidget):
         """Select a subplot and load its properties into the editor"""
 
         self.selected_subplot_id = plot_id
+        self.position_size_data_tab.current_subplot = plot_id
         self.editor_group.setEnabled(True)
         
 
@@ -741,6 +743,7 @@ class SubplotEditor(QWidget):
         # Find the subplot
         for subplot in self.plot_canvas.subplots:
             if subplot[0] == plot_id:
+                self.position_size_data_tab.current_subplot = subplot[5]
                 # Populate position controls
                 _, row, col, row_span, col_span, data_series, sub_info, line_info = subplot
                 axes_info = sub_info["axes"]
@@ -938,9 +941,13 @@ class SubplotEditor(QWidget):
                 for counter in range(len(self.plot_canvas.subplots[i][5])):
                     data = self.plot_canvas.subplots[i][5][counter]
                     if str(data['id']) == index:
+                        label = self.data_style_tab.current_data_style["label"]
+                        if self._is_invalid_latex(label):
+                            QMessageBox.warning(self, "Warning", "The label that you have just entered has syntax error, so it cann't be applied. Try to enter it again.")
+                            label = ""
                         self.plot_canvas.subplots[i][5][counter]["color"] = self.data_style_tab.current_data_style["color"]
                         self.plot_canvas.subplots[i][5][counter]["width"] = self.data_style_tab.current_data_style["width"]
-                        self.plot_canvas.subplots[i][5][counter]["label"] = self.data_style_tab.current_data_style["label"]
+                        self.plot_canvas.subplots[i][5][counter]["label"] = label
                         self.plot_canvas.subplots[i][5][counter]["ls"] = self.data_style_tab.current_data_style["ls"]
                         self.plot_canvas.subplots[i][5][counter]["alpha"] = self.data_style_tab.current_data_style["alpha"]
                         self.plot_canvas.subplots[i][5][counter]["marker"] = self.data_style_tab.current_data_style["marker"]
@@ -1408,3 +1415,30 @@ class SubplotEditor(QWidget):
                     sub_info,
                     line_info
                 ])
+        
+    def _is_invalid_latex(self, text: str) -> bool:
+        """
+        Checks whether this string can cause a LaTeX error when rendering in matplotlib.
+        Uses a light heuristic.
+
+        False if label is correct
+        True if label is uncorrect
+        """
+        if not text or not isinstance(text, str):
+            return False
+
+        if text.count("$") % 2 != 0:
+            return True
+
+        forbidden = ["\\begin", "\\end", "\\newcommand", "\\input", "\\include"]
+        if any(f in text for f in forbidden):
+            return True
+        try:
+            fig, ax = plt.subplots()
+            ax.set_title(text)
+            fig.canvas.draw() 
+            plt.close(fig)
+            return False
+        except Exception:
+            return True
+        

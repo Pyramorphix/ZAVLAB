@@ -171,7 +171,7 @@ class DataSeriesDialog(QDialog):
         """"
         Add new data series with all correlated information about data to self.series
         """
-        ls = self.line_style_spin.currentText()
+        ls = self.line_style_spin.currentText().split()[0]
         if ls == "Nothing":
             ls = ""
         series: dict = {
@@ -1081,3 +1081,101 @@ class DataStyleDialog(QDialog):
         self.series_data['marker size'] = self.marker_size_spin.value()
         
         return self.series_data
+    
+
+class FitDialog(QDialog):
+    """aDialog for choosing data and function for fitting"""
+
+
+    def __init__(self, headers, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Curve Fit / χ² Fit Settings")
+        self.setMinimumWidth(520)
+
+        layout = QVBoxLayout(self)
+
+        # --- Выбор колонок ---
+        self.x_box = QComboBox(); self.x_box.addItems(headers)
+        self.xerr_box = QComboBox(); self.xerr_box.addItems(["(none)"] + headers)
+        self.y_box = QComboBox(); self.y_box.addItems(headers)
+        self.yerr_box = QComboBox(); self.yerr_box.addItems(["(none)"] + headers)
+
+        # --- Поля ввода ---
+        self.func_edit = QLineEdit("a*x + b")
+        self.func_edit.setToolTip(
+            "Enter function in Python format.\n"
+            "Use 'x' as independent variable.\n"
+            "Functions that can be used are everything from NumPy: np.sin, np.cos, np.exp, np.log, np.sqrt и др.\n"
+            "For example:\n"
+            "  a*x + b\n"
+            "  a*np.exp(-b*x) + c\n"
+            "  a / (1 + np.exp(-(x - x0)/dx))"
+        )
+
+        self.params_edit = QLineEdit("a=1,b=1")
+        self.params_edit.setToolTip(
+            "Enter the initial parameter values separated by commas:\n"
+            "  a=1,b=1,c=0.1\n"
+            "This paramters will be fitted."
+        )
+
+        self.const_edit = QLineEdit("k=1.38e-23,T=300")
+        self.const_edit.setToolTip(
+            "Enter fixed values of constants separated by commas:\n"
+            " k=1.38e-23,T=300\n"
+            "They will be available inside the function, but they will not change during fitting."
+        )
+        self.add_values_box = QCheckBox("Add fitted values to table")
+        self.add_values_box.setChecked(True)
+        self.save_params_box = QCheckBox("Save fitted parameters to table")
+        self.save_params_box.setChecked(True)
+
+        form = QGridLayout()
+        form.addWidget(QLabel("X column:"), 0, 0)
+        form.addWidget(self.x_box, 0, 1)
+        form.addWidget(QLabel("X error:"), 1, 0)
+        form.addWidget(self.xerr_box, 1, 1)
+        form.addWidget(QLabel("Y column:"), 2, 0)
+        form.addWidget(self.y_box, 2, 1)
+        form.addWidget(QLabel("Y error:"), 3, 0)
+        form.addWidget(self.yerr_box, 3, 1)
+        form.addWidget(QLabel("Function f(x):"), 4, 0)
+        form.addWidget(self.func_edit, 4, 1)
+        form.addWidget(QLabel("Initial parameters (a=1,b=1,...):"), 5, 0)
+        form.addWidget(self.params_edit, 5, 1)
+        form.addWidget(QLabel("Fixed constants (optional):"), 6, 0)
+        form.addWidget(self.const_edit, 6, 1)
+        layout.addLayout(form)
+        layout.addWidget(self.add_values_box)
+        layout.addWidget(self.save_params_box)
+
+        # --- Подсказка ---
+        help_label = QLabel(
+            "<i>The function must be an expression of the variable <b>x</b>.<br>"
+            "Use Python syntax (multiplication by *, degree by **).<br>"
+            "You can use the constants (for example, k, T) specified above.</i>"
+        )
+        help_label.setWordWrap(True)
+        layout.addWidget(help_label)
+
+        # --- Кнопки ---
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_values(self):
+        func_text = self.func_edit.text().strip()
+        if "^" in func_text and "**" not in func_text:
+            func_text = func_text.replace("^", "**")
+        return {
+            "x": self.x_box.currentText(),
+            "xerr": None if self.xerr_box.currentIndex() == 0 else self.xerr_box.currentText(),
+            "y": self.y_box.currentText(),
+            "yerr": None if self.yerr_box.currentIndex() == 0 else self.yerr_box.currentText(),
+            "func": func_text,
+            "params": self.params_edit.text().strip(),
+            "consts": self.const_edit.text().strip(),
+            "add_values": self.add_values_box.isChecked(),
+            "save_params": self.save_params_box.isChecked()
+        }

@@ -58,6 +58,14 @@ class DataStyleTab(QWidget):
         #widget to change line label
         self.line_label = QLineEdit()
         self.line_label.setText("y(x)")
+        self.line_label.setToolTip(
+                                    "Use LaTeX syntax for formulas:\n"
+                                    "• Fractions: \\frac{numerator}{denominator}\n"
+                                    "• Degrees: x^2\n"
+                                    "• Greek letters: \\alpha, \\beta\n"
+                                    "• Roots: \\sqrt{x}\n"
+                                    "Be sure to conclude formulas in $...$"
+                                )
         self.line_label.setPlaceholderText("Enter line label...")
         style_layout.addRow("Line Label:", self.line_label)
 
@@ -1143,6 +1151,8 @@ class PositioningChoosingDataTab(QWidget):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
+
+        self.current_subplot = 0
         self.__init_pos_data_tab__()
     
     def __init_pos_data_tab__(self) -> None:
@@ -1228,6 +1238,7 @@ class PositioningChoosingDataTab(QWidget):
         #make and add all widgets
         self.data_data_spin: QComboBox = QComboBox()
         self.data_data_spin.addItems(["None"])
+        self.data_data_spin.currentTextChanged.connect(self.__data_data_changed__)
         data_layout.addRow("Data to change:", self.data_data_spin)
  
         # data_layout.addWidget(QLabel("X Data:"))
@@ -1319,3 +1330,18 @@ class PositioningChoosingDataTab(QWidget):
         self.edit_data_combo_y.setCurrentText(data_series[0]["y"])
         self.edit_data_combo_xerr.setCurrentText(data_series[0]["xerr"])
         self.edit_data_combo_yerr.setCurrentText(data_series[0]["yerr"])
+    
+    def __data_data_changed__(self) -> None:
+        """Handles changes in data selection and updates controls accordingly."""
+
+        if not self.data_data_spin.currentText():
+            return
+        
+        data_id = int(self.data_data_spin.currentText().split('-')[1])
+        for series in self.current_subplot:
+            if series:
+                if series['id'] == data_id:
+                    self.edit_data_combo_x.setCurrentText(series["x"])
+                    self.edit_data_combo_xerr.setCurrentText(series["xerr"])
+                    self.edit_data_combo_y.setCurrentText(series["y"])
+                    self.edit_data_combo_yerr.setCurrentText(series["yerr"])

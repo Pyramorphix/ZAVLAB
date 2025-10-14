@@ -8,6 +8,7 @@ import math
 import statistics
 import random
 from PyQt6.QtCore import pyqtSignal
+import numpy as np
 
 class ExcelLikeModel(QtCore.QAbstractTableModel):
     """Excel-like table model with formula support and relative references."""
@@ -68,7 +69,8 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
             'len': len,
             'int': int,
             'float': float,
-            'str': str
+            'str': str,
+            'mnk': self._mnk,
         }
         self.cell_patern = r'(\[([A-Za-z_][A-Za-z0-9_]*)\])(\d+)'
 
@@ -193,50 +195,75 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         return False
 
     def evaluate_cell(self, row, col):
-        """Evaluate the formula in the specified cell."""
-
+        """Evaluate the formula in the specified cell, supporting absolute references and ranges."""
         formula = self._formulas[row][col]
         if not formula.startswith('='):
             return formula
 
         try:
-            # Remove the equals sign and any spaces
             expression = formula[1:].replace(' ', '')
-            expression = expression.split(", ")[0]
-
-            # Replace Excel-style power operator (^) with Python-style (**)
             expression = expression.replace('^', '**')
 
-            # Convert cell references (e.g., A1, B2) to their values
-            pattern = self.cell_patern
-            
-            def replace_match(match):
-                full_match = match.group(1)
-                col_ref = match.group(2).upper()
-                row_ref = int(match.group(3)) - 1 
-                
-                # Find column index by name
-                col_index = self.column_name_to_index(col_ref)
+            # --- 1) Protect ranges like [A]1:[A]7
+            range_pattern = r'(\[\$?[A-Za-z_][A-Za-z0-9_]*\]\$?\d+:\[\$?[A-Za-z_][A-Za-z0-9_]*\]\$?\d+)'
+            range_placeholders = {}
+            placeholder_id = 0
 
-                # Check if the reference is within bounds
-                if 0 <= row_ref < self.rowCount() and 0 <= col_index < self.columnCount():
-                    cell_value = self.evaluate_cell(row_ref, col_index)
-                    if self.is_number(cell_value):
-                        return str(float(cell_value))
+            def protect_ranges(match):
+                nonlocal placeholder_id
+                key = f"__RANGE_{placeholder_id}__"
+                range_placeholders[key] = match.group(1)
+                placeholder_id += 1
+                return f'"{key}"'
+
+            expression = re.sub(range_pattern, protect_ranges, expression)
+
+            self.cell_patern = r'(\[\$?[A-Za-z_][A-Za-z0-9_]*\])(\$?\d+)'
+
+            def replace_cell_match(match):
+                col_ref = match.group(1)  # e.g., [J] or [$line_params]
+                row_ref = match.group(2)  # e.g., 1 or $5
+
+                # Remove $ for evaluation
+                col_name = col_ref.replace('$','').strip('[]')
+                row_num = int(row_ref.replace('$','')) - 1  # 0-based index
+                col_index = self.column_name_to_index(col_name)
+
+                if 0 <= row_num < self.rowCount() and 0 <= col_index < self.columnCount():
+                    val = self.evaluate_cell(row_num, col_index)
+                    if self.is_number(val):
+                        return str(float(val))
                     else:
-                        # If it's a string, wrap it in quotes for the expression
-                        return f'"{cell_value}"'
-                else:
-                    return '0'  # Out of bounds reference becomes 0
-            
-            # Replace all cell references with their values
-            expression = re.sub(pattern, replace_match, expression)
-            
-            # Use safe evaluation
+                        safe_str = str(val).replace('"', '\\"')
+                        return f'"{safe_str}"'
+                return '0'
+
+
+            expression = re.sub(self.cell_patern, replace_cell_match, expression)
+
+            # --- 3) Restore ranges ---
+            for key, rng in range_placeholders.items():
+                expression = expression.replace(f'"{key}"', f'"{rng}"')
+
+            # --- 4) Replace pure column references [A] -> "A" outside quotes ---
+            def replace_outside_quotes(s, pattern, repl):
+                parts = re.split(r'(".*?")', s)
+                for i, part in enumerate(parts):
+                    if len(part) >= 2 and part[0] == '"' and part[-1] == '"':
+                        continue
+                    parts[i] = re.sub(pattern, repl, part)
+                return ''.join(parts)
+
+            expression = replace_outside_quotes(expression, r'\[\$?([A-Za-z_][A-Za-z0-9_]*)\]', r'"\1"')
+
+            # --- 5) Remove all $ signs before safe evaluation ---
+            expression = expression.replace('$', '')
+
             return self._safe_eval(expression)
-            
+
         except Exception as e:
             return f"#ERROR! ({str(e)})"
+
 
     def _safe_eval(self, expr):
         """Safely evaluate a mathematical expression"""
@@ -317,6 +344,103 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
         except ValueError:
             return False
 
+    def _mnk(self, x_ref, y_ref, result='k', degree=1):
+        """
+        MNK / least-squares polynomial fit for two columns or ranges.
+        
+        Supports absolute references with $.
+        
+        Usage examples:
+        =mnk([A],[B],"k")             -> slope
+        =mnk([A],[B],"b")             -> intercept
+        =mnk([A],[B],"coef_errors")   -> standard errors of coefficients
+        =mnk([A],[B],1)               -> coefficient for x^1 in polynomial
+        =mnk([A],[B],"coeffs",3)      -> list of coefficients [a3,a2,a1,a0]
+        =mnk([A],[B],"r2",2)          -> R² for quadratic fit
+        """
+        try:
+            # --- Parse column/range references ---
+            def parse_range(ref):
+                if not isinstance(ref, str):
+                    raise ValueError("MNK expects string references")
+                ref = ref.strip()
+                # Range [$A]$1:[$A]$7
+                m = re.match(r'^\[(\$?)([A-Za-z_][A-Za-z0-9_]*)\](\$?\d+):\[(\$?)([A-Za-z_][A-Za-z0-9_]*)\](\$?\d+)$', ref)
+                if m:
+                    col_fix1, col1, row_fix1, col_fix2, col2, row_fix2 = m.groups()
+                    if col1 != col2:
+                        raise ValueError("MNK ranges must be in the same column")
+                    return col1, int(row_fix1.replace('$','')) - 1, int(row_fix2.replace('$','')) - 1
+                # Single cell [$A]$1
+                m = re.match(r'^\[(\$?)([A-Za-z_][A-Za-z0-9_]*)\](\$?\d+)$', ref)
+                if m:
+                    col_fix, col, row_fix = m.groups()
+                    return col, int(row_fix.replace('$','')) - 1, int(row_fix.replace('$','')) - 1
+                # Single column [A] or [$A]
+                m = re.match(r'^\$?([A-Za-z_][A-Za-z0-9_]*)$', ref)
+                if m:
+                    return m.group(1), 0, self.rowCount() - 1
+                raise ValueError(f"Invalid reference: {ref}")
+
+            # --- Extract numeric data from model ---
+            x_col, xs, xe = parse_range(str(x_ref))
+            y_col, ys, ye = parse_range(str(y_ref))
+            xi = self.column_name_to_index(x_col)
+            yi = self.column_name_to_index(y_col)
+            if xi < 0 or yi < 0:
+                return "#ERR (bad column name)"
+
+            xdata, ydata = [], []
+            for r in range(max(xs, ys), min(self.rowCount()-1, xe, ye)+1):
+                xv = self.evaluate_cell(r, xi)
+                yv = self.evaluate_cell(r, yi)
+                try:
+                    xdata.append(float(xv))
+                    ydata.append(float(yv))
+                except (ValueError, TypeError):
+                    continue
+            if len(xdata) < degree + 1:
+                return "#ERR (too few points)"
+
+            x = np.array(xdata)
+            y = np.array(ydata)
+
+            # --- Polynomial regression with covariance for errors ---
+            coeffs, cov = np.polyfit(x, y, int(degree), cov=True)
+            y_pred = np.polyval(coeffs, x)
+            residuals = y - y_pred
+            sigma = float(np.sqrt(np.mean(residuals**2)))
+            ss_tot = float(np.sum((y - np.mean(y))**2))
+            ss_res = float(np.sum(residuals**2))
+            r2 = float(1 - ss_res/ss_tot) if ss_tot else 0.0
+            coef_errors = np.sqrt(np.diag(cov)).tolist()
+
+            # --- Interpret result ---
+            if isinstance(result, (int, float, np.integer)):
+                idx = int(result)
+                if idx < 0 or idx > degree:
+                    return f"#ERR (coef index out of range: {idx})"
+                return coeffs[-(idx+1)]
+            
+            result = str(result).lower()
+            if result in ('coeffs', 'all'):
+                return coeffs.tolist()
+            elif result in ('coef_errors', 'errs'):
+                return coef_errors
+            elif result == 'sigma':
+                return sigma
+            elif result == 'r2':
+                return r2
+            elif result == 'k':
+                return coeffs[-2] if degree >= 1 else "#ERR (no slope)"
+            elif result == 'b':
+                return coeffs[-1]
+            else:
+                return "#ERR (invalid result key)"
+
+        except Exception as e:
+            return f"#ERR ({e})"
+
     def column_name_to_index(self, name):
         """Convert column name to index (supports both default and custom names)."""
 
@@ -359,41 +483,50 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
                     del self._dependencies[key]
                     
     def adjust_formula_references(self, formula, row_offset, col_offset):
-        """Adjust formula references based on row and column offsets."""
+        """Adjust formula references based on row and column offsets,
+        supporting absolute references with $ signs."""
         
         if not formula.startswith('='):
             return formula
         
-        # Pattern to match cell references (e.g., A1, BC23)
-        pattern = self.cell_patern
+        pattern = r'(\[\$?[A-Za-z_][A-Za-z0-9_]*\])(\$?\d+)'
         
         def adjust_match(match):
-            full_match = match.group(1)
-            col_name = match.group(2)
-            row_num = int(match.group(3))
+            col_ref = match.group(1)  # e.g., [A] or [$A]
+            row_ref = match.group(2)  # e.g., 1 or $1
             
-            # Convert column name to index, adjust, then back to name
+            # Determine if column/row is fixed
+            col_fixed = col_ref.startswith('[$')
+            row_fixed = row_ref.startswith('$')
+            
+            # Clean names
+            col_name = col_ref.replace('$','').strip('[]')
+            row_num = int(row_ref.replace('$',''))
+            
+            # Convert column name to index
             col_idx = self.column_name_to_index(col_name)
             if col_idx == -1:
-                return full_match
+                return match.group(0)
             
-            adjusted_col_idx = col_idx + col_offset
-            adjusted_row = row_num + row_offset
+            # Apply offsets only if not fixed
+            new_col_idx = col_idx if col_fixed else col_idx + col_offset
+            new_row = row_num if row_fixed else row_num + row_offset
             
-            # Check if adjusted indices are valid
-            if (0 <= adjusted_col_idx < self.columnCount() and 
-                1 <= adjusted_row <= self.rowCount()):  # Note: row numbers are 1-based
-                adjusted_col_name = self._column_names[adjusted_col_idx]
-                return f"[{adjusted_col_name}]{adjusted_row}"
+            # Return adjusted reference
+            if 0 <= new_col_idx < self.columnCount() and 1 <= new_row <= self.rowCount():
+                new_col_name = self._column_names[new_col_idx]
+                col_prefix = '$' if col_fixed else ''
+                row_prefix = '$' if row_fixed else ''
+                return f"[{col_prefix}{new_col_name}]{row_prefix}{new_row}"
             else:
-                # Return original reference if adjusted is out of bounds
-                return full_match
+                return match.group(0)
         
         try:
             adjusted_formula = re.sub(pattern, adjust_match, formula)
             return adjusted_formula
-        except:
+        except Exception:
             return formula
+
 
     def insertColumn(self, column, parent=QtCore.QModelIndex()):
         """Insert a new column at the specified position"""
@@ -471,6 +604,26 @@ class ExcelLikeModel(QtCore.QAbstractTableModel):
             for _ in range(current_rows - rows):
                 self.removeRow(current_rows - 1)
         return True
+
+    def clear_all(self):
+        """Clear all data and formulas in the table and reset headers to numbers."""
+        rows, cols = self.rowCount(), self.columnCount()
+
+        # Clear contents
+        self._data = [['' for _ in range(cols)] for _ in range(rows)]
+        self._formulas = [['' for _ in range(cols)] for _ in range(rows)]
+        self._dependencies.clear()
+
+        # Reset headers to numeric (1, 2, 3, ...)
+        self._column_names = [str(i + 1) for i in range(cols)]
+
+        # Reset last column name tracker
+        self.last_columnn_name = cols
+
+        # Emit updates
+        self.headerDataChanged.emit(Qt.Orientation.Horizontal, 0, cols - 1)
+        self.dataChanged.emit(self.index(0, 0), self.index(rows - 1, cols - 1))
+
 
 class FormulaLineEdit(QtWidgets.QLineEdit):
     """Line edit widget specialized for formula input."""

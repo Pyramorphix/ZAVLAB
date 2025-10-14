@@ -14,67 +14,66 @@
             },
             "data_series": [
                 {
-                    "alpha": 1.0,
-                    "color": "#1f77b4",
                     "id": 0,
-                    "label": "y(x)",
-                    "ls": "",
-                    "marker": "o",
-                    "marker size": 3,
+                    "x": "grad",
+                    "xerr": "None",
+                    "y": "lambda",
+                    "yerr": "None",
+                    "color": "#1B1F3B",
                     "width": 1.0,
-                    "x": "x",
-                    "xerr": "x_err",
-                    "y": "y",
-                    "yerr": "y_err"
+                    "label": "$\\lambda(grad)$",
+                    "ls": "",
+                    "alpha": 1.0,
+                    "marker": "o",
+                    "marker size": 3
+                },
+                {
+                    "id": 1,
+                    "x": "grad",
+                    "xerr": "None",
+                    "y": "fit_lambda",
+                    "yerr": "None",
+                    "color": "#35d9e8",
+                    "width": 1.0,
+                    "label": "fit_lambda(grad)",
+                    "ls": "-",
+                    "alpha": 1.0,
+                    "marker": "",
+                    "marker size": 3
                 }
             ],
             "sub_info": {
                 "axes": {
-                    "x label fs": 14,
-                    "x max": 11.5,
-                    "x min": 0.5,
-                    "x number of rounding digits": 1,
-                    "x scale": 0,
+                    "x-label": "",
+                    "x min": 99.9,
+                    "x max": 3003.1,
+                    "x ticks": 10,
                     "x small ticks": 5,
-                    "x ticks": 7,
-                    "x-label": "x",
-                    "y label fs": 14,
-                    "y max": 127.0,
-                    "y min": -5.0,
-                    "y number of rounding digits": 2,
-                    "y scale": 0,
+                    "x label fs": 14,
+                    "x scale": 0,
+                    "x number of rounding digits": -2,
+                    "y-label": "fit_lambda",
+                    "y min": -351.6205,
+                    "y max": 7384.0305,
+                    "y ticks": 10,
                     "y small ticks": 5,
-                    "y ticks": 8,
-                    "y-label": "y"
+                    "y label fs": 14,
+                    "y scale": 0,
+                    "y number of rounding digits": -1
+                },
+                "title": {
+                    "title": "",
+                    "title fs": 14
+                },
+                "legend": {
+                    "legend position": "best",
+                    "legend fs": 14
                 },
                 "grid": {
                     "show grid": true
-                },
-                "legend": {
-                    "legend fs": 14,
-                    "legend position": "upper left"
-                },
-                "title": {
-                    "title": "a",
-                    "title fs": 14
                 }
             },
-            "lines": [
-                {
-                    "color": "#0609b4",
-                    "id": 0,
-                    "label": "hh",
-                    "label_font_size": 10,
-                    "label_position": "Top Center",
-                    "style": "-",
-                    "type": 0,
-                    "width": 1.5,
-                    "x1": 1.396698210955308,
-                    "x2": 9.93437866961387,
-                    "y1": 80.52113491603939,
-                    "y2": 25.396641574985534
-                }
-            ]
+            "lines": []
         }
     ],
     "current_id": 1

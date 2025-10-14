@@ -112,7 +112,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
                     sub_id, subplot = self.find_subplot(self.current_subplot_id)
 
                     # Click on the Y-axis
-                    if event.ydata < ax.get_ylim()[0] + 0.05 * (ax.get_ylim()[1] - ax.get_ylim()[0]):
+                    if event.ydata < ax.get_ylim()[0] + 0.01 * (ax.get_ylim()[1] - ax.get_ylim()[0]):
                         dialog = AxisConfigDialog('x', ax, subplot, self)
                         if dialog.exec() == QDialog.DialogCode.Accepted:
                             self.subplots[sub_id] = dialog.get_data()
@@ -122,7 +122,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
                         return
                     
                     # Click on the X-axis
-                    if event.xdata < ax.get_xlim()[0] + 0.05 * (ax.get_xlim()[1] - ax.get_xlim()[0]):
+                    if event.xdata < ax.get_xlim()[0] + 0.01 * (ax.get_xlim()[1] - ax.get_xlim()[0]):
                         dialog = AxisConfigDialog('y', ax, subplot, self)
                         if dialog.exec() == QDialog.DialogCode.Accepted: 
                             self.subplots[sub_id] = dialog.get_data()
@@ -391,7 +391,55 @@ class INTERACTIVE_PLOT(FigureCanvas):
         self.fig.tight_layout()
         self.canvas.draw()
         self.draw()
-    
+
+    def _is_invalid_latex(self, text: str) -> bool:
+        """
+        Checks whether this string can cause a LaTeX error when rendering in matplotlib.
+        Uses a light heuristic.
+
+        False if label is correct
+        True if label is uncorrect
+        """
+        if not text or not isinstance(text, str):
+            return False
+
+        if text.count("$") % 2 != 0:
+            return True
+
+        forbidden = ["\\begin", "\\end", "\\newcommand", "\\input", "\\include"]
+        if any(f in text for f in forbidden):
+            return True
+        try:
+            fig, ax = plt.subplots()
+            ax.set_title(text)
+            fig.canvas.draw() 
+            plt.close(fig)
+            return False
+        except Exception:
+            return True
+        
+    def check_all_label(self, axes_info, title_info):
+        """
+        Check the syntaxix in latex labels
+
+        """
+
+        label_x = axes_info["x-label"]
+        if self._is_invalid_latex(label_x):
+            QMessageBox.warning(self, "Warning", "The x label that you have just entered has syntax error, so it cann't be applied. Try to enter it again.")
+            axes_info["x-label"] = ""
+
+        label_y = axes_info["y-label"]
+        if self._is_invalid_latex(label_y):
+            QMessageBox.warning(self, "Warning", "The y label that you have just entered has syntax error, so it cann't be applied. Try to enter it again.")
+            axes_info["y-label"] = ""
+
+        label_title = title_info["title"]
+        if self._is_invalid_latex(label_x):
+            QMessageBox.warning(self, "Warning", "The title that you have just entered has syntax error, so it cann't be applied. Try to enter it again.")
+            title_info["title"] = "" 
+        return axes_info, title_info           
+
     def update_one_plot(self, subplot, win):
         """
         Update and redraw a single subplot with current configuration
@@ -408,6 +456,7 @@ class INTERACTIVE_PLOT(FigureCanvas):
         grid_info = sub_info["grid"]
         ax: Axes = self.axes[plot_id]
         ax.clear()
+        axes_info, title_info = self.check_all_label(axes_info, title_info)
     
         # Plot all series
         for series in data_series:

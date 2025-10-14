@@ -12,12 +12,18 @@ import os
 import logging
 import csv
 import numpy as np
+from scipy.optimize import curve_fit
+import math
+import matplotlib.pyplot as plt
+from matplotlib import texmanager
+from scipy.optimize import minimize
+from numdifftools import Hessian
 
 from theme_manager import ThemeManager
 from plot_manager import SubplotEditor
 from core import AutoSaveManager
 from table import ExcelLikeModel, ExcelTableView, FormulaLineEdit
-
+from dialogs import FitDialog
 
 
 class ZAVLABMainWindow(QMainWindow):
@@ -44,7 +50,7 @@ class ZAVLABMainWindow(QMainWindow):
         super().__init__()
 
         self.theme = 'default'
-        
+
         self._configure_window()
         self._initialize_components()
         self._setup_ui()
@@ -167,7 +173,26 @@ class ZAVLABMainWindow(QMainWindow):
         self.table.table_headers_signal.connect(self.update_headers) 
         self.model: ExcelLikeModel = ExcelLikeModel(20, 2)  # 10 rows, 2 columns initially
         self.table.setModel(self.model)
-        
+
+        # copy
+        copy_action = QAction("Copy", self)
+        copy_action.setShortcut(QKeySequence.StandardKey.Copy)
+        copy_action.triggered.connect(self.copy_selection)
+        self.table.addAction(copy_action)
+
+        # paste
+        paste_action = QAction("Paste", self)
+        paste_action.setShortcut(QKeySequence.StandardKey.Paste)
+        paste_action.triggered.connect(self.paste_selection)
+        self.table.addAction(paste_action)
+
+        # --- Delete / Clear selected cells ---
+        delete_action = QAction("Delete", self)
+        delete_action.setShortcut(QKeySequence.StandardKey.Delete)
+        delete_action.triggered.connect(self.delete_selection)
+        self.table.addAction(delete_action)    
+
+
         # Add widgets to splitter
         decimal_layout = QHBoxLayout()
         decimal_layout.addWidget(decimal_label)
@@ -209,6 +234,9 @@ class ZAVLABMainWindow(QMainWindow):
 
         # Connect selection change signal to update formula bar
         self.table.selectionModel().selectionChanged.connect(self.update_formula_bar)
+
+
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
 
     def setupMenuBar(self) -> None:
         """Create application menu bar with file operations and help sections."""
@@ -272,6 +300,11 @@ class ZAVLABMainWindow(QMainWindow):
         load_action.triggered.connect(self._load_csv)  # Changed to _load_csv
         self.files.addAction(load_action)
 
+        clear_table_action = QAction("Clear table", self)
+        clear_table_action.setShortcut(QKeySequence("Ctrl+Shift+C"))
+        clear_table_action.triggered.connect(self._clear_table)
+        self.files.addAction(clear_table_action)
+
         # save plots settings
         save_plot_settings = QAction("Save plots settings", self)
         save_action.setShortcut(QKeySequence("Ctrl+Shift+P"))
@@ -289,6 +322,18 @@ class ZAVLABMainWindow(QMainWindow):
         save_action.setShortcut(QKeySequence("Ctrl+Shift+M"))
         save_plot_image.triggered.connect(self._save_plot_image)
         self.files.addAction(save_plot_image)
+
+        #Fitting
+        fit_action = QAction("Curve Fit (SciPy)", self)
+        fit_action.triggered.connect(self.fit_data_curvefit)
+        self.files.addSeparator()
+        self.files.addAction(fit_action)
+
+        chi2_action = QAction("Fit with χ² (X and Y errors)", self)
+        chi2_action.triggered.connect(self.fit_data_chi2_total)
+        self.files.addAction(chi2_action)
+
+
 
     def tableDroppedHMenu(self, pos: QPoint) -> None:
         """Context menu for horizontal headers (column management)."""  
@@ -469,7 +514,7 @@ class ZAVLABMainWindow(QMainWindow):
             if not file_name.endswith(".csv"):
                 file_name += ".csv"
             with open(file_name, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile, delimiter=';')
+                writer = csv.writer(csvfile, delimiter=',')
                 
                 # Write headers
                 headers: list[str] = []
@@ -513,7 +558,7 @@ class ZAVLABMainWindow(QMainWindow):
         
         try:
             with open(file_name, 'r', newline='', encoding='utf-8') as csvfile:
-                reader = csv.reader(csvfile, delimiter=';')
+                reader = csv.reader(csvfile, delimiter=',')
                 
                 # Read headers
                 headers: list[str] = next(reader)
@@ -548,6 +593,18 @@ class ZAVLABMainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load file:\n{str(e)}")
     
+    def _clear_table(self):
+        """Clear all contents of the table."""
+        reply = QMessageBox.question(
+            self, "Confirmation",
+            "Clear all data and reset headers to numeric?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.model.clear_all()
+            self.statusBar().showMessage("Table cleared and reset", 3000)
+
+
     def _save_json(self) -> None:
         """Save table data to JSON file (including formulas)."""
         file_name, _ = QFileDialog.getSaveFileName(
@@ -1260,7 +1317,7 @@ class ZAVLABMainWindow(QMainWindow):
             # Get the complete state including formulas
             state = self.get_state()
             sub_state = self.plotter.get_state()  
-            
+            sub_state = sanitize_plot_state(sub_state)
             # Save with formulas
             self.auto_save_manager.save_to_file(
                 sub_state, 
@@ -1273,6 +1330,80 @@ class ZAVLABMainWindow(QMainWindow):
         
         event.accept()
 
+    def auto_save_on_crash(self):
+        """
+        Safe auto-save during crash.
+        Verifies signatures (LaTeX, etc.) and clears only incorrect fields.
+        """
+
+        try:
+            state = self.get_state()
+            sub_state = self.plotter.get_state()
+            sub_state = self.sanitize_plot_state(sub_state)
+
+            if "subplots" in sub_state:
+                for subplot in sub_state["subplots"]:
+                    sub_info = subplot.get("sub_info", {})
+                    if not isinstance(sub_info, dict):
+                        continue
+
+                    axes_info = sub_info.get("axes", {})
+                    for label_key in ["x-label", "y-label"]:
+                        if label_key in axes_info:
+                            label_text = axes_info[label_key]
+                            if isinstance(label_text, str) and self._is_invalid_latex(label_text):
+                                logging.warning(f"[AutoSave] Incorrect label deleted {label_key}: {label_text}")
+                                axes_info[label_key] = ""
+
+                    title_info = sub_info.get("title", {})
+                    if "title" in title_info:
+                        title_text = title_info["title"]
+                        if isinstance(title_text, str) and self._is_invalid_latex(title_text):
+                            logging.warning(f"[AutoSave] Incorrect title deleted: {title_text}")
+                            title_info["title"] = ""
+
+                    legend_info = sub_info.get("legend", {})
+                    if "legend label" in legend_info:
+                        legend_label = legend_info["legend label"]
+                        if isinstance(legend_label, str) and self._is_invalid_latex(legend_label):
+                            logging.warning(f"[AutoSave] Incorrect legend deleted: {legend_label}")
+                            legend_info["legend label"] = ""
+
+            self.auto_save_manager.save_to_file(
+                sub_state,
+                state,
+                "./files/sub_setting_final.json",
+                "./files/settings_final.json"
+            )
+
+            logging.info("[AutoSave] Crash data saved successfully (invalid labels removed).")
+
+        except Exception as e:
+            logging.error(f"[AutoSave ERROR] Failed to save crash data: {e}")
+
+    def _is_invalid_latex(self, text: str) -> bool:
+        """
+        Checks whether this string can cause a LaTeX error when rendering in matplotlib.
+        Uses a light heuristic.
+        """
+        if not text or not isinstance(text, str):
+            return False
+
+        if text.count("$") % 2 != 0:
+            return True
+
+        forbidden = ["\\begin", "\\end", "\\newcommand", "\\input", "\\include"]
+        if any(f in text for f in forbidden):
+            return True
+
+        try:
+            fig, ax = plt.subplots()
+            ax.set_title(text)
+            fig.canvas.draw() 
+            plt.close(fig)
+            return False
+        except Exception:
+            return True
 
     def get_state(self):
         """Return complete application state for saving."""
@@ -1365,3 +1496,359 @@ class ZAVLABMainWindow(QMainWindow):
             return [self.convert_numpy_types(item) for item in obj]
         return obj
 
+    def copy_selection(self):
+        selection = self.table.selectedIndexes()
+        if not selection:
+            return
+        # sort by row/col
+        selection.sort(key=lambda ix: (ix.row(), ix.column()))
+        rows = {}
+        for ix in selection:
+            rows.setdefault(ix.row(), {})[ix.column()] = self.model.data(ix)
+        text = '\n'.join(
+            ['\t'.join(rows[r].get(c, '') for c in sorted(rows[r].keys()))
+            for r in sorted(rows.keys())]
+        )
+        QtWidgets.QApplication.clipboard().setText(text)
+
+    def paste_selection(self):
+        clipboard = QtWidgets.QApplication.clipboard().text()
+        if not clipboard:
+            return
+        start = self.table.currentIndex()
+        if not start.isValid():
+            return
+        rows = [r.split('\t') for r in clipboard.splitlines()]
+        for i, row_data in enumerate(rows):
+            for j, value in enumerate(row_data):
+                r = start.row() + i
+                c = start.column() + j
+                if r < self.model.rowCount() and c < self.model.columnCount():
+                    self.model.setData(self.model.index(r, c), value)
+    def delete_selection(self):
+        """Clear contents (data and formulas) of all selected cells."""
+        indexes = self.table.selectedIndexes()
+        if not indexes:
+            return
+
+        # Sort to ensure consistent order
+        indexes.sort(key=lambda ix: (ix.row(), ix.column()))
+
+        for ix in indexes:
+            self.model.setData(ix, "")
+            # Also clear stored formula if your model keeps one
+            r, c = ix.row(), ix.column()
+            if hasattr(self.model, "_formulas"):
+                self.model._formulas[r][c] = ""
+
+    def fit_data_curvefit(self):
+        """Fitting data using SciPy curve_fit, taking into account errors."""
+
+        headers = self.get_headers()
+        dlg = FitDialog(headers, self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        vals = dlg.get_values()
+        xcol, ycol, xerrcol, yerrcol = vals["x"], vals["y"], vals["xerr"], vals["yerr"]
+        func_text, params_text = vals["func"], vals["params"]
+
+        data = self.get_data(xcol, ycol)
+        x, y = data
+        if len(x) == 0:
+            QMessageBox.warning(self, "Error", "There is no correct data for the approximation.")
+            return
+
+        sigma_x = None
+        sigma_y = None
+        if xerrcol:
+            err_data = self.get_data(xcol, xerrcol)
+            if len(err_data[1]) == len(x):
+                sigma_x = np.array(err_data[1])
+        if yerrcol:
+            err_data = self.get_data(ycol, yerrcol)
+            if len(err_data[1]) == len(y):
+                sigma_y = np.array(err_data[1])
+
+
+        try:
+            p0_dict = {k.strip(): float(v) for k, v in [p.split('=') for p in params_text.split(',')]}
+            param_names = list(p0_dict.keys())
+            p0 = list(p0_dict.values())
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Incorrect parameter format: {e}")
+            return
+
+        consts = {}
+        if vals.get("consts"):
+            try:
+                consts = {k.strip(): float(v) for k, v in [p.split('=') for p in vals["consts"].split(',')]}
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Incorrect format of constants: {e}")
+                return
+
+        env = {"np": np, "math": math}
+        env.update(consts)
+
+        try:
+            func_code = f"lambda x, {', '.join(param_names)}: {func_text}"
+            fit_func = eval(func_code, env)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Invalid function:\n{e}")
+            return
+
+
+        try:
+            popt, pcov = curve_fit(fit_func, x, y, p0=p0, sigma=sigma_y, absolute_sigma=True, maxfev=10000)
+        except Exception as e:
+            QMessageBox.critical(self, "Fitting error", f"curve_fit failed:\n{e}")
+            return
+
+        perr = np.sqrt(np.diag(pcov))
+        y_fit = fit_func(x, *popt)
+
+        # --- χ² ---
+        if sigma_y is not None:
+            chi2 = np.sum(((y - y_fit) / sigma_y) ** 2)
+        else:
+            chi2 = np.sum((y - y_fit) ** 2)
+        dof = len(y) - len(popt)
+        red_chi2 = chi2 / dof if dof > 0 else np.nan
+
+        if vals.get("save_params", True):
+
+            header_names = [self.model.headerData(i, Qt.Orientation.Horizontal) for i in range(self.model.columnCount())]
+
+            if "fit_dataset" not in header_names:
+                headers = ["fit_dataset", "fit_function"]
+                for name in param_names:
+                    headers.extend([f"{name}", f"sigma_{name}"])
+                headers.extend(["chi2", "red_chi2"])
+                for h in headers:
+                    self.model.insertColumn(self.model.columnCount())
+                    self.model.setHeaderData(self.model.columnCount() - 1, Qt.Orientation.Horizontal, h)
+
+            header_map = {self.model.headerData(i, Qt.Orientation.Horizontal): i for i in range(self.model.columnCount())}
+
+            row_pos = self.find_first_empty_cell_in_column(header_map['fit_lambda'] + 1)
+            if row_pos == -1:
+                row = self.model.rowCount()
+                self.model.insertRow(row)
+                row_pos = row
+
+            def set_val(header, val):
+                if header in header_map:
+                    idx = self.model.index(row_pos, header_map[header])
+                    self.model.setData(idx, f"{val:.6g}" if isinstance(val, (float, int)) else str(val))
+
+            set_val("fit_dataset", ycol)
+            set_val("fit_function", vals.get("func", "unknown"))
+
+            for name, val, err in zip(param_names, popt, perr):
+                set_val(name, val)
+                set_val(f"sigma_{name}", err)
+
+            set_val("chi2", chi2)
+            set_val("red_chi2", chi2/dof if dof > 0 else np.nan)
+
+
+
+
+        result_text = "<b>curve_fit results:</b><br>"
+        for name, val, err in zip(param_names, popt, perr):
+            result_text += f"{name} = {val:.6g} ± {err:.3g}<br>"
+        result_text += f"<br>χ² = {chi2:.3g}<br>χ²/dof = {red_chi2:.3g}"
+        if sigma_x is not None:
+            result_text += "<br><i>Caution:</i> Errors on X are not used directly in curve_fit, but can be taken into account in custom functions.."
+
+        QMessageBox.information(self, "Fit complete", result_text)
+
+
+    def fit_data_chi2_total(self):
+        """
+        Fitting taking into account errors along both axes (σx and σy)
+        by minimizing the full χ2-function.
+        """
+        headers = self.get_headers()
+        dlg = FitDialog(headers, self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        vals = dlg.get_values()
+        xcol, ycol, xerrcol, yerrcol = vals["x"], vals["y"], vals["xerr"], vals["yerr"]
+        func_text, params_text, consts_text = vals["func"], vals["params"], vals["consts"]
+
+        # --- Данные ---
+        data = self.get_data(xcol, ycol)
+        x, y = data
+        if len(x) == 0:
+            QMessageBox.warning(self,"Error", "There is no correct data for approximation.")
+            return
+
+        sigma_x = None
+        sigma_y = None
+        if xerrcol:
+            err_data = self.get_data(xcol, xerrcol)
+            if len(err_data[1]) == len(x):
+                sigma_x = np.array(err_data[1])
+        if yerrcol:
+            err_data = self.get_data(ycol, yerrcol)
+            if len(err_data[1]) == len(y):
+                sigma_y = np.array(err_data[1])
+
+        if sigma_y is None:
+            sigma_y = np.ones_like(y)
+        if sigma_x is None:
+            sigma_x = np.zeros_like(x)
+
+        try:
+            p0_dict = {k.strip(): float(v) for k, v in [p.split('=') for p in params_text.split(',')]}
+            param_names = list(p0_dict.keys())
+            p0 = list(p0_dict.values())
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Incorrect parameter format: {e}")
+            return
+
+        consts = {}
+        if consts_text:
+            try:
+                consts = {k.strip(): float(v) for k, v in [p.split('=') for p in consts_text.split(',')]}
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Incorrect format of constants:{e}")
+                return
+
+        env = {"np": np, "math": math}
+        env.update(consts)
+        try:
+            func_code = f"lambda x, {', '.join(param_names)}: {func_text}"
+            f = eval(func_code, env)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Invalid function:\n{e}")
+            return
+
+        # --- We determine χ2 taking into account errors on both axes ---
+        #   χ² = Σ [ (y_i - f(x_i, p))² / (σ_y² + (f'(x_i,p) * σ_x)²) ]
+        def total_chi2(params):
+            y_model = f(x, *params)
+            # numerical derivative with respect to x
+            dx = 1e-6
+            dydx = (f(x + dx, *params) - f(x - dx, *params)) / (2*dx)
+            denom = sigma_y**2 + (dydx * sigma_x)**2
+            return np.sum((y - y_model)**2 / denom)
+
+        # --- χ² minimization---
+        res = minimize(total_chi2, p0, method='Nelder-Mead')
+
+        if not res.success:
+            QMessageBox.warning(self, "Error", f"The fit did not fit:\n{res.message}")
+            return
+
+        popt = res.x
+        try:
+            H = Hessian(lambda p: total_chi2(p))(popt)
+            pcov = np.linalg.inv(H)
+            perr = np.sqrt(np.diag(pcov))
+        except Exception:
+            perr = [np.nan]*len(popt)
+
+        y_fit = f(x, *popt)
+        chi2 = total_chi2(popt)
+        dof = len(y) - len(popt)
+        red_chi2 = chi2 / dof if dof > 0 else np.nan
+
+        if vals.get("save_params", True):
+
+            header_names = [self.model.headerData(i, Qt.Orientation.Horizontal) for i in range(self.model.columnCount())]
+
+            if "fit_dataset" not in header_names:
+                headers = ["fit_dataset", "fit_function"]
+                for name in param_names:
+                    headers.extend([f"{name}", f"sigma_{name}"])
+                headers.extend(["chi2", "red_chi2"])
+                for h in headers:
+                    self.model.insertColumn(self.model.columnCount())
+                    self.model.setHeaderData(self.model.columnCount() - 1, Qt.Orientation.Horizontal, h)
+
+            header_map = {self.model.headerData(i, Qt.Orientation.Horizontal): i for i in range(self.model.columnCount())}
+            
+            row_pos = self.find_first_empty_cell_in_column(header_map['fit_lambda'] + 1)
+            if row_pos == -1:
+                row = self.model.rowCount()
+                self.model.insertRow(row)
+                row_pos = row
+
+            def set_val(header, val):
+                if header in header_map:
+                    idx = self.model.index(row_pos, header_map[header])
+                    self.model.setData(idx, f"{val:.6g}" if isinstance(val, (float, int)) else str(val))
+
+            set_val("fit_dataset", ycol)
+            set_val("fit_function", vals.get("func", "unknown"))
+
+            for name, val, err in zip(param_names, popt, perr):
+                set_val(name, val)
+                set_val(f"sigma_{name}", err)
+
+            set_val("chi2", chi2)
+            set_val("red_chi2", chi2/dof if dof > 0 else np.nan)
+
+        msg = "<b>Fit with χ² (σx & σy) completed:</b><br>"
+        for n, v, e in zip(param_names, popt, perr):
+            msg += f"{n} = {v:.6g} ± {e:.3g}<br>"
+        msg += f"<br>χ² = {chi2:.3g}, χ²/dof = {red_chi2:.3g}<br>"
+        msg += "<i>σx are taken into account through the numerical derivative of the function.</i>"
+        QMessageBox.information(self, "Fit complete", msg)
+
+
+    def find_first_empty_cell_in_column(self, column):
+        row_count = self.model.rowCount()
+        for row in range(row_count):
+            index = self.model.index(row, column)
+            if self.model.data(index) is None or self.model.data(index) == "":
+                return row
+        return -1 
+    
+    def sanitize_plot_state(self, sub_state: dict) -> dict:
+        """
+        Checks the sub_state (the structure from plotter.get_state())
+        and removes incorrect signatures of axes, headings, and legends.
+        Returns a safe-to-save state.
+        """
+
+        if not isinstance(sub_state, dict):
+            return sub_state
+
+        if "subplots" not in sub_state:
+            return sub_state
+
+        for subplot in sub_state["subplots"]:
+            sub_info = subplot.get("sub_info", {})
+            if not isinstance(sub_info, dict):
+                continue
+
+            # Проверка осей
+            axes_info = sub_info.get("axes", {})
+            for label_key in ["x-label", "y-label"]:
+                if label_key in axes_info:
+                    label_text = axes_info[label_key]
+                    if isinstance(label_text, str) and self._is_invalid_latex(label_text):
+                        logging.warning(f"[sanitize_plot_state] Incorrect label deleted {label_key}: {label_text}")
+                        axes_info[label_key] = ""
+
+            # Проверка заголовков
+            title_info = sub_info.get("title", {})
+            if "title" in title_info:
+                title_text = title_info["title"]
+                if isinstance(title_text, str) and self._is_invalid_latex(title_text):
+                    logging.warning(f"[sanitize_plot_state] Incorrect title deleted: {title_text}")
+                    title_info["title"] = ""
+
+            # Проверка легенд (если у тебя они содержат текст)
+            legend_info = sub_info.get("legend", {})
+            if "legend label" in legend_info:
+                legend_label = legend_info["legend label"]
+                if isinstance(legend_label, str) and self._is_invalid_latex(legend_label):
+                    logging.warning(f"[sanitize_plot_state] Incorrect legend deleted: {legend_label}")
+                    legend_info["legend label"] = ""
+
+        return sub_state
