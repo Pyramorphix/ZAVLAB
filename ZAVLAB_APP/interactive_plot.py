@@ -338,28 +338,42 @@ class INTERACTIVE_PLOT(FigureCanvas):
             ax.set_title(subplot[6]["title"]["title"], fontsize=subplot[6]["title"]["title fs"])
             self.canvas.draw()
 
-    def plot_all_data(self, win, rows, cols):
-        """Generate the plot based on current configuration"""
-
+    def plot_all_data(self, win, rows, cols, wspace=0.4, hspace=0.4, aspect_ratio="Auto", save_size=(8, 6)):
+        """Generate the plot based on current configuration with user-defined figure size and spacing"""
+        
         self.win = win
+        self.save_size = save_size
+
 
         if not self.subplots:
             QMessageBox.warning(self, "No Subplots", "Please add at least one subplot")
             return
-        
-        del self.gs
-        self.fig.clear()
-        del self.axes
+
+        if aspect_ratio != "Auto":
+            try:
+                w, h = map(float, aspect_ratio.split(":"))
+                ratio = w / h
+            except Exception:
+                ratio = 1.0
+            
+            canvas_w = self.width() / self.figure.dpi
+            canvas_h = canvas_w / ratio
+            self.fig.set_size_inches(canvas_w, canvas_h, forward=True)
+        else:
+            
+            pass
+
+        self.fig.clf()
         self.axes = {}
-        self.textes = dict()
-        # Create GridSpec
+        self.textes = {}
+
         self.gs = gridspec.GridSpec(
-            rows, cols, 
+            rows, cols,
             figure=self.fig,
             width_ratios=[1]*cols,
             height_ratios=[1]*rows,
-            wspace=0.5,
-            hspace=0.7
+            wspace=wspace,
+            hspace=hspace
         )
         # Create a grid to track occupied cells
         occupied = [[False] * cols for _ in range(rows)]
@@ -387,10 +401,9 @@ class INTERACTIVE_PLOT(FigureCanvas):
                     ax.axis('off')
                     # ax.xaxis.set_major_formatter(NullFormatter())
                     # ax.yaxis.set_major_formatter(NullFormatter())
-        
-        self.fig.tight_layout()
+        print("plotting")
         self.canvas.draw()
-        self.draw()
+        # self.draw()
 
     def _is_invalid_latex(self, text: str) -> bool:
         """

@@ -1,7 +1,7 @@
 {
     "grid": {
-        "rows": 1,
-        "cols": 1
+        "rows": 2,
+        "cols": 2
     },
     "subplots": [
         {
@@ -14,55 +14,245 @@
             },
             "data_series": [
                 {
+                    "alpha": 1.0,
+                    "color": "#1f77b4",
                     "id": 0,
-                    "x": "grad",
-                    "xerr": "None",
-                    "y": "lambda",
-                    "yerr": "None",
-                    "color": "#1B1F3B",
+                    "label": "N_1(x_1)",
+                    "ls": "",
+                    "marker": "o",
+                    "marker size": 3,
                     "width": 1.0,
-                    "label": "$\\lambda(grad)$",
+                    "x": "lenght_0",
+                    "xerr": "None",
+                    "y": "N_1_t_1",
+                    "yerr": "None"
+                }
+            ],
+            "sub_info": {
+                "axes": {
+                    "x label fs": 6,
+                    "x max": 22.0,
+                    "x min": 10.0,
+                    "x number of rounding digits": 1,
+                    "x scale": 0,
+                    "x small ticks": 5,
+                    "x ticks": 10,
+                    "x-label": "x_1",
+                    "y label fs": 14,
+                    "y max": 22.0,
+                    "y min": 0.01,
+                    "y number of rounding digits": 2,
+                    "y scale": 0,
+                    "y small ticks": 5,
+                    "y ticks": 10,
+                    "y-label": "N_1"
+                },
+                "grid": {
+                    "show grid": true
+                },
+                "legend": {
+                    "legend fs": 14,
+                    "legend position": "best"
+                },
+                "title": {
+                    "title": "lab541_1",
+                    "title fs": 14
+                }
+            },
+            "lines": []
+        },
+        {
+            "id": 1,
+            "position": {
+                "row": 0,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 1
+            },
+            "data_series": [
+                {
+                    "alpha": 1.0,
+                    "color": "#1f77b4",
+                    "id": 0,
+                    "label": "N_2(P)",
+                    "ls": "",
+                    "marker": "o",
+                    "marker size": 3,
+                    "width": 1.0,
+                    "x": "P",
+                    "xerr": "None",
+                    "y": "N_2_t",
+                    "yerr": "None"
+                }
+            ],
+            "sub_info": {
+                "axes": {
+                    "x label fs": 14,
+                    "x max": 750.0,
+                    "x min": 0.0,
+                    "x number of rounding digits": 2,
+                    "x scale": 0,
+                    "x small ticks": 5,
+                    "x ticks": 10,
+                    "x-label": "x_1",
+                    "y label fs": 14,
+                    "y max": 300.0,
+                    "y min": 0.01,
+                    "y number of rounding digits": 2,
+                    "y scale": 1,
+                    "y small ticks": 5,
+                    "y ticks": 10,
+                    "y-label": "N_1"
+                },
+                "grid": {
+                    "show grid": true
+                },
+                "legend": {
+                    "legend fs": 14,
+                    "legend position": "best"
+                },
+                "title": {
+                    "title": "lab541_2",
+                    "title fs": 14
+                }
+            },
+            "lines": []
+        },
+        {
+            "id": 2,
+            "position": {
+                "row": 1,
+                "col": 0,
+                "row_span": 1,
+                "col_span": 1
+            },
+            "data_series": [
+                {
+                    "alpha": 1.0,
+                    "color": "#1f77b4",
+                    "id": 0,
+                    "label": "I_zeroed(P_3)",
+                    "ls": "",
+                    "marker": "o",
+                    "marker size": 3,
+                    "width": 1.0,
+                    "x": "P_3",
+                    "xerr": "None",
+                    "y": "I_zeroed",
+                    "yerr": "None"
+                }
+            ],
+            "sub_info": {
+                "axes": {
+                    "x label fs": 14,
+                    "x max": 750.0,
+                    "x min": 0.0,
+                    "x number of rounding digits": 0,
+                    "x scale": 0,
+                    "x small ticks": 5,
+                    "x ticks": 10,
+                    "x-label": "P_3",
+                    "y label fs": 14,
+                    "y max": 100.0,
+                    "y min": -800.0,
+                    "y number of rounding digits": 0,
+                    "y scale": 0,
+                    "y small ticks": 5,
+                    "y ticks": 10,
+                    "y-label": "I_zeroed"
+                },
+                "grid": {
+                    "show grid": true
+                },
+                "legend": {
+                    "legend fs": 14,
+                    "legend position": "best"
+                },
+                "title": {
+                    "title": "lab541_3",
+                    "title fs": 14
+                }
+            },
+            "lines": [
+                {
+                    "b": 368.44,
+                    "color": "#ff0000",
+                    "id": 0,
+                    "k": -1.59,
+                    "label": "",
+                    "label_font_size": 14,
+                    "label_position": "Above the middle of the line",
+                    "style": "-",
+                    "type": 1,
+                    "width": 0.1,
+                    "x1": 0.0,
+                    "x2": 750.0,
+                    "y1": 368.44,
+                    "y2": -824.06
+                },
+                {
+                    "b": 11.29,
+                    "color": "#ff0000",
+                    "id": 1,
+                    "k": 0.09,
+                    "label": "",
+                    "label_font_size": 14,
+                    "label_position": "Above the middle of the line",
+                    "style": "-",
+                    "type": 1,
+                    "width": 0.1,
+                    "x1": 0.0,
+                    "x2": 750.0,
+                    "y1": 11.29,
+                    "y2": 78.78999999999999
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "position": {
+                "row": 1,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 1
+            },
+            "data_series": [
+                {
+                    "id": 0,
+                    "x": "I_lense",
+                    "xerr": "None",
+                    "y": "N_p",
+                    "yerr": "None",
+                    "color": "#1f77b4",
+                    "width": 1.0,
+                    "label": "sqrt_N_p(Energy)",
                     "ls": "",
                     "alpha": 1.0,
                     "marker": "o",
-                    "marker size": 3
-                },
-                {
-                    "id": 1,
-                    "x": "grad",
-                    "xerr": "None",
-                    "y": "fit_lambda",
-                    "yerr": "None",
-                    "color": "#35d9e8",
-                    "width": 1.0,
-                    "label": "fit_lambda(grad)",
-                    "ls": "-",
-                    "alpha": 1.0,
-                    "marker": "",
                     "marker size": 3
                 }
             ],
             "sub_info": {
                 "axes": {
-                    "x-label": "x",
-                    "x min": 2230.9,
-                    "x max": 3003.1,
+                    "x-label": "Energy",
+                    "x min": -0.05,
+                    "x max": 1.05,
                     "x ticks": 10,
                     "x small ticks": 5,
                     "x label fs": 14,
                     "x scale": 0,
-                    "x number of rounding digits": -2,
-                    "y-label": "fit_lambda",
-                    "y min": -351.6205,
-                    "y max": 7384.0305,
+                    "x number of rounding digits": 2,
+                    "y-label": "sqrt_N_p",
+                    "y min": -0.05,
+                    "y max": 1.05,
                     "y ticks": 10,
                     "y small ticks": 5,
                     "y label fs": 14,
                     "y scale": 0,
-                    "y number of rounding digits": -1
+                    "y number of rounding digits": 2
                 },
                 "title": {
-                    "title": "fit_lambda(grad)",
+                    "title": "lab542_1",
                     "title fs": 14
                 },
                 "legend": {
@@ -76,5 +266,5 @@
             "lines": []
         }
     ],
-    "current_id": 1
+    "current_id": 4
 }

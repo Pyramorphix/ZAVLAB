@@ -23,7 +23,7 @@ from theme_manager import ThemeManager
 from plot_manager import SubplotEditor
 from core import AutoSaveManager
 from table import ExcelLikeModel, ExcelTableView, FormulaLineEdit
-from dialogs import FitDialog
+from dialogs import FitDialog, ColumnSelectionDialog
 
 
 class ZAVLABMainWindow(QMainWindow):
@@ -120,7 +120,7 @@ class ZAVLABMainWindow(QMainWindow):
         # |  Data  |          Plot          |
         # |   1    |           3            |
 
-        self.central_widget_splitter.setChildrenCollapsible(False)  # Disallow element collapsing
+        self.central_widget_splitter.setChildrenCollapsible(True)  
         self.central_widget_splitter.setHandleWidth(self.SPLITTER_HANDLE_WIDTH) 
  
     def _apply_styles(self) -> None:
@@ -332,6 +332,12 @@ class ZAVLABMainWindow(QMainWindow):
         chi2_action = QAction("Fit with χ² (X and Y errors)", self)
         chi2_action.triggered.connect(self.fit_data_chi2_total)
         self.files.addAction(chi2_action)
+
+        #latex export
+        export_latex_file_action = QAction("Export Selected Columns to LaTeX File", self)
+        export_latex_file_action.setShortcut(QKeySequence("Ctrl+Shift+E"))
+        export_latex_file_action.triggered.connect(self.export_selected_columns_to_latex_file)
+        self.files.addAction(export_latex_file_action)
 
 
 
@@ -663,7 +669,7 @@ class ZAVLABMainWindow(QMainWindow):
         try:
             with open(file_name, 'r', encoding='utf-8') as f:
                 table_state = json.load(f)
-            
+            self._clear_table()
             # Set row and column count
             self.model.setRowCount(table_state["row_count"])
             self.model.setColumnCount(table_state["column_count"])
@@ -930,8 +936,9 @@ class ZAVLABMainWindow(QMainWindow):
             if not ext:
                 file_name += ".png"
                 ext = ".png"
-            
+            w, h = self.plotter.save_width_spin.value() /2.54, self.plotter.save_height_spin.value() / 2.54
             # save image
+            self.plotter.plot_canvas.fig.set_size_inches(w, h)
             self.plotter.plot_canvas.fig.savefig(file_name, dpi=300)
             
             self.statusBar().showMessage(f"The graph is saved: {file_name}", 5000)
@@ -1619,18 +1626,34 @@ class ZAVLABMainWindow(QMainWindow):
 
             header_names = [self.model.headerData(i, Qt.Orientation.Horizontal) for i in range(self.model.columnCount())]
 
-            if "fit_dataset" not in header_names:
-                headers = ["fit_dataset", "fit_function"]
-                for name in param_names:
-                    headers.extend([f"{name}", f"sigma_{name}"])
-                headers.extend(["chi2", "red_chi2"])
-                for h in headers:
-                    self.model.insertColumn(self.model.columnCount())
-                    self.model.setHeaderData(self.model.columnCount() - 1, Qt.Orientation.Horizontal, h)
-
+            # if "fit_dataset" not in header_names:
+            #     headers = ["fit_dataset", "fit_function"]
+            #     for name in param_names:
+            #         headers.extend([f"{name}", f"sigma_{name}"])
+            #     headers.extend(["chi2", "red_chi2"])
+            #     for h in headers:
+            #         self.model.insertColumn(self.model.columnCount())
+            #         self.model.setHeaderData(self.model.columnCount() - 1, Qt.Orientation.Horizontal, h)
+            headers = ["fit_dataset", "fit_function"]
+            for name in param_names:
+                headers.extend([f"{name}", f"sigma_{name}"])
+            headers.extend(["chi2", "red_chi2"])
             header_map = {self.model.headerData(i, Qt.Orientation.Horizontal): i for i in range(self.model.columnCount())}
 
-            row_pos = self.find_first_empty_cell_in_column(header_map['fit_lambda'] + 1)
+            missed_headers = []
+            last_index = 0
+            for name in headers:
+                if name not in header_map:
+                    missed_headers.extend([f"{name}"])
+                elif last_index < header_map[name] and  name not in ["chi2", "red_chi2"]:
+                    last_index = header_map[name]
+            for name in missed_headers:
+                last_index += 1
+                self.model.insertColumn(last_index)
+                self.model.setHeaderData(last_index, Qt.Orientation.Horizontal, name)
+            header_map = {self.model.headerData(i, Qt.Orientation.Horizontal): i for i in range(self.model.columnCount())}
+
+            row_pos = self.find_first_empty_cell_in_column(header_map['fit_dataset'] + 1)
             if row_pos == -1:
                 row = self.model.rowCount()
                 self.model.insertRow(row)
@@ -1760,18 +1783,38 @@ class ZAVLABMainWindow(QMainWindow):
 
             header_names = [self.model.headerData(i, Qt.Orientation.Horizontal) for i in range(self.model.columnCount())]
 
-            if "fit_dataset" not in header_names:
-                headers = ["fit_dataset", "fit_function"]
-                for name in param_names:
-                    headers.extend([f"{name}", f"sigma_{name}"])
-                headers.extend(["chi2", "red_chi2"])
-                for h in headers:
-                    self.model.insertColumn(self.model.columnCount())
-                    self.model.setHeaderData(self.model.columnCount() - 1, Qt.Orientation.Horizontal, h)
+            # if "fit_dataset" not in header_names:
+            #     headers = ["fit_dataset", "fit_function"]
+            #     for name in param_names:
+            #         headers.extend([f"{name}", f"sigma_{name}"])
+            #     headers.extend(["chi2", "red_chi2"])
+            #     for h in headers:
+            #         self.model.insertColumn(self.model.columnCount())
+            #         self.model.setHeaderData(self.model.columnCount() - 1, Qt.Orientation.Horizontal, h)
+            headers = ["fit_dataset", "fit_function"]
+            for name in param_names:
+                headers.extend([f"{name}", f"sigma_{name}"])
+            headers.extend(["chi2", "red_chi2"])
+            header_map = {self.model.headerData(i, Qt.Orientation.Horizontal): i for i in range(self.model.columnCount())}
+
+            missed_headers = []
+            last_index = 0
+            for name in headers:
+                if name not in header_map:
+                    missed_headers.extend([f"{name}"])
+                elif last_index < header_map[name] and  name not in ["chi2", "red_chi2"]:
+                    last_index = header_map[name]
+            for name in missed_headers:
+                last_index += 1
+                self.model.insertColumn(last_index)
+                self.model.setHeaderData(last_index, Qt.Orientation.Horizontal, name)
+            header_map = {self.model.headerData(i, Qt.Orientation.Horizontal): i for i in range(self.model.columnCount())}
+
+            
 
             header_map = {self.model.headerData(i, Qt.Orientation.Horizontal): i for i in range(self.model.columnCount())}
             
-            row_pos = self.find_first_empty_cell_in_column(header_map['fit_lambda'] + 1)
+            row_pos = self.find_first_empty_cell_in_column(header_map['fit_dataset'] + 1)
             if row_pos == -1:
                 row = self.model.rowCount()
                 self.model.insertRow(row)
@@ -1852,3 +1895,79 @@ class ZAVLABMainWindow(QMainWindow):
                     legend_info["legend label"] = ""
 
         return sub_state
+
+    def export_selected_columns_to_latex_file(self):
+        model = self.table.model()
+        cols = model.columnCount()
+        headers = [model.headerData(c, Qt.Orientation.Horizontal) for c in range(cols)]
+
+        dialog = ColumnSelectionDialog(headers, parent=self)
+        if not dialog.exec():
+            return  # Пользователь отменил
+        selected_columns = dialog.get_selected_indices()
+        if not selected_columns:
+            QMessageBox.warning(self, "No Columns Selected", "Please select at least one column to export.")
+            return
+
+        latex_code = self.export_selected_columns_to_latex(selected_columns)
+
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save LaTeX Table",
+            "",
+            "LaTeX files (*.tex);;All files (*)"
+        )
+        if not filename:
+            return
+
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(latex_code)
+            QMessageBox.information(self, "File Saved", f"LaTeX table saved to {filename}")
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", f"Could not save file:\n{e}")
+
+    def export_selected_columns_to_latex(self, selected_columns: list[int]) -> str:
+        """
+        Export only the selected columns of the table to LaTeX tabular format.
+        
+        :param selected_columns: List of column indices to export
+        :return: LaTeX string
+        """
+        model = self.table.model()
+        rows = model.rowCount()
+        cols = model.columnCount()
+
+        # Если выбранные колонки пусты — экспортируем все
+        if not selected_columns:
+            selected_columns = list(range(cols))
+
+        # Заголовки выбранных колонок
+        headers = [model.headerData(c, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole) 
+                for c in selected_columns]
+
+        # Начало LaTeX табличной среды
+        latex_lines = []
+        latex_lines.append("\\begin{tabular}{" + " | ".join(["c"]*len(selected_columns)) + "}")
+        latex_lines.append("\\hline")
+        latex_lines.append(" & ".join(headers) + " \\\\")
+        latex_lines.append("\\hline")
+
+        # Добавляем строки таблицы для выбранных колонок
+        for r in range(rows):
+            row_data = []
+            not_empty = False
+            for c in selected_columns:
+                cell_value = model.evaluate_cell(r, c)
+                if model.is_number(cell_value):
+                    cell_value = f"{float(cell_value):.{model.decimal_places}f}"
+                row_data.append(str(cell_value))
+                if str(cell_value) != "":
+                    not_empty = True
+            if not_empty:
+                latex_lines.append(" & ".join(row_data) + " \\\\")
+                latex_lines.append("\\hline")
+
+        latex_lines.append("\\end{tabular}")
+
+        return "\n".join(latex_lines)

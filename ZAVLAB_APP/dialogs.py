@@ -8,8 +8,9 @@ Contains all dialog windows used in the application:
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QListWidget, QLabel, QHBoxLayout, QPushButton, QComboBox,
                               QDoubleSpinBox, QFormLayout, QDialogButtonBox, QColorDialog, 
                               QLineEdit, QMessageBox, QGridLayout, QSpinBox, QCheckBox, QWidget, QScrollArea,
-                              QTabWidget, QFrame)
+                              QTabWidget, QFrame, QCompleter)
 from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt
 import numpy as np
 from matplotlib.axes import Axes
 import matplotlib.ticker as ticker
@@ -68,12 +69,31 @@ class DataSeriesDialog(QDialog):
         # Data selection
         self.data_combo_x: QComboBox = QComboBox()
         self.data_combo_x.addItems(["None"] + headers)
+        self.data_combo_x.setEditable(True)
+        self.data_combo_x.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.data_combo_x.setCompleter(QCompleter(self.data_combo_x.model(), self.data_combo_x))
+        self.data_combo_x.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
         self.data_combo_xerr: QComboBox = QComboBox()
         self.data_combo_xerr.addItems(["None"] + headers)
+        self.data_combo_xerr.setEditable(True)
+        self.data_combo_xerr.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.data_combo_xerr.setCompleter(QCompleter(self.data_combo_xerr.model(), self.data_combo_xerr))
+        self.data_combo_xerr.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        
         self.data_combo_y: QComboBox = QComboBox()
         self.data_combo_y.addItems(["None"] + headers)
+        self.data_combo_y.setEditable(True)
+        self.data_combo_y.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.data_combo_y.setCompleter(QCompleter(self.data_combo_y.model(), self.data_combo_y))
+        self.data_combo_y.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
         self.data_combo_yerr: QComboBox = QComboBox()
         self.data_combo_yerr.addItems(["None"] + headers)
+        self.data_combo_yerr.setEditable(True)
+        self.data_combo_yerr.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.data_combo_yerr.setCompleter(QCompleter(self.data_combo_yerr.model(), self.data_combo_yerr))
+        self.data_combo_yerr.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         
         # Style controls
         self.color_btn: QPushButton = QPushButton("Choose Color")
@@ -295,20 +315,21 @@ class AxisConfigDialog(QDialog):
     def __update_decimals__(self) -> None:
         """Update decimals for min/max spinboxes based on current values"""
 
-        shift = (self.max_edit.value() - self.min_edit.value()) / 20
-
-        min_decimals = self.__calculate_decimals__(self.min_edit.value() - shift)
-        max_decimals = self.__calculate_decimals__(self.max_edit.value() + shift)
-        
-        self.min_edit.setDecimals(min_decimals)
-        self.max_edit.setDecimals(max_decimals)
+        # shift = (self.max_edit.value() - self.min_edit.value()) / 20
+        # print(shift)
+        # min_decimals = self.__calculate_decimals__(self.min_edit.value() - shift)
+        # max_decimals = self.__calculate_decimals__(self.max_edit.value() + shift)
+        # min_decimals = min_decimals if min_decimals > -1 else 0
+        # max_decimals = max_decimals if max_decimals > -1 else 0
+        decimals = self.rounding_spin.value()
+        self.min_edit.setDecimals(decimals)
+        self.max_edit.setDecimals(decimals)
         
         # Update single step based on value magnitude
-        min_step = 10 ** -min_decimals
-        max_step = 10 ** -max_decimals
+        decimals = 10 ** -decimals
         
-        self.min_edit.setSingleStep(min_step)
-        self.max_edit.setSingleStep(max_step)
+        self.min_edit.setSingleStep(decimals)
+        self.max_edit.setSingleStep(decimals)
     
     def __init_dialog_ui__(self) -> None:
         """Initialize UI for axis configuration dialog"""
@@ -363,18 +384,16 @@ class AxisConfigDialog(QDialog):
         self.min_edit = QDoubleSpinBox()
         self.min_edit.setRange(-1e9, 1e9)
         self.min_edit.setValue(min_val)
-        self.min_edit.valueChanged.connect(self.__update_decimals__)
+        self.min_edit.valueChanged.connect(self.validate_limits)
         form_layout.addRow("Minimum:", self.min_edit)
         
         # Max value
         self.max_edit = QDoubleSpinBox()
         self.max_edit.setRange(-1e9, 1e9)
         self.max_edit.setValue(max_val)
-        self.max_edit.valueChanged.connect(self.__update_decimals__)
+        self.max_edit.valueChanged.connect(self.validate_limits)
         form_layout.addRow("Maximum:", self.max_edit)
         
-        # Set initial decimals
-        self.__update_decimals__()
         
         # Number of major ticks
         self.major_ticks_spin = QSpinBox()
@@ -398,6 +417,8 @@ class AxisConfigDialog(QDialog):
         self.rounding_spin = QSpinBox()
         self.rounding_spin.setRange(0, 10)
         self.rounding_spin.setValue(rounding_digits)
+        self.rounding_spin.valueChanged.connect(self.__update_decimals__)
+        self.__update_decimals__()
         form_layout.addRow("Rounding Digits:", self.rounding_spin)
         
         scroll_area.setWidget(scroll_widget)
@@ -469,6 +490,46 @@ class AxisConfigDialog(QDialog):
 
         return self.subplot_config
 
+    def validate_limits(self) -> None:
+        """Validates limits of axis to ensure min < max."""
+
+        min_val: float = self.min_edit.value()
+        max_val: float = self.max_edit.value()
+        if not min_val or not max_val:
+            return
+                    
+        if min_val >= max_val:
+            # Adjust min/max to maintain valid range
+            if self.min_edit.hasFocus():
+                # If user is editing min, adjust max
+                self.max_edit.setValue(min_val + 0.1)
+            else:
+                # If user is editing max, adjust min
+                self.min_edit.setValue(max_val - 0.1)
+                
+            # Highlight problematic fields
+            self.highlight_invalid(self.min_edit)
+            self.highlight_invalid(self.max_edit)
+        else:
+            # Reset highlighting if valid
+            self.reset_highlight(self.min_edit)
+            self.reset_highlight(self.max_edit)
+
+    def highlight_invalid(self, editor: QDoubleSpinBox | QSpinBox | QLineEdit) -> None:
+        """Highlight editor with red border to indicate invalid value"""
+
+        if isinstance(editor, (QDoubleSpinBox, QSpinBox)):
+            editor.setStyleSheet("border: 1px solid red;")
+        elif isinstance(editor, QLineEdit):
+            editor.setStyleSheet("QLineEdit { border: 1px solid red; }")
+
+    def reset_highlight(self, editor: QDoubleSpinBox | QSpinBox | QLineEdit) -> None:
+        """Removes highlight from input fields."""
+
+        if isinstance(editor, (QDoubleSpinBox, QSpinBox)):
+            editor.setStyleSheet("")
+        elif isinstance(editor, QLineEdit):
+            editor.setStyleSheet("QLineEdit { border: none; }")
 
 class SubplotPositionDialog(QDialog):
     """
@@ -1096,9 +1157,28 @@ class FitDialog(QDialog):
 
         # --- Выбор колонок ---
         self.x_box = QComboBox(); self.x_box.addItems(headers)
+        self.x_box.setEditable(True)
+        self.x_box.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.x_box.setCompleter(QCompleter(self.x_box.model(), self.x_box))
+        self.x_box.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
         self.xerr_box = QComboBox(); self.xerr_box.addItems(["(none)"] + headers)
+        self.xerr_box.setEditable(True)
+        self.xerr_box.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.xerr_box.setCompleter(QCompleter(self.xerr_box.model(), self.xerr_box))
+        self.xerr_box.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
         self.y_box = QComboBox(); self.y_box.addItems(headers)
+        self.y_box.setEditable(True)
+        self.y_box.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.y_box.setCompleter(QCompleter(self.y_box.model(), self.y_box))
+        self.y_box.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
         self.yerr_box = QComboBox(); self.yerr_box.addItems(["(none)"] + headers)
+        self.yerr_box.setEditable(True)
+        self.yerr_box.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.yerr_box.setCompleter(QCompleter(self.yerr_box.model(), self.yerr_box))
+        self.yerr_box.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
         # --- Поля ввода ---
         self.func_edit = QLineEdit("a*x + b")
@@ -1179,3 +1259,50 @@ class FitDialog(QDialog):
             "add_values": self.add_values_box.isChecked(),
             "save_params": self.save_params_box.isChecked()
         }
+
+
+class ColumnSelectionDialog(QDialog):
+    """Dialog for selecting columns to export, with 'Invert Selection' button."""
+
+    def __init__(self, headers: list[str], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Select Columns to Export")
+        self.selected_indices = []
+
+        layout = QVBoxLayout(self)
+
+        # Кнопка переворота выбора
+        self.invert_btn = QPushButton("Invert Selection")
+        self.invert_btn.clicked.connect(self.invert_selection)
+        layout.addWidget(self.invert_btn)
+
+        # Scroll area для колонок
+        scroll = QScrollArea(self)
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+
+        self.checkboxes = []
+        for header in headers:
+            cb = QCheckBox(header)
+            cb.setChecked(True)
+            scroll_layout.addWidget(cb)
+            self.checkboxes.append(cb)
+
+        scroll_widget.setLayout(scroll_layout)
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(scroll_widget)
+        layout.addWidget(scroll)
+
+        # Кнопка подтверждения
+        btn_ok = QPushButton("Export Selected")
+        btn_ok.clicked.connect(self.accept)
+        layout.addWidget(btn_ok)
+
+    def invert_selection(self):
+        """Invert the checked state of all checkboxes."""
+        for cb in self.checkboxes:
+            cb.setChecked(not cb.isChecked())
+
+    def get_selected_indices(self) -> list[int]:
+        """Return indices of checked columns."""
+        return [i for i, cb in enumerate(self.checkboxes) if cb.isChecked()]

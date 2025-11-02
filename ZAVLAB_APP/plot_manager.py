@@ -10,7 +10,7 @@ Manages all plotting operations including:
 from PyQt6.QtWidgets import (QFrame, QWidget, QGridLayout, QLabel, QHBoxLayout,
                              QSplitter, QVBoxLayout, QSpinBox, QGroupBox, QPushButton,
                              QComboBox, QTabWidget, QListWidget, QDialog, QMessageBox,
-                             QListWidgetItem, QTableWidgetItem)
+                             QListWidgetItem, QTableWidgetItem, QDoubleSpinBox, QSizePolicy, QCompleter)
 from PyQt6.QtGui import QColor
 from interactive_plot import INTERACTIVE_PLOT
 from dialogs import SubplotPositionDialog, DataSeriesDialog
@@ -235,6 +235,40 @@ class SubplotEditor(QWidget):
         self.cols_spin.setRange(1, 8)
         self.cols_spin.setValue(1)
         grid_layout.addWidget(self.cols_spin, 0, 3)
+
+
+
+        grid_layout.addWidget(QLabel("W-space:"), 2, 0)
+        self.wspace_spin = QDoubleSpinBox()
+        self.wspace_spin.setRange(0.0, 2.0)
+        self.wspace_spin.setSingleStep(0.1)
+        self.wspace_spin.setValue(0.4)
+        grid_layout.addWidget(self.wspace_spin, 2, 1)
+
+        grid_layout.addWidget(QLabel("H-space:"), 2, 2)
+        self.hspace_spin = QDoubleSpinBox()
+        self.hspace_spin.setRange(0.0, 2.0)
+        self.hspace_spin.setSingleStep(0.1)
+        self.hspace_spin.setValue(0.4)
+        grid_layout.addWidget(self.hspace_spin, 2, 3)
+
+        grid_layout.addWidget(QLabel("Aspect ratio (width:height):"), 3, 0)
+        self.aspect_ratio_combo = QComboBox()
+        self.aspect_ratio_combo.addItems(["Auto", "1:1", "4:3", "16:9", "2:1"])
+        self.aspect_ratio_combo.setCurrentText("Auto")
+        grid_layout.addWidget(self.aspect_ratio_combo, 3, 1)
+
+        grid_layout.addWidget(QLabel("Save width (cm):"), 3, 2)
+        self.save_width_spin = QDoubleSpinBox()
+        self.save_width_spin.setRange(1.0, 100.0)
+        self.save_width_spin.setValue(20.0)
+        grid_layout.addWidget(self.save_width_spin, 3, 3)
+
+        grid_layout.addWidget(QLabel("Save height (cm):"), 4, 2)
+        self.save_height_spin = QDoubleSpinBox()
+        self.save_height_spin.setRange(1.0, 100.0)
+        self.save_height_spin.setValue(15.0)
+        grid_layout.addWidget(self.save_height_spin, 4, 3)
         
         self.create_grid_btn: QPushButton = QPushButton("Create Grid")
         self.create_grid_btn.clicked.connect(self.__create_grid__)
@@ -293,23 +327,39 @@ class SubplotEditor(QWidget):
         position_sub_layout.addWidget(self.col_span_spin, 1, 3)
         
         one_sub_layout.addWidget(QLabel("X Data:"), 0, 0)
-        self.data_combo_x: QComboBox = QComboBox()
+        self.data_combo_x = QComboBox()
+        self.data_combo_x.setEditable(True)
         self.data_combo_x.addItems(["None"])
+        self.data_combo_x.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.data_combo_x.setCompleter(QCompleter(self.data_combo_x.model(), self.data_combo_x))
+        self.data_combo_x.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         one_sub_layout.addWidget(self.data_combo_x, 0, 1, 1, 3)
 
         one_sub_layout.addWidget(QLabel("X Error:"), 1, 0)
-        self.data_combo_xerr: QComboBox = QComboBox()
+        self.data_combo_xerr = QComboBox()
+        self.data_combo_xerr.setEditable(True)
         self.data_combo_xerr.addItems(["None"])
+        self.data_combo_xerr.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.data_combo_xerr.setCompleter(QCompleter(self.data_combo_xerr.model(), self.data_combo_xerr))
+        self.data_combo_xerr.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         one_sub_layout.addWidget(self.data_combo_xerr, 1, 1, 1, 3)
 
         one_sub_layout.addWidget(QLabel("Y Data:"), 2, 0)
-        self.data_combo_y: QComboBox = QComboBox()
+        self.data_combo_y = QComboBox()
+        self.data_combo_y.setEditable(True)
         self.data_combo_y.addItems(["None"])
+        self.data_combo_y.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.data_combo_y.setCompleter(QCompleter(self.data_combo_y.model(), self.data_combo_y))
+        self.data_combo_y.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         one_sub_layout.addWidget(self.data_combo_y, 2, 1, 1, 3)
         
         one_sub_layout.addWidget(QLabel("Y Error:"), 3, 0)
-        self.data_combo_yerr: QComboBox = QComboBox()
+        self.data_combo_yerr = QComboBox()
+        self.data_combo_yerr.setEditable(True)
         self.data_combo_yerr.addItems(["None"])
+        self.data_combo_yerr.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.data_combo_yerr.setCompleter(QCompleter(self.data_combo_yerr.model(), self.data_combo_yerr))
+        self.data_combo_yerr.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         one_sub_layout.addWidget(self.data_combo_yerr, 3, 1, 1, 3)
 
         self.add_subplot_btn: QPushButton = QPushButton("Add Subplot")
@@ -430,6 +480,7 @@ class SubplotEditor(QWidget):
         self.plot_canvas.subplots = []
         # self.figure = Figure(figsize=(10, 8), dpi=100)
         plot_layout.addWidget(self.plot_canvas.canvas)
+        self.plot_canvas.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         
         # Set initial splitter sizes
         splitter.addWidget(plot_panel)
@@ -963,9 +1014,25 @@ class SubplotEditor(QWidget):
     
     def plot_graphs(self) -> None:
         """Plot all subplots on the canvas."""
+        rows = self.rows_spin.value()
+        cols = self.cols_spin.value()
 
-        self.plot_canvas.canvas.draw()
-        self.plot_canvas.plot_all_data(self.window(),  self.rows_spin.value(), self.cols_spin.value())
+        wspace = self.wspace_spin.value()
+        hspace = self.hspace_spin.value()
+        aspect_ratio = self.aspect_ratio_combo.currentText()
+        save_width = self.save_width_spin.value()
+        save_height = self.save_height_spin.value()
+
+
+        self.plot_canvas.plot_all_data(
+            win=self.window(),
+            rows=rows,
+            cols=cols,
+            wspace=wspace,
+            hspace=hspace,
+            aspect_ratio=aspect_ratio,
+            save_size=(save_width, save_height)
+        )     
         
     def configure_data_series(self) -> None:
         """Open dialog to configure data series for subplots."""
@@ -1076,10 +1143,12 @@ class SubplotEditor(QWidget):
             subplot[5] = dialog.get_series()
             self.update_subplot_list()
             if self.selected_subplot_id in self.plot_canvas.axes:
+                    print("update plot")
                     ax = self.plot_canvas.update_one_plot(subplot, self.window())
                     # self.plot_canvas.canvas.blit(ax.bbox)
                     self.plot_canvas.canvas.draw()
                     self.plot_canvas.draw()
+            self.__update_data_headers_spin__(subplot[5])
 
     def find_first_nonzero_digit(self, number:int|float) -> int:
         """Return order of the first non zero digit."""

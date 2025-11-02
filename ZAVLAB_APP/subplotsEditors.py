@@ -4,8 +4,9 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QFormLayout,
                             QFrame, QLabel, QSpinBox, QColorDialog,
                             QVBoxLayout, QTreeWidget, QTreeWidgetItem,
                             QCheckBox, QScrollArea, QGroupBox, QStackedWidget,
-                            QTableWidget, QHeaderView, QGridLayout, QSizePolicy)
+                            QTableWidget, QHeaderView, QGridLayout, QSizePolicy, QCompleter)
 from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt
 from PyQt6.QtCore import pyqtSignal
 import numpy as np
 
@@ -924,8 +925,10 @@ class LineStyleTab(QWidget):
         self.k_spin:QDoubleSpinBox = QDoubleSpinBox()
         self.k_spin.setRange(-100, 100)
         self.k_spin.setValue(1.0)
+        self.k_spin.setDecimals(5)
         self.b_spin:QDoubleSpinBox = QDoubleSpinBox()
         self.b_spin.setRange(-10000, 10000)
+        self.b_spin.setDecimals(5)
         equation_layout.addRow("k (angular coefficient):", self.k_spin)
         equation_layout.addRow("b (shift):", self.b_spin)
         self.line_params_stack.addWidget(equation_widget)
@@ -1244,21 +1247,38 @@ class PositioningChoosingDataTab(QWidget):
         # data_layout.addWidget(QLabel("X Data:"))
         self.edit_data_combo_x: QComboBox = QComboBox()
         self.edit_data_combo_x.addItems(["None"])
+        self.edit_data_combo_x.setEditable(True)
+        self.edit_data_combo_x.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.edit_data_combo_x.setCompleter(QCompleter(self.edit_data_combo_x.model(), self.edit_data_combo_x))
+        self.edit_data_combo_x.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         data_layout.addRow("X Data:", self.edit_data_combo_x)
 
         # data_layout.addWidget(QLabel("X Error:"))
         self.edit_data_combo_xerr: QComboBox = QComboBox()
         self.edit_data_combo_xerr.addItems(["None"])
+        self.edit_data_combo_xerr.setEditable(True)
+        self.edit_data_combo_xerr.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.edit_data_combo_xerr.setCompleter(QCompleter(self.edit_data_combo_xerr.model(), self.edit_data_combo_xerr))
+        self.edit_data_combo_xerr.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         data_layout.addRow("X Error:", self.edit_data_combo_xerr)
 
         # data_layout.addWidget(QLabel("Y Data:"))
         self.edit_data_combo_y = QComboBox()
         self.edit_data_combo_y.addItems(["None"])
+        self.edit_data_combo_y.setEditable(True)
+        self.edit_data_combo_y.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.edit_data_combo_y.setCompleter(QCompleter(self.edit_data_combo_y.model(), self.edit_data_combo_y))
+        self.edit_data_combo_y.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         data_layout.addRow("Y Data:", self.edit_data_combo_y)
 
         # data_layout.addWidget(QLabel("Y Error:"))
         self.edit_data_combo_yerr = QComboBox()
         self.edit_data_combo_yerr.addItems(["None"])
+        self.edit_data_combo_yerr.setEditable(True)
+        self.edit_data_combo_yerr.addItems(["None"])
+        self.edit_data_combo_yerr.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)  
+        self.edit_data_combo_yerr.setCompleter(QCompleter(self.edit_data_combo_yerr.model(), self.edit_data_combo_yerr))
+        self.edit_data_combo_yerr.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         data_layout.addRow("Y Error:", self.edit_data_combo_yerr)
         
         self.edit_data_btn = QPushButton("Edit Data Series")
